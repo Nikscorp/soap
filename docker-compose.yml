@@ -1,0 +1,26 @@
+version: "3"
+services:
+  soap:
+    build:
+      context: .
+    container_name: soap
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8202:8080"
+    command: /srv/soap --redis-passwd=${REDIS_PASSWD} --api-key=${API_KEY}
+
+  redis:
+    image: redis:5.0.8-alpine3.11
+    container_name: redis
+    hostname: redis
+    logging: *default_logging
+    volumes:
+      - ./data:/data
+      - ./etc/redis.conf:/etc/redis.conf
+    entrypoint: redis-server /etc/redis.conf
+
