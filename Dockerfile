@@ -15,7 +15,7 @@ RUN go build -o soap soap/app
 # RUN golangci-lint run ./... 
 
 
-FROM node:10.11-alpine as frontend-deps
+FROM node:13.10.1-alpine3.11 as frontend-deps
 
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 ADD frontend/package.json /srv/frontend/package.json
@@ -23,7 +23,7 @@ WORKDIR /srv/frontend
 RUN npm ci
 
 
-FROM node:10.11-alpine as build-frontend
+FROM node:13.10.1-alpine3.11 as build-frontend
 
 ADD frontend /srv/frontend
 COPY --from=frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
