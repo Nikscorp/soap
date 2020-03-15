@@ -1,0 +1,54 @@
+run:
+  tests: false
+  timeout: 5m
+  output:
+    format: tab
+  skip-dirs:
+    - vendor
+  skip-files:
+    - app/common/stringSet_easyjson.go
+    - app/common/rhymes_easyjson.go
+linters:
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    # - funlen
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    # - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    # - lll
+    - misspell
+    - nakedret
+    - rowserrcheck
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    # - gochecknoglobals
+    - gocognit
+    # - godox
+    - maligned
+    - prealloc
+  disable-all: true
+

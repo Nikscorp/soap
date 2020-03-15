@@ -23,13 +23,13 @@ const staticURI = "/"
 const ioTimeoutSec = 15
 const idleTimeoutSec = 15
 const estimatedEpisodesPerSeasonCnt = 20
-const omdbApiUrl = "https://omdbapi.com/"
+const omdbAPIURL = "https://omdbapi.com/"
 
 var opts struct {
 	Address     string `long:"listen-address" short:"l" default:"0.0.0.0:8080" description:"listen address of http server"`
 	RedisAddr   string `long:"redis-addr" short:"r" default:"redis:6379" description:"redis connection address"`
 	RedisPasswd string `long:"redis-passwd" short:"p" description:"redis password"`
-	ApiKey      string `long:"api-key" short:"k" description:"OMDB API key"`
+	APIKey      string `long:"api-key" short:"k" description:"OMDB API key"`
 }
 
 func idHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +43,11 @@ func idHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	seasonsCnt, err := strconv.Atoi(resp.Seasons)
+	if err != nil {
+		log.Printf("[ERROR] Failed to Parse SeasonsCnt %s: %v", resp.Seasons, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	respEpisodes := make([]Episode, 0, seasonsCnt*estimatedEpisodesPerSeasonCnt)
 	var sumRating float64
 	var episodesCount int
@@ -75,10 +80,7 @@ func idHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] Avg Rating for id %s is %v", id, avgRating)
 
 	respEpisodes = FilterEpisodes(respEpisodes, func(e Episode) bool {
-		if e.FloatRating >= avgRating {
-			return true
-		}
-		return false
+		return e.FloatRating >= avgRating
 	})
 
 	fullRespEpisodes := Episodes{Episodes: respEpisodes, Title: resp.Title, Poster: resp.Poster}

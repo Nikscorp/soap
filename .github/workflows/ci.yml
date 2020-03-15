@@ -1,0 +1,25 @@
+name: Docker Image CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build the Docker images
+        run: docker-compose build
+      - name: Launch backend
+        env:
+          API_KEY: ${{ secrets.OMDB_API_KEY }}
+          REDIS_PASSWD: SomeStrongPassword
+        run: docker-compose up -d
+      - name: Run simple test
+        run: curl http://127.0.0.1:8202/search/lost
+      - name: Run simple test2
+        run: curl http://127.0.0.1:8202/id/tt0411008
+      - name: Show logs
+        run: docker-compose logs
+      - name: Stop backend
+        run: docker-compose stop

@@ -55,19 +55,21 @@ func FilterEpisodes(episodes []Episode, f EpisodeFilterFunc) []Episode {
 }
 
 func SearchInImdb(query string) ([]SearchResult, error) {
-	customUrl, err := url.Parse(omdbApiUrl)
+	customURL, err := url.Parse(omdbAPIURL)
 	if err != nil {
 		return nil, err
 	}
 	parameters := url.Values{}
-	parameters.Add("apikey", opts.ApiKey)
+	parameters.Add("apikey", opts.APIKey)
 	parameters.Add("s", query)
 	parameters.Add("type", "series")
-	customUrl.RawQuery = parameters.Encode()
-	resp, err := http.Get(customUrl.String())
+	customURL.RawQuery = parameters.Encode()
+	resp, err := http.Get(customURL.String())
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
 	r := new(SearchResults)
 	err = json.NewDecoder(resp.Body).Decode(r)
 	if err != nil {
@@ -78,19 +80,20 @@ func SearchInImdb(query string) ([]SearchResult, error) {
 }
 
 func GetByImdbID(id string) (*SeriesResult, error) {
-	customUrl, err := url.Parse(omdbApiUrl)
+	customURL, err := url.Parse(omdbAPIURL)
 	if err != nil {
 		return nil, err
 	}
 	parameters := url.Values{}
-	parameters.Add("apikey", opts.ApiKey)
+	parameters.Add("apikey", opts.APIKey)
 	parameters.Add("i", id)
 	parameters.Add("type", "series")
-	customUrl.RawQuery = parameters.Encode()
-	resp, err := http.Get(customUrl.String())
+	customURL.RawQuery = parameters.Encode()
+	resp, err := http.Get(customURL.String())
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	r := new(SeriesResult)
 	err = json.NewDecoder(resp.Body).Decode(r)
 	if err != nil {
@@ -101,20 +104,21 @@ func GetByImdbID(id string) (*SeriesResult, error) {
 }
 
 func GetEpisodesBySeason(id string, season int) ([]Episode, error) {
-	customUrl, err := url.Parse(omdbApiUrl)
+	customURL, err := url.Parse(omdbAPIURL)
 	if err != nil {
 		return nil, err
 	}
 	parameters := url.Values{}
-	parameters.Add("apikey", opts.ApiKey)
+	parameters.Add("apikey", opts.APIKey)
 	parameters.Add("i", id)
 	parameters.Add("type", "series")
 	parameters.Add("season", strconv.Itoa(season))
-	customUrl.RawQuery = parameters.Encode()
-	resp, err := http.Get(customUrl.String())
+	customURL.RawQuery = parameters.Encode()
+	resp, err := http.Get(customURL.String())
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	r := new(Episodes)
 	err = json.NewDecoder(resp.Body).Decode(r)
 	if err != nil {

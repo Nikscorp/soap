@@ -8,11 +8,11 @@ ENV \
 
 ADD app /go/src/soap/app/
 ADD vendor /go/src/soap/vendor/
-# ADD .golangci.yml /go/src/rhymes_backend
+ADD .golangci.yml /go/src/soap
 
 WORKDIR /go/src/soap
 RUN go build -o soap soap/app
-# RUN golangci-lint run ./... 
+RUN golangci-lint run ./...
 
 
 FROM node:13.10.1-alpine3.11 as frontend-deps
