@@ -134,7 +134,7 @@ func newRouter() *mux.Router {
 	}
 	cacheClient, err := cache.NewClient(
 		cache.ClientWithAdapter(redis.NewAdapter(ringOpt)),
-		cache.ClientWithTTL(60*time.Minute),
+		cache.ClientWithTTL(7*24*time.Hour),
 	)
 
 	if err != nil {
