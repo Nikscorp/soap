@@ -1,5 +1,4 @@
 FROM nikscorp/go-builder:0.0.1 as build-backend
-LABEL maintainer="Nikscorp <voynov@nikscorp.com>"
 
 ENV \
     CGO_ENABLED=0 \
@@ -32,7 +31,6 @@ RUN npm run build
 
 
 FROM alpine:3.11
-
 LABEL maintainer="Nikscorp <voynov@nikscorp.com>"
 
 COPY --from=build-backend /go/src/soap/soap /srv/soap

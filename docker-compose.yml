@@ -22,5 +22,6 @@ services:
     volumes:
       - ./data:/data
       - ./etc/redis.conf:/etc/redis.conf
+    restart: unless-stopped
     entrypoint: redis-server /etc/redis.conf
 
