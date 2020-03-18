@@ -19,6 +19,8 @@ services:
       - "127.0.0.1:8202:8080"
     deploy:
       replicas: 2
+      restart_policy:
+        condition: on-failure
     command: /srv/soap --redis-passwd="${REDIS_PASSWD}" --api-key="${API_KEY}"
 
   redis:
@@ -34,6 +36,8 @@ services:
       - soap_net
     deploy:
       replicas: 1
+      restart_policy:
+        condition: on-failure
       placement:
         constraints:
           - "node.role==manager"
