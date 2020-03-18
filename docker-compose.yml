@@ -17,7 +17,7 @@ services:
       - "127.0.0.1:8202:8080"
     deploy:
       replicas: 2
-    command: /srv/soap --redis-passwd=${REDIS_PASSWD} --api-key=${API_KEY}
+    command: /srv/soap --redis-passwd="${REDIS_PASSWD}" --api-key="${API_KEY}"
 
   redis:
     image: redis:5.0.8-alpine3.11
