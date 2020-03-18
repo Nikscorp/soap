@@ -4,6 +4,8 @@ services:
     build:
       context: .
     container_name: soap
+    depends_on:
+      - redis
     logging: &default_logging
       driver: json-file
       options:
@@ -13,6 +15,8 @@ services:
     ports:
       - "127.0.0.1:8202:8080"
     command: /srv/soap --redis-passwd=${REDIS_PASSWD} --api-key=${API_KEY}
+    deploy:
+      replicas: 2
 
   redis:
     image: redis:5.0.8-alpine3.11
@@ -24,4 +28,8 @@ services:
       - ./etc/redis.conf:/etc/redis.conf
     restart: unless-stopped
     entrypoint: redis-server /etc/redis.conf
-
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role==manager"
