@@ -13,6 +13,8 @@ services:
         max-size: "10m"
         max-file: "5"
     restart: unless-stopped
+    networks:
+      - soap_net
     ports:
       - "127.0.0.1:8202:8080"
     deploy:
@@ -28,9 +30,13 @@ services:
       - ./data:/data
       - ./etc/redis.conf:/etc/redis.conf
     restart: unless-stopped
+    networks:
+      - soap_net
     deploy:
       replicas: 1
       placement:
         constraints:
           - "node.role==manager"
     entrypoint: redis-server /etc/redis.conf
+networks:
+  soap_net:
