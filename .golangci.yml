@@ -5,9 +5,6 @@ run:
     format: tab
   skip-dirs:
     - vendor
-  skip-files:
-    - app/common/stringSet_easyjson.go
-    - app/common/rhymes_easyjson.go
 linters:
   enable:
     - bodyclose
@@ -51,4 +48,3 @@ linters:
     - maligned
     - prealloc
   disable-all: true
-
