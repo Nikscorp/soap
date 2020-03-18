@@ -1,6 +1,7 @@
 version: "3"
 services:
   soap:
+    image: nikscorp/soap:latest
     build:
       context: .
     container_name: soap
@@ -14,9 +15,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8202:8080"
-    command: /srv/soap --redis-passwd=${REDIS_PASSWD} --api-key=${API_KEY}
     deploy:
       replicas: 2
+    command: /srv/soap --redis-passwd=${REDIS_PASSWD} --api-key=${API_KEY}
 
   redis:
     image: redis:5.0.8-alpine3.11
@@ -27,9 +28,9 @@ services:
       - ./data:/data
       - ./etc/redis.conf:/etc/redis.conf
     restart: unless-stopped
-    entrypoint: redis-server /etc/redis.conf
     deploy:
       replicas: 1
       placement:
         constraints:
           - "node.role==manager"
+    entrypoint: redis-server /etc/redis.conf
