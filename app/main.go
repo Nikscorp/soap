@@ -155,7 +155,7 @@ func newRouter() *mux.Router {
 
 func main() {
 	parseOpts(&opts)
-	log.Printf("[INFO] Opts parsed successfully: %+v", opts)
+	log.Printf("[INFO] Opts parsed successfully")
 
 	r := newRouter()
 	r2 := handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(r)
