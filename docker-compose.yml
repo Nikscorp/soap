@@ -40,7 +40,7 @@ services:
         condition: on-failure
       placement:
         constraints:
-          - "node.role==manager"
+          - "node.labels.com.soap.role==db_node"
     entrypoint: redis-server /etc/redis.conf
 networks:
   soap_net:

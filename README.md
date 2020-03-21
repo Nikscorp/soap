@@ -56,11 +56,13 @@ To use any option you need to obtain OMDB API Key (free).
 1. Download `docker-compose.yml` and `etc/redis.conf.sample`
 2. Change password in `etc/redis.conf.sample` to smth strong and rename file to `etc/redis.conf`
 3. Consider changing settings in `docker-compose.yml` like listen IP/port and logging.
-4. Run `docker-compose pull`
+4. Pull the pre build image.
+   - `docker-compose pull`
 5. Set environment variables:
    - `API_KEY` to your OMDB API KEY
    - `REDIS_PASSWD` to your Redis password
-6. Run `docker-compose up -d`
+6. Start services.
+   - `docker-compose up -d`
 7. Consider setting up some https reverse proxy if you want to use it in public networks.
 
 ### Build a custom image
@@ -81,8 +83,12 @@ As OMDB API is quite slow and has some request restrictions, I use Redis for cac
 
 I did this project as a task for my Cloud Computing course with requirements to provide basic HA configuration for Docker Swarm mode.
 
-You can try this configuration by running:
+You can try this configuration by these steps:
 
-`docker stack deploy -c docker-compose.yml soap`
+1. Follow steps 1-3 from "Get pre-built image" instruction.
+2. Choose node db location and mark this node.
+   - `docker node update --label-add com.soap.role=db_node <your node>`
+3. Run deploy.
+   - `docker stack deploy -c docker-compose.yml soap`
 
-Consider changing the placement of the replicas and count.
+Consider changing the count of the replicas.
