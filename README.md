@@ -7,12 +7,10 @@ A simple website to get the best episodes of favorite TV series. It may be helpf
 
 ## Usage
 
-It's publicly available at [https://nikscorp.com](https://nikscorp.com)
-. You also can host your instance by building/pulling the image or building binary from sources.
+It's publicly available at [https://nikscorp.com](https://nikscorp.com). You also can host your instance by building/pulling the image or building binary from sources.
 Note that frontend statics included in the Docker image and hosted by the application itself.
 
-You can use frontend based version [https://nikscorp.com](https://nikscorp.com)
- or use json api directly. There are only 2 methods:
+You can use frontend based version [https://nikscorp.com](https://nikscorp.com) or use json api directly. There are only 2 methods:
 
 - `GET /search/{query}` to search id of series
 
@@ -51,7 +49,7 @@ You can use frontend based version [https://nikscorp.com](https://nikscorp.com)
 ## Installation
 
 To host your instance of app you follow these instructions.
-To use any option you need to obtain OMDB API Key [https://nikscorp.com](https://nikscorp.com) (free).
+To use any option you need to obtain OMDB API Key (free).
 
 ### Get pre-build image
 
