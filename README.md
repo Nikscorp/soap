@@ -73,11 +73,11 @@ Follow the logic described in Dockerfile
 
 ## Additional information
 
-## Caching
+### Caching
 
 As OMDB API is quite slow and has some request restrictions, I use Redis for caching the responses. Max cache size is 100Mb and configurable in `etc/redis.conf`. Caching time is a week for now and not configurable as it seems to be the best candidate for the average time of new episode arrival.
 
-## What with all that HA in compose file
+### What with all that HA in compose file
 
 I did this project as a task for my Cloud Computing course with requirements to provide basic HA configuration for Docker Swarm mode.
 
