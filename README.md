@@ -7,10 +7,10 @@ A simple website to get the best episodes of favorite TV series. It may be helpf
 
 ## Usage
 
-It's publicly available at [https://nikscorp.com](https://nikscorp.com). You also can host your instance by building/pulling the image or building binary from sources.
+It's publicly available at [https://soap.nikscorp.com](https://soap.nikscorp.com). You also can host your instance by building/pulling the image or building binary from sources.
 Note that frontend statics included in the Docker image and hosted by the application itself.
 
-You can use frontend based version [https://nikscorp.com](https://nikscorp.com) or use json api directly. There are only 2 methods:
+You can use frontend based version [https://soap.nikscorp.com](https://soap.nikscorp.com) or use json api directly. There are only 2 methods:
 
 - `GET /search/{query}` to search id of series
 
