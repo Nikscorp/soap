@@ -6,13 +6,14 @@ run:
   skip-dirs:
     - vendor
 linters:
+  disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
+    - exportloopref
     # - funlen
     - gochecknoinits
     - goconst
@@ -20,31 +21,32 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
     # - gomnd
     - goprintffuncname
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
-    # - lll
+    - lll
     - misspell
     - nakedret
-    - rowserrcheck
-    - scopelint
+    # - noctx TODO enable
+    - nolintlint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
-    # - gochecknoglobals
+    - asciicheck
+    - gochecknoglobals
     - gocognit
-    # - godox
-    - maligned
+    - godot
+    - godox
+    - goerr113
+    - nestif
     - prealloc
-  disable-all: true
+    - testpackage
+    - revive
+    # - wsl

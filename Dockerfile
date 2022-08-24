@@ -1,16 +1,14 @@
-FROM nikscorp/go-builder:0.0.1 as build-backend
+FROM nikscorp/go-builder:0.1.4 as build-backend
 
 ENV \
     CGO_ENABLED=0 \
     GOOS=linux \
     GOARCH=amd64
 
-ADD app /go/src/soap/app/
-ADD vendor /go/src/soap/vendor/
-ADD .golangci.yml /go/src/soap
+ADD . /go/src/soap/
 
 WORKDIR /go/src/soap
-RUN go build -o soap soap/app
+RUN go build -o soap ./cmd/...
 RUN golangci-lint run ./...
 
 

@@ -5,42 +5,12 @@ services:
     build:
       context: .
     container_name: soap
-    depends_on:
-      - redis
     logging: &default_logging
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
     restart: unless-stopped
-    networks:
-      - soap_net
     ports:
       - "127.0.0.1:8202:8080"
-    deploy:
-      replicas: 2
-      restart_policy:
-        condition: on-failure
-    command: /srv/soap --redis-passwd="${REDIS_PASSWD}" --api-key="${API_KEY}"
-
-  redis:
-    image: redis:5.0.8-alpine3.11
-    container_name: redis
-    hostname: redis
-    logging: *default_logging
-    volumes:
-      - ./data:/data
-      - ./etc/redis.conf:/etc/redis.conf
-    restart: unless-stopped
-    networks:
-      - soap_net
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-      placement:
-        constraints:
-          - "node.labels.com.soap.role==db_node"
-    entrypoint: redis-server /etc/redis.conf
-networks:
-  soap_net:
+    command: /srv/soap --api-key="${API_KEY}"
