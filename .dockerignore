@@ -1,6 +1,6 @@
 .git
 .vscode
+.github
 frontend/node_modules
 frontend/build
 data
-etc
