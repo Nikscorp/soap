@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jessevdk/go-flags v1.5.0
+	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
 
 require (

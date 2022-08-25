@@ -46,7 +46,7 @@ You can use frontend based version [https://soap.nikscorp.com](https://soap.niks
 ## Installation
 
 To host your instance of app you follow these instructions.
-To use any option you need to obtain OMDB API Key (free).
+To use any option you need to obtain TMDB API Key (free).
 
 ### Get pre-build image
 
@@ -55,7 +55,7 @@ To use any option you need to obtain OMDB API Key (free).
 3. Pull the pre build image.
    - `docker-compose pull`
 4. Set environment variables:
-   - `API_KEY` to your OMDB API KEY
+   - `API_KEY` to your TMDB API KEY
 5. Start services.
    - `docker-compose up -d`
 6. Consider setting up some https reverse proxy if you want to use it in public networks.

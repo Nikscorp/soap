@@ -41,7 +41,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 			ImdbID: fmt.Sprintf("%d", tvShow.ID),
 			Year:   tvShow.FirstAirDate,
 			Poster: tvShow.PosterLink,
-			Rating: fmt.Sprintf("%f", tvShow.Rating),
+			Rating: fmt.Sprintf("%.1f", tvShow.Rating),
 		})
 	}
 

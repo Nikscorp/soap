@@ -38,7 +38,7 @@ func (c *Client) TvShowDetails(ctx context.Context, id int) (*TvShowDetails, err
 	return &TvShowDetails{
 		ID:         id,
 		Title:      resp.Name,
-		PosterLink: tmdb.GetImageURL(resp.PosterPath, tmdb.Original),
+		PosterLink: tmdb.GetImageURL(resp.PosterPath, tmdb.W92),
 		SeasonsCnt: resp.NumberOfSeasons,
 	}, nil
 }

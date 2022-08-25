@@ -9,7 +9,7 @@ import (
 //nolint:gochecknoglobals
 var opts struct {
 	Address string `long:"listen-address" short:"l" default:"0.0.0.0:8080" description:"listen address of http server"`
-	APIKey  string `long:"api-key" short:"k" description:"OMDB API key"`
+	APIKey  string `long:"api-key" short:"k" description:"TMDB API key"`
 }
 
 func parseOpts(opts interface{}) {

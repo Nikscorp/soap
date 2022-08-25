@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Nikscorp/soap/internal/pkg/locale"
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
 
@@ -23,7 +24,11 @@ type TVShows struct {
 func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, error) {
 	//nolint:godox
 	// TODO check locale
-	resp, err := c.client.GetSearchTVShow(query, nil)
+
+	tag := locale.LanguageTag(query)
+	resp, err := c.client.GetSearchTVShow(query, map[string]string{
+		"language": tag,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("search TV Shows: %w", err)
 	}
@@ -38,7 +43,7 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 			Name:         tvShow.Name,
 			Rating:       tvShow.VoteAverage,
 			Description:  tvShow.Overview,
-			PosterLink:   tmdb.GetImageURL(tvShow.PosterPath, tmdb.Original),
+			PosterLink:   tmdb.GetImageURL(tvShow.PosterPath, tmdb.W92),
 			FirstAirDate: tvShow.FirstAirDate,
 		}
 		tvShows = append(tvShows, parsedShow)
