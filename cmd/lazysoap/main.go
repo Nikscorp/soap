@@ -10,18 +10,20 @@ import (
 	"syscall"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap"
-	"github.com/Nikscorp/soap/internal/pkg/omdb"
+	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 )
 
 func main() {
 	parseOpts(&opts)
 	log.Printf("[INFO] Opts parsed successfully")
 
+	tvMetaClient, err := tvmeta.New(opts.APIKey)
+	if err != nil {
+		log.Fatalf("[CRITICAL] Failed to init tvMetaClient")
+	}
 	server := lazysoap.Server{
 		Address: opts.Address,
-		OMDB: &omdb.OMDB{
-			APIKey: opts.APIKey,
-		},
+		TVMeta:  tvMetaClient,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -34,8 +36,9 @@ func main() {
 		cancel()
 	}()
 
-	err := server.Run(ctx)
+	err = server.Run(ctx)
 	if !errors.Is(err, http.ErrServerClosed) {
+		cancel()
 		//nolint:gocritic
 		log.Fatalf("[CRITICAL] Server failed to start: %v", err)
 	}

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Nikscorp/soap/internal/pkg/omdb"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
+	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -20,7 +20,7 @@ const (
 
 type Server struct {
 	Address string
-	OMDB    *omdb.OMDB
+	TVMeta  *tvmeta.Client
 }
 
 func (s *Server) Run(ctx context.Context) error {
