@@ -27,7 +27,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tvShows, err := s.TVMeta.SearchTVShows(r.Context(), query)
+	tvShows, err := s.tvMeta.SearchTVShows(r.Context(), query)
 	if err != nil {
 		log.Printf("[ERROR] Failed search tv shows %v", err)
 		w.WriteHeader(http.StatusInternalServerError)

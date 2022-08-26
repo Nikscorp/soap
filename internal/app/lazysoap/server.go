@@ -19,13 +19,26 @@ const (
 )
 
 type Server struct {
-	Address string
-	TVMeta  *tvmeta.Client
+	address string
+	tvMeta  tvMetaClient
+}
+
+type tvMetaClient interface {
+	SearchTVShows(ctx context.Context, query string) (*tvmeta.TVShows, error)
+	TvShowDetails(ctx context.Context, id int) (*tvmeta.TvShowDetails, error)
+	TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int) (*tvmeta.TVShowSeasonEpisodes, error)
+}
+
+func New(address string, tvMetaClient tvMetaClient) *Server {
+	return &Server{
+		address: address,
+		tvMeta:  tvMetaClient,
+	}
 }
 
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
-		Addr:              s.Address,
+		Addr:              s.address,
 		WriteTimeout:      ioTimeout,
 		ReadHeaderTimeout: readTimeout,
 		ReadTimeout:       readTimeout,

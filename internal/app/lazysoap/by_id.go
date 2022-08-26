@@ -36,7 +36,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tvShowDetails, err := s.TVMeta.TvShowDetails(r.Context(), intID)
+	tvShowDetails, err := s.tvMeta.TvShowDetails(r.Context(), intID)
 	if err != nil {
 		log.Printf("[ERROR] Failed to get series by id %d: %v", intID, err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -48,7 +48,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	for i := 1; i <= tvShowDetails.SeasonsCnt; i++ {
 		i := i
 		eg.Go(func() error {
-			episodes, err := s.TVMeta.TVShowEpisodesBySeason(r.Context(), intID, i)
+			episodes, err := s.tvMeta.TVShowEpisodesBySeason(r.Context(), intID, i)
 			if err != nil {
 				return err
 			}

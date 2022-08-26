@@ -2,8 +2,6 @@ package tvmeta
 
 import (
 	"errors"
-	"net/http"
-	"time"
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
@@ -13,27 +11,17 @@ var (
 )
 
 type Client struct {
-	client *tmdb.Client
+	client tmdbClient
 }
 
-func New(apiKey string) (*Client, error) {
-	tmdbClient, err := tmdb.Init(apiKey)
-	if err != nil {
-		return nil, err
-	}
+type tmdbClient interface {
+	GetSearchTVShow(query string, urlOptions map[string]string) (*tmdb.SearchTVShows, error)
+	GetTVDetails(id int, urlOptions map[string]string) (*tmdb.TVDetails, error)
+	GetTVSeasonDetails(id int, seasonNumber int, urlOptions map[string]string) (*tmdb.TVSeasonDetails, error)
+}
 
-	customClient := http.Client{
-		Timeout: time.Second * 5,
-		Transport: &http.Transport{
-			MaxIdleConns:    10,
-			IdleConnTimeout: 15 * time.Second,
-		},
-	}
-	tmdbClient.SetClientConfig(customClient)
-
-	tmdbClient.SetClientAutoRetry()
-
+func New(tmdbClient tmdbClient) *Client {
 	return &Client{
 		client: tmdbClient,
-	}, nil
+	}
 }
