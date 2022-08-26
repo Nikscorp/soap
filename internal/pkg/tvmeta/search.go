@@ -28,7 +28,7 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 	if err != nil {
 		return nil, fmt.Errorf("search TV Shows: %w", err)
 	}
-	if resp == nil || resp.Results == nil {
+	if resp == nil || resp.SearchTVShowsResults == nil || resp.SearchTVShowsResults.Results == nil {
 		return nil, fmt.Errorf("search TV Shows: %w", ErrNilResp)
 	}
 

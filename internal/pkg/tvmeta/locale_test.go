@@ -42,6 +42,11 @@ func TestLanguageTag(t *testing.T) {
 			input:       "😱😱😱😱" + "бла",
 			expectedTag: defaultLangTag,
 		},
+		{
+			name:        "empty",
+			input:       "",
+			expectedTag: defaultLangTag,
+		},
 	}
 
 	for _, tc := range testCases {

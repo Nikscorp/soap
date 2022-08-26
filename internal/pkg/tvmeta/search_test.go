@@ -2,6 +2,7 @@ package tvmeta
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta/mocks"
@@ -23,7 +24,7 @@ func NewClientM(t *testing.T) *ClientM {
 	}
 }
 
-func TestCommon(t *testing.T) {
+func TestSearchTVShows(t *testing.T) {
 	client := NewClientM(t)
 
 	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
@@ -78,4 +79,83 @@ func TestCommon(t *testing.T) {
 			},
 		},
 	}, resp)
+}
+
+func TestSearchTVShowsError(t *testing.T) {
+	client := NewClientM(t)
+	someError := errors.New("some error")
+
+	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
+		require.Equal(t, "Lost", query)
+		require.Equal(t, 1, len(urlOptions))
+		require.Equal(t, enLangTag, urlOptions["language"])
+
+		return nil, someError
+	})
+
+	resp, err := client.client.SearchTVShows(context.Background(), "Lost")
+
+	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
+	require.ErrorIs(t, err, someError)
+	require.Equal(t, (*TVShows)(nil), resp)
+}
+
+func TestSearchTVShowsNilResp(t *testing.T) {
+	client := NewClientM(t)
+
+	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
+		require.Equal(t, "Lost", query)
+		require.Equal(t, 1, len(urlOptions))
+		require.Equal(t, enLangTag, urlOptions["language"])
+
+		return nil, nil
+	})
+
+	resp, err := client.client.SearchTVShows(context.Background(), "Lost")
+
+	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
+	require.ErrorIs(t, err, ErrNilResp)
+	require.Equal(t, (*TVShows)(nil), resp)
+}
+
+func TestSearchTVShowsNilTVShows(t *testing.T) {
+	client := NewClientM(t)
+
+	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
+		require.Equal(t, "Lost", query)
+		require.Equal(t, 1, len(urlOptions))
+		require.Equal(t, enLangTag, urlOptions["language"])
+
+		return &tmdb.SearchTVShows{
+			SearchTVShowsResults: nil,
+		}, nil
+	})
+
+	resp, err := client.client.SearchTVShows(context.Background(), "Lost")
+
+	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
+	require.ErrorIs(t, err, ErrNilResp)
+	require.Equal(t, (*TVShows)(nil), resp)
+}
+
+func TestSearchTVShowsNilResults(t *testing.T) {
+	client := NewClientM(t)
+
+	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
+		require.Equal(t, "Lost", query)
+		require.Equal(t, 1, len(urlOptions))
+		require.Equal(t, enLangTag, urlOptions["language"])
+
+		return &tmdb.SearchTVShows{
+			SearchTVShowsResults: &tmdb.SearchTVShowsResults{
+				Results: nil,
+			},
+		}, nil
+	})
+
+	resp, err := client.client.SearchTVShows(context.Background(), "Lost")
+
+	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
+	require.ErrorIs(t, err, ErrNilResp)
+	require.Equal(t, (*TVShows)(nil), resp)
 }

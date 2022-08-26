@@ -28,7 +28,7 @@ func NewServerM(t *testing.T) *ServerM {
 	}
 }
 
-func TestCommon(t *testing.T) {
+func TestSearchHandler(t *testing.T) {
 	srv := NewServerM(t)
 	defer srv.server.Close()
 
@@ -67,4 +67,5 @@ func TestCommon(t *testing.T) {
 			}
 		]
 	`, string(body))
+	require.Equal(t, 1, len(srv.tvMetaClientMock.SearchTVShowsMock.Calls()))
 }
