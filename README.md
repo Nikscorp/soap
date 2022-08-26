@@ -1,5 +1,12 @@
 # Lazy Soap
 
+<div align="center">
+
+[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=switch_to_tmdb)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=switch_to_tmdb)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)
+
+</div>
+
+
 A simple website to get the best episodes of favorite TV series. It may be helpful if you want to watch series with completely standalone episodes like "Black Mirror" as well as refresh some of the favorites series and save time.
 
 ## Usage
@@ -46,7 +53,7 @@ You can use frontend based version [https://soap.nikscorp.com](https://soap.niks
 ## Installation
 
 To host your instance of app you follow these instructions.
-To use any option you need to obtain OMDB API Key (free).
+To use any option you need to obtain TMDB API Key (free).
 
 ### Get pre-build image
 
@@ -55,7 +62,7 @@ To use any option you need to obtain OMDB API Key (free).
 3. Pull the pre build image.
    - `docker-compose pull`
 4. Set environment variables:
-   - `API_KEY` to your OMDB API KEY
+   - `API_KEY` to your TMDB API KEY
 5. Start services.
    - `docker-compose up -d`
 6. Consider setting up some https reverse proxy if you want to use it in public networks.

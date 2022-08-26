@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Nikscorp/soap/internal/pkg/omdb"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
+	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -19,13 +19,26 @@ const (
 )
 
 type Server struct {
-	Address string
-	OMDB    *omdb.OMDB
+	address string
+	tvMeta  tvMetaClient
+}
+
+type tvMetaClient interface {
+	SearchTVShows(ctx context.Context, query string) (*tvmeta.TVShows, error)
+	TvShowDetails(ctx context.Context, id int) (*tvmeta.TvShowDetails, error)
+	TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int) (*tvmeta.TVShowSeasonEpisodes, error)
+}
+
+func New(address string, tvMetaClient tvMetaClient) *Server {
+	return &Server{
+		address: address,
+		tvMeta:  tvMetaClient,
+	}
 }
 
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
-		Addr:              s.Address,
+		Addr:              s.address,
 		WriteTimeout:      ioTimeout,
 		ReadHeaderTimeout: readTimeout,
 		ReadTimeout:       readTimeout,
@@ -51,6 +64,7 @@ func (s *Server) newRouter() *mux.Router {
 	r.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
 	r.Use(handlers.RecoveryHandler())
 	r.Use(func(next http.Handler) http.Handler { return handlers.LoggingHandler(log.Writer(), next) })
+	r.Use(rest.Ping)
 
 	r.Handle("/id/{id}", http.HandlerFunc(s.idHandler)).Methods("GET", "POST")
 	r.Handle("/search/{query}", http.HandlerFunc(s.searchHandler)).Methods("GET", "POST")
