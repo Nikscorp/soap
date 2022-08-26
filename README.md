@@ -1,8 +1,11 @@
 # Lazy Soap
 
-[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=switch_to_tmdb)
-![GitHub CI](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=switch_to_tmdb)
-![Code QL](https://github.com/Nikscorp/soap/actions/workflows/codeql-analysis.yml/badge.svg?branch=switch_to_tmdb)
+<div align="center">
+
+[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=switch_to_tmdb)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=switch_to_tmdb)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)
+
+</div>
+
 
 A simple website to get the best episodes of favorite TV series. It may be helpful if you want to watch series with completely standalone episodes like "Black Mirror" as well as refresh some of the favorites series and save time.
 
