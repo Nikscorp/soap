@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 
 	"github.com/gorilla/mux"
 )
@@ -20,12 +19,7 @@ type searchResult struct {
 
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	query, err := url.QueryUnescape(vars["query"])
-	if err != nil {
-		log.Printf("[ERROR] Failed to unescape url %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	query := vars["query"]
 
 	tvShows, err := s.tvMeta.SearchTVShows(r.Context(), query)
 	if err != nil {
@@ -52,8 +46,5 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(marshalledResp)
-	if err != nil {
-		log.Printf("[ERROR] Can't write response: %v", err)
-	}
+	_, _ = w.Write(marshalledResp)
 }

@@ -107,8 +107,5 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(marshalledResp)
-	if err != nil {
-		log.Printf("[ERROR] Can't write response: %v", err)
-	}
+	_, _ = w.Write(marshalledResp)
 }

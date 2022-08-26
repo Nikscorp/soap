@@ -64,6 +64,7 @@ func (s *Server) newRouter() *mux.Router {
 	r.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
 	r.Use(handlers.RecoveryHandler())
 	r.Use(func(next http.Handler) http.Handler { return handlers.LoggingHandler(log.Writer(), next) })
+	r.Use(rest.Ping)
 
 	r.Handle("/id/{id}", http.HandlerFunc(s.idHandler)).Methods("GET", "POST")
 	r.Handle("/search/{query}", http.HandlerFunc(s.searchHandler)).Methods("GET", "POST")

@@ -3,6 +3,7 @@ package lazysoap
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -154,6 +155,152 @@ func TestIDHandler(t *testing.T) {
 		"Poster": "https://image.tmdb.org/t/p/w92/lost.png"
 	}
 	`, string(body))
+	require.Equal(t, 1, len(srv.tvMetaClientMock.TvShowDetailsMock.Calls()))
+	require.Equal(t, 3, len(srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Calls()))
+}
+
+func TestIDHandlerInvalidID(t *testing.T) {
+	srv := NewServerM(t)
+	defer srv.server.Close()
+
+	resp, err := http.Get(srv.server.URL + "/id/bla")
+
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "", string(body))
+	require.Equal(t, 0, len(srv.tvMetaClientMock.TvShowDetailsMock.Calls()))
+	require.Equal(t, 0, len(srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Calls()))
+}
+
+func TestIDHandlerTVTvShowDetailsError(t *testing.T) {
+	srv := NewServerM(t)
+	defer srv.server.Close()
+
+	srv.tvMetaClientMock.TvShowDetailsMock.Set(func(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error) {
+		require.Equal(t, 42, id)
+		return nil, errors.New("some error")
+	})
+
+	resp, err := http.Get(srv.server.URL + "/id/42")
+
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "", string(body))
+	require.Equal(t, 1, len(srv.tvMetaClientMock.TvShowDetailsMock.Calls()))
+	require.Equal(t, 0, len(srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Calls()))
+}
+
+func TestIDHandlerTVShowEpisodesBySeasonError(t *testing.T) {
+	srv := NewServerM(t)
+	defer srv.server.Close()
+
+	srv.tvMetaClientMock.TvShowDetailsMock.Set(func(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error) {
+		require.Equal(t, 42, id)
+		return &tvmeta.TvShowDetails{
+			ID:         42,
+			Title:      "Lost",
+			PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+			SeasonsCnt: 3,
+		}, nil
+	})
+	srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Set(func(ctx context.Context, id, seasonNumber int) (tp1 *tvmeta.TVShowSeasonEpisodes, err error) {
+		require.Equal(t, 42, id)
+		switch seasonNumber {
+		case 1:
+			return &tvmeta.TVShowSeasonEpisodes{
+				SeasonNumber: 1,
+				Episodes: []*tvmeta.TVShowEpisode{
+					{
+						Number:      1,
+						Name:        "First One",
+						Description: "Greatest episode ever",
+						Rating:      9,
+					},
+				},
+			}, nil
+		case 2:
+			return nil, fmt.Errorf("some error")
+		case 3:
+			return &tvmeta.TVShowSeasonEpisodes{
+				SeasonNumber: 3,
+				Episodes: []*tvmeta.TVShowEpisode{
+					{
+						Number:      1,
+						Name:        "S3 First One",
+						Description: "Greatest episode ever",
+						Rating:      9,
+					},
+				},
+			}, nil
+		}
+
+		return nil, errors.New("some error")
+	})
+	resp, err := http.Get(srv.server.URL + "/id/42")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "", string(body))
+	require.Equal(t, 1, len(srv.tvMetaClientMock.TvShowDetailsMock.Calls()))
+	require.Equal(t, 3, len(srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Calls()))
+}
+
+func TestIDHandlerZeroEpisodes(t *testing.T) {
+	srv := NewServerM(t)
+	defer srv.server.Close()
+
+	srv.tvMetaClientMock.TvShowDetailsMock.Set(func(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error) {
+		require.Equal(t, 42, id)
+		return &tvmeta.TvShowDetails{
+			ID:         42,
+			Title:      "Lost",
+			PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+			SeasonsCnt: 3,
+		}, nil
+	})
+	srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Set(func(ctx context.Context, id, seasonNumber int) (tp1 *tvmeta.TVShowSeasonEpisodes, err error) {
+		require.Equal(t, 42, id)
+		switch seasonNumber {
+		case 1:
+			return &tvmeta.TVShowSeasonEpisodes{
+				SeasonNumber: 1,
+				Episodes:     []*tvmeta.TVShowEpisode{},
+			}, nil
+		case 2:
+			return &tvmeta.TVShowSeasonEpisodes{
+				SeasonNumber: 2,
+				Episodes:     []*tvmeta.TVShowEpisode{},
+			}, nil
+		case 3:
+			return &tvmeta.TVShowSeasonEpisodes{
+				SeasonNumber: 3,
+				Episodes:     []*tvmeta.TVShowEpisode{},
+			}, nil
+		}
+
+		return nil, errors.New("some error")
+	})
+	resp, err := http.Get(srv.server.URL + "/id/42")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	require.Equal(t, "", string(body))
 	require.Equal(t, 1, len(srv.tvMetaClientMock.TvShowDetailsMock.Calls()))
 	require.Equal(t, 3, len(srv.tvMetaClientMock.TVShowEpisodesBySeasonMock.Calls()))
 }
