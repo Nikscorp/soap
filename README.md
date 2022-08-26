@@ -1,6 +1,6 @@
 # Lazy Soap
 
-[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=switch_to_tmdb)
 ![GitHub CI](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=switch_to_tmdb)
 ![Code QL](https://github.com/Nikscorp/soap/actions/workflows/codeql-analysis.yml/badge.svg?branch=switch_to_tmdb)
 
