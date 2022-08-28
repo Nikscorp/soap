@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=switch_to_tmdb)](https://coveralls.io/github/Nikscorp/soap?branch=switch_to_tmdb)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=switch_to_tmdb)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)
+[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=master)](https://coveralls.io/github/Nikscorp/soap?branch=master)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)
 
 </div>
 
@@ -20,14 +20,13 @@ You can use frontend based version [https://soap.nikscorp.com](https://soap.niks
 
 ```json
 [
- {
- "imdbID": "tt2085059",
- "imdbRating": "",
- "poster": "https://m.media-amazon.com/images/M/MV5BYTM3YWVhMDMtNjczMy00NGEyLWJhZDctYjNhMTRkNDE0ZTI1XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg",
- "title": "Black Mirror",
- "year": "2011\u2013"
- },
- ...
+	{
+		"title": "Black Mirror",
+		"imdbID": "42009",
+		"year": "2011-12-04",
+		"poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
+		"imdbRating": "8.3"
+	}
 ]
 ```
 
@@ -35,18 +34,28 @@ You can use frontend based version [https://soap.nikscorp.com](https://soap.niks
 
 ```json
 {
- "Episodes": [
- {
- "Episode": "2",
- "Season": "1",
- "Title": "Fifteen Million Merits",
- "floatRating": 8.1,
- "imdbRating": "8.1"
- },
- ...
- ],
- "Poster": "https://m.media-amazon.com/images/M/MV5BYTM3YWVhMDMtNjczMy00NGEyLWJhZDctYjNhMTRkNDE0ZTI1XkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_SX300.jpg",
- "Title": "Black Mirror"
+	"Episodes": [
+		{
+			"Title": "The National Anthem",
+			"imdbRating": "7.5",
+			"Episode": "1",
+			"Season": "1"
+		},
+		{
+			"Title": "Fifteen Million Merits",
+			"imdbRating": "7.7",
+			"Episode": "2",
+			"Season": "1"
+		},
+		{
+			"Title": "Black Museum",
+			"imdbRating": "7.9",
+			"Episode": "6",
+			"Season": "4"
+		}
+	],
+	"Title": "Black Mirror",
+	"Poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg"
 }
 ```
 
