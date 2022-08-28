@@ -9,41 +9,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type tmdbEpisode = struct {
+	AirDate        string  `json:"air_date"`
+	EpisodeNumber  int     `json:"episode_number"`
+	ID             int64   `json:"id"`
+	Name           string  `json:"name"`
+	Overview       string  `json:"overview"`
+	ProductionCode string  `json:"production_code"`
+	SeasonNumber   int     `json:"season_number"`
+	ShowID         int64   `json:"show_id"`
+	StillPath      string  `json:"still_path"`
+	VoteAverage    float32 `json:"vote_average"`
+	VoteCount      int64   `json:"vote_count"`
+	Crew           []struct {
+		ID          int64  `json:"id"`
+		CreditID    string `json:"credit_id"`
+		Name        string `json:"name"`
+		Department  string `json:"department"`
+		Job         string `json:"job"`
+		Gender      int    `json:"gender"`
+		ProfilePath string `json:"profile_path"`
+	} `json:"crew"`
+	GuestStars []struct {
+		ID          int64  `json:"id"`
+		Name        string `json:"name"`
+		CreditID    string `json:"credit_id"`
+		Character   string `json:"character"`
+		Order       int    `json:"order"`
+		Gender      int    `json:"gender"`
+		ProfilePath string `json:"profile_path"`
+	} `json:"guest_stars"`
+}
+
 func TestTVShowEpisodesBySeason(t *testing.T) {
 	client := NewClientM(t)
 	client.mockedTMDB.GetTVSeasonDetailsMock.Set(func(id, seasonNumber int, urlOptions map[string]string) (tp1 *tmdb.TVSeasonDetails, err error) {
 		return &tmdb.TVSeasonDetails{
-			Episodes: []struct {
-				AirDate        string  `json:"air_date"`
-				EpisodeNumber  int     `json:"episode_number"`
-				ID             int64   `json:"id"`
-				Name           string  `json:"name"`
-				Overview       string  `json:"overview"`
-				ProductionCode string  `json:"production_code"`
-				SeasonNumber   int     `json:"season_number"`
-				ShowID         int64   `json:"show_id"`
-				StillPath      string  `json:"still_path"`
-				VoteAverage    float32 `json:"vote_average"`
-				VoteCount      int64   `json:"vote_count"`
-				Crew           []struct {
-					ID          int64  `json:"id"`
-					CreditID    string `json:"credit_id"`
-					Name        string `json:"name"`
-					Department  string `json:"department"`
-					Job         string `json:"job"`
-					Gender      int    `json:"gender"`
-					ProfilePath string `json:"profile_path"`
-				} `json:"crew"`
-				GuestStars []struct {
-					ID          int64  `json:"id"`
-					Name        string `json:"name"`
-					CreditID    string `json:"credit_id"`
-					Character   string `json:"character"`
-					Order       int    `json:"order"`
-					Gender      int    `json:"gender"`
-					ProfilePath string `json:"profile_path"`
-				} `json:"guest_stars"`
-			}{
+			Episodes: []tmdbEpisode{
 				{
 					EpisodeNumber: 1,
 					Name:          "First One",

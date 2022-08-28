@@ -3,7 +3,7 @@ package lazysoap
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -53,7 +53,7 @@ func TestSearchHandler(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -95,7 +95,7 @@ func TestSearchHandlerUnicode(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -127,7 +127,7 @@ func TestSearchHandlerTVMetaError(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)

@@ -3,6 +3,7 @@ package tvmeta
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
@@ -14,10 +15,12 @@ type TVShow struct {
 	Description  string
 	PosterLink   string
 	FirstAirDate string
+	Popularity   float32
 }
 
 type TVShows struct {
-	TVShows []*TVShow
+	Language string
+	TVShows  []*TVShow
 }
 
 func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, error) {
@@ -41,12 +44,18 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 			Description:  tvShow.Overview,
 			PosterLink:   tmdb.GetImageURL(tvShow.PosterPath, tmdb.W92),
 			FirstAirDate: tvShow.FirstAirDate,
+			Popularity:   tvShow.Popularity,
 		}
 		tvShows = append(tvShows, parsedShow)
 	}
 
+	sort.Slice(tvShows, func(i, j int) bool {
+		return tvShows[i].Popularity > tvShows[j].Popularity
+	})
+
 	res := &TVShows{
-		TVShows: tvShows,
+		Language: tag,
+		TVShows:  tvShows,
 	}
 
 	return res, nil

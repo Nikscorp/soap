@@ -1,16 +1,18 @@
 package lazysoap
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/gorilla/mux"
-	"golang.org/x/sync/errgroup"
 )
+
+var errZeroEpisodes = errors.New("0 episodes")
 
 type episodes struct {
 	Episodes []episode `json:"Episodes"`
@@ -28,47 +30,42 @@ type episode struct {
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	intID, err := strconv.Atoi(id)
 
+	intID, err := strconv.Atoi(id)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse id: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	tvShowDetails, err := s.tvMeta.TvShowDetails(r.Context(), intID)
+	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(r.Context(), intID)
 	if err != nil {
-		log.Printf("[ERROR] Failed to get series by id %d: %v", intID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	eg := errgroup.Group{}
-	seasons := make([]*tvmeta.TVShowSeasonEpisodes, tvShowDetails.SeasonsCnt)
-	for i := 1; i <= tvShowDetails.SeasonsCnt; i++ {
-		i := i
-		eg.Go(func() error {
-			episodes, err := s.tvMeta.TVShowEpisodesBySeason(r.Context(), intID, i)
-			if err != nil {
-				return err
-			}
-			seasons[i-1] = episodes
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
 		log.Printf("[ERROR] Failed to get episodes: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	avgRating, err := s.getAvgRating(seasons)
+	if err != nil {
+		log.Printf("[ERROR] error counting avg rating: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[INFO] Avg Rating for id %d is %v", intID, avgRating)
+
+	respEpisodes := s.episodesAboveRating(seasons, avgRating)
+	fullRespEpisodes := episodes{Episodes: respEpisodes, Title: seasons.Details.Title, Poster: seasons.Details.PosterLink}
+
+	rest.WriteJSON(fullRespEpisodes, w)
+}
+
+func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float64, error) {
 	var (
 		sumRating     float64
 		episodesCount int
 	)
 
-	for _, s := range seasons {
+	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
 			sumRating += float64(e.Rating)
 			episodesCount++
@@ -76,17 +73,18 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if episodesCount == 0 {
-		log.Printf("[ERROR] 0 episodes found")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return 0, errZeroEpisodes
 	}
 
 	avgRating := sumRating / float64(episodesCount)
-	log.Printf("[INFO] Avg Rating for id %d is %v", intID, avgRating)
 
-	respEpisodes := make([]episode, 0, episodesCount/2)
+	return avgRating, nil
+}
 
-	for _, s := range seasons {
+func (s *Server) episodesAboveRating(seasons *tvmeta.AllSeasonsWithDetails, avgRating float64) []episode {
+	respEpisodes := make([]episode, 0)
+
+	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
 			if e.Rating > float32(avgRating) {
 				respEpisodes = append(respEpisodes, episode{
@@ -98,14 +96,5 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
-	fullRespEpisodes := episodes{Episodes: respEpisodes, Title: tvShowDetails.Title, Poster: tvShowDetails.PosterLink}
-	marshalledResp, err := json.Marshal(fullRespEpisodes)
-	if err != nil {
-		log.Printf("[ERROR] Failed to marshal response %+v: %v", fullRespEpisodes, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(marshalledResp)
+	return respEpisodes
 }

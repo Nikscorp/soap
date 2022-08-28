@@ -1,11 +1,11 @@
 package lazysoap
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/gorilla/mux"
 )
 
@@ -39,12 +39,5 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	marshalledResp, err := json.Marshal(searchResults)
-	if err != nil {
-		log.Printf("[ERROR] Failed to marshal response %+v: %v", searchResults, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(marshalledResp)
+	rest.WriteJSON(searchResults, w)
 }

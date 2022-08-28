@@ -51,12 +51,22 @@ func TestSearchTVShows(t *testing.T) {
 					OriginCountry    []string `json:"origin_country"`
 				}{
 					{
+						ID:           4815162343,
+						Name:         "Lost2",
+						VoteAverage:  9.9,
+						PosterPath:   "/lost.jpg",
+						FirstAirDate: "2022",
+						Overview:     "Greatest tv show ever",
+						Popularity:   1,
+					},
+					{
 						ID:           4815162342,
 						Name:         "Lost",
 						VoteAverage:  9.9,
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
+						Popularity:   1000,
 					},
 				},
 			},
@@ -67,7 +77,9 @@ func TestSearchTVShows(t *testing.T) {
 	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
 	require.NoError(t, err)
 
+	// sorted by popularity desc
 	require.Equal(t, &TVShows{
+		Language: enLangTag,
 		TVShows: []*TVShow{
 			{
 				ID:           4815162342,
@@ -76,6 +88,77 @@ func TestSearchTVShows(t *testing.T) {
 				PosterLink:   "https://image.tmdb.org/t/p/w92/lost.jpg",
 				FirstAirDate: "2022",
 				Description:  "Greatest tv show ever",
+				Popularity:   1000,
+			},
+			{
+				ID:           4815162343,
+				Name:         "Lost2",
+				Rating:       9.9,
+				PosterLink:   "https://image.tmdb.org/t/p/w92/lost.jpg",
+				FirstAirDate: "2022",
+				Description:  "Greatest tv show ever",
+				Popularity:   1,
+			},
+		},
+	}, resp)
+}
+
+func TestSearchTVShowsUnicode(t *testing.T) {
+	client := NewClientM(t)
+
+	client.mockedTMDB.GetSearchTVShowMock.Set(func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
+		require.Equal(t, "Лост", query)
+		require.Equal(t, 1, len(urlOptions))
+		require.Equal(t, ruLangTag, urlOptions["language"])
+
+		return &tmdb.SearchTVShows{
+			SearchTVShowsResults: &tmdb.SearchTVShowsResults{
+				// ugly
+				Results: []struct {
+					OriginalName     string   `json:"original_name"`
+					ID               int64    `json:"id"`
+					Name             string   `json:"name"`
+					VoteCount        int64    `json:"vote_count"`
+					VoteAverage      float32  `json:"vote_average"`
+					PosterPath       string   `json:"poster_path"`
+					FirstAirDate     string   `json:"first_air_date"`
+					Popularity       float32  `json:"popularity"`
+					GenreIDs         []int64  `json:"genre_ids"`
+					OriginalLanguage string   `json:"original_language"`
+					BackdropPath     string   `json:"backdrop_path"`
+					Overview         string   `json:"overview"`
+					OriginCountry    []string `json:"origin_country"`
+				}{
+					{
+						ID:           4815162342,
+						Name:         "Лост",
+						VoteAverage:  9.9,
+						PosterPath:   "/lost.jpg",
+						FirstAirDate: "2022",
+						Overview:     "Greatest tv show ever",
+						Popularity:   1000,
+					},
+				},
+			},
+		}, nil
+	})
+
+	resp, err := client.client.SearchTVShows(context.Background(), "Лост")
+	require.Equal(t, 1, len(client.mockedTMDB.GetSearchTVShowMock.Calls()))
+	require.NoError(t, err)
+
+	// sorted by popularity desc
+	require.Equal(t, &TVShows{
+		Language: ruLangTag,
+		TVShows: []*TVShow{
+			{
+				ID:           4815162342,
+				Name:         "Лост",
+				Rating:       9.9,
+				PosterLink:   "https://image.tmdb.org/t/p/w92/lost.jpg",
+				FirstAirDate: "2022",
+				Description:  "Greatest tv show ever",
+				Popularity:   1000,
 			},
 		},
 	}, resp)
