@@ -3,6 +3,7 @@ package lazysoap
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -36,6 +37,7 @@ func TestSearchHandler(t *testing.T) {
 	srv.tvMetaClientMock.SearchTVShowsMock.Set(func(ctx context.Context, query string) (tp1 *tvmeta.TVShows, err error) {
 		require.Equal(t, "Lost", query)
 		return &tvmeta.TVShows{
+			Language: "en",
 			TVShows: []*tvmeta.TVShow{
 				{
 					ID:           4815162342,
@@ -58,15 +60,18 @@ func TestSearchHandler(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.JSONEq(t, `
-		[
-			{
-				"title": "Lost",
-				"imdbID": "4815162342",
-				"year": "2022",
-				"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
-				"imdbRating": "9.9"
-			}
-		]
+		{
+			"searchResults": [
+				{
+					"id": 4815162342,
+					"title": "Lost",
+					"firstAirDate": "2022",
+					"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
+					"rating": 9.9
+				}
+			],
+			"language": "en"
+		}
 	`, string(body))
 	require.Equal(t, 1, len(srv.tvMetaClientMock.SearchTVShowsMock.Calls()))
 }
@@ -78,6 +83,7 @@ func TestSearchHandlerUnicode(t *testing.T) {
 	srv.tvMetaClientMock.SearchTVShowsMock.Set(func(ctx context.Context, query string) (tp1 *tvmeta.TVShows, err error) {
 		require.Equal(t, "Лост", query)
 		return &tvmeta.TVShows{
+			Language: "ru",
 			TVShows: []*tvmeta.TVShow{
 				{
 					ID:           4815162342,
@@ -99,16 +105,21 @@ func TestSearchHandlerUnicode(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+	fmt.Println(string(body))
+
 	require.JSONEq(t, `
-		[
-			{
-				"title": "Лост",
-				"imdbID": "4815162342",
-				"year": "2022",
-				"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
-				"imdbRating": "9.9"
-			}
-		]
+		{
+			"searchResults": [
+				{
+					"id": 4815162342,
+					"title": "Лост",
+					"firstAirDate": "2022",
+					"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
+					"rating": 9.9
+				}
+			],
+			"language": "ru"
+		}
 	`, string(body))
 	require.Equal(t, 1, len(srv.tvMetaClientMock.SearchTVShowsMock.Calls()))
 }

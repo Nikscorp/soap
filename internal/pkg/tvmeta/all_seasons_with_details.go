@@ -12,7 +12,7 @@ type AllSeasonsWithDetails struct {
 	Seasons []*TVShowSeasonEpisodes
 }
 
-func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int) (*AllSeasonsWithDetails, error) {
+func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
 	tvShowDetails, err := c.TvShowDetails(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get all episodes: %w", err)
@@ -23,7 +23,7 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int) (*AllS
 	for i := 1; i <= tvShowDetails.SeasonsCnt; i++ {
 		i := i
 		eg.Go(func() error {
-			episodes, err := c.TVShowEpisodesBySeason(ctx, id, i)
+			episodes, err := c.TVShowEpisodesBySeason(ctx, id, i, language)
 			if err != nil {
 				return fmt.Errorf("get all episodes: %w", err)
 			}

@@ -2,7 +2,6 @@ package lazysoap
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,22 +13,23 @@ import (
 
 var errZeroEpisodes = errors.New("0 episodes")
 
-type episodes struct {
-	Episodes []episode `json:"Episodes"`
-	Title    string    `json:"Title"`
-	Poster   string    `json:"Poster"`
+type episodesResp struct {
+	Episodes []episode `json:"episodes"`
+	Title    string    `json:"title"`
+	Poster   string    `json:"poster"`
 }
 
 type episode struct {
-	Title  string `json:"Title"`
-	Rating string `json:"imdbRating"`
-	Number string `json:"Episode"`
-	Season string `json:"Season"`
+	Title  string  `json:"title"`
+	Rating float32 `json:"rating"`
+	Number int     `json:"number"`
+	Season int     `json:"season"`
 }
 
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+	language := r.URL.Query().Get("language")
 
 	intID, err := strconv.Atoi(id)
 	if err != nil {
@@ -38,7 +38,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(r.Context(), intID)
+	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(r.Context(), intID, language)
 	if err != nil {
 		log.Printf("[ERROR] Failed to get episodes: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -54,20 +54,24 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[INFO] Avg Rating for id %d is %v", intID, avgRating)
 
 	respEpisodes := s.episodesAboveRating(seasons, avgRating)
-	fullRespEpisodes := episodes{Episodes: respEpisodes, Title: seasons.Details.Title, Poster: seasons.Details.PosterLink}
+	fullRespEpisodes := episodesResp{
+		Episodes: respEpisodes,
+		Title:    seasons.Details.Title,
+		Poster:   seasons.Details.PosterLink,
+	}
 
 	rest.WriteJSON(fullRespEpisodes, w)
 }
 
-func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float64, error) {
+func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, error) {
 	var (
-		sumRating     float64
+		sumRating     float32
 		episodesCount int
 	)
 
 	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
-			sumRating += float64(e.Rating)
+			sumRating += e.Rating
 			episodesCount++
 		}
 	}
@@ -76,22 +80,22 @@ func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float64, e
 		return 0, errZeroEpisodes
 	}
 
-	avgRating := sumRating / float64(episodesCount)
+	avgRating := sumRating / float32(episodesCount)
 
 	return avgRating, nil
 }
 
-func (s *Server) episodesAboveRating(seasons *tvmeta.AllSeasonsWithDetails, avgRating float64) []episode {
+func (s *Server) episodesAboveRating(seasons *tvmeta.AllSeasonsWithDetails, avgRating float32) []episode {
 	respEpisodes := make([]episode, 0)
 
 	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
-			if e.Rating > float32(avgRating) {
+			if e.Rating >= avgRating {
 				respEpisodes = append(respEpisodes, episode{
 					Title:  e.Name,
-					Rating: fmt.Sprintf("%.1f", e.Rating),
-					Number: fmt.Sprintf("%d", e.Number),
-					Season: fmt.Sprintf("%d", s.SeasonNumber),
+					Rating: e.Rating,
+					Number: e.Number,
+					Season: s.SeasonNumber,
 				})
 			}
 		}

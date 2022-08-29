@@ -24,8 +24,8 @@ type TvMetaClientMock struct {
 	beforeSearchTVShowsCounter uint64
 	SearchTVShowsMock          mTvMetaClientMockSearchTVShows
 
-	funcTVShowAllSeasonsWithDetails          func(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error)
-	inspectFuncTVShowAllSeasonsWithDetails   func(ctx context.Context, id int)
+	funcTVShowAllSeasonsWithDetails          func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error)
+	inspectFuncTVShowAllSeasonsWithDetails   func(ctx context.Context, id int, language string)
 	afterTVShowAllSeasonsWithDetailsCounter  uint64
 	beforeTVShowAllSeasonsWithDetailsCounter uint64
 	TVShowAllSeasonsWithDetailsMock          mTvMetaClientMockTVShowAllSeasonsWithDetails
@@ -283,8 +283,9 @@ type TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation struct {
 
 // TvMetaClientMockTVShowAllSeasonsWithDetailsParams contains parameters of the tvMetaClient.TVShowAllSeasonsWithDetails
 type TvMetaClientMockTVShowAllSeasonsWithDetailsParams struct {
-	ctx context.Context
-	id  int
+	ctx      context.Context
+	id       int
+	language string
 }
 
 // TvMetaClientMockTVShowAllSeasonsWithDetailsResults contains results of the tvMetaClient.TVShowAllSeasonsWithDetails
@@ -294,7 +295,7 @@ type TvMetaClientMockTVShowAllSeasonsWithDetailsResults struct {
 }
 
 // Expect sets up expected params for tvMetaClient.TVShowAllSeasonsWithDetails
-func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Expect(ctx context.Context, id int) *mTvMetaClientMockTVShowAllSeasonsWithDetails {
+func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Expect(ctx context.Context, id int, language string) *mTvMetaClientMockTVShowAllSeasonsWithDetails {
 	if mmTVShowAllSeasonsWithDetails.mock.funcTVShowAllSeasonsWithDetails != nil {
 		mmTVShowAllSeasonsWithDetails.mock.t.Fatalf("TvMetaClientMock.TVShowAllSeasonsWithDetails mock is already set by Set")
 	}
@@ -303,7 +304,7 @@ func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetail
 		mmTVShowAllSeasonsWithDetails.defaultExpectation = &TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation{}
 	}
 
-	mmTVShowAllSeasonsWithDetails.defaultExpectation.params = &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id}
+	mmTVShowAllSeasonsWithDetails.defaultExpectation.params = &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id, language}
 	for _, e := range mmTVShowAllSeasonsWithDetails.expectations {
 		if minimock.Equal(e.params, mmTVShowAllSeasonsWithDetails.defaultExpectation.params) {
 			mmTVShowAllSeasonsWithDetails.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmTVShowAllSeasonsWithDetails.defaultExpectation.params)
@@ -314,7 +315,7 @@ func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetail
 }
 
 // Inspect accepts an inspector function that has same arguments as the tvMetaClient.TVShowAllSeasonsWithDetails
-func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Inspect(f func(ctx context.Context, id int)) *mTvMetaClientMockTVShowAllSeasonsWithDetails {
+func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Inspect(f func(ctx context.Context, id int, language string)) *mTvMetaClientMockTVShowAllSeasonsWithDetails {
 	if mmTVShowAllSeasonsWithDetails.mock.inspectFuncTVShowAllSeasonsWithDetails != nil {
 		mmTVShowAllSeasonsWithDetails.mock.t.Fatalf("Inspect function is already set for TvMetaClientMock.TVShowAllSeasonsWithDetails")
 	}
@@ -338,7 +339,7 @@ func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetail
 }
 
 // Set uses given function f to mock the tvMetaClient.TVShowAllSeasonsWithDetails method
-func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Set(f func(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error)) *TvMetaClientMock {
+func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) Set(f func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error)) *TvMetaClientMock {
 	if mmTVShowAllSeasonsWithDetails.defaultExpectation != nil {
 		mmTVShowAllSeasonsWithDetails.mock.t.Fatalf("Default expectation is already set for the tvMetaClient.TVShowAllSeasonsWithDetails method")
 	}
@@ -353,14 +354,14 @@ func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetail
 
 // When sets expectation for the tvMetaClient.TVShowAllSeasonsWithDetails which will trigger the result defined by the following
 // Then helper
-func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) When(ctx context.Context, id int) *TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation {
+func (mmTVShowAllSeasonsWithDetails *mTvMetaClientMockTVShowAllSeasonsWithDetails) When(ctx context.Context, id int, language string) *TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation {
 	if mmTVShowAllSeasonsWithDetails.mock.funcTVShowAllSeasonsWithDetails != nil {
 		mmTVShowAllSeasonsWithDetails.mock.t.Fatalf("TvMetaClientMock.TVShowAllSeasonsWithDetails mock is already set by Set")
 	}
 
 	expectation := &TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation{
 		mock:   mmTVShowAllSeasonsWithDetails.mock,
-		params: &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id},
+		params: &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id, language},
 	}
 	mmTVShowAllSeasonsWithDetails.expectations = append(mmTVShowAllSeasonsWithDetails.expectations, expectation)
 	return expectation
@@ -373,15 +374,15 @@ func (e *TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation) Then(ap1 *tvmet
 }
 
 // TVShowAllSeasonsWithDetails implements lazysoap.tvMetaClient
-func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetails(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
+func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
 	mm_atomic.AddUint64(&mmTVShowAllSeasonsWithDetails.beforeTVShowAllSeasonsWithDetailsCounter, 1)
 	defer mm_atomic.AddUint64(&mmTVShowAllSeasonsWithDetails.afterTVShowAllSeasonsWithDetailsCounter, 1)
 
 	if mmTVShowAllSeasonsWithDetails.inspectFuncTVShowAllSeasonsWithDetails != nil {
-		mmTVShowAllSeasonsWithDetails.inspectFuncTVShowAllSeasonsWithDetails(ctx, id)
+		mmTVShowAllSeasonsWithDetails.inspectFuncTVShowAllSeasonsWithDetails(ctx, id, language)
 	}
 
-	mm_params := &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id}
+	mm_params := &TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id, language}
 
 	// Record call args
 	mmTVShowAllSeasonsWithDetails.TVShowAllSeasonsWithDetailsMock.mutex.Lock()
@@ -398,7 +399,7 @@ func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetai
 	if mmTVShowAllSeasonsWithDetails.TVShowAllSeasonsWithDetailsMock.defaultExpectation != nil {
 		mm_atomic.AddUint64(&mmTVShowAllSeasonsWithDetails.TVShowAllSeasonsWithDetailsMock.defaultExpectation.Counter, 1)
 		mm_want := mmTVShowAllSeasonsWithDetails.TVShowAllSeasonsWithDetailsMock.defaultExpectation.params
-		mm_got := TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id}
+		mm_got := TvMetaClientMockTVShowAllSeasonsWithDetailsParams{ctx, id, language}
 		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
 			mmTVShowAllSeasonsWithDetails.t.Errorf("TvMetaClientMock.TVShowAllSeasonsWithDetails got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
 		}
@@ -410,9 +411,9 @@ func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetai
 		return (*mm_results).ap1, (*mm_results).err
 	}
 	if mmTVShowAllSeasonsWithDetails.funcTVShowAllSeasonsWithDetails != nil {
-		return mmTVShowAllSeasonsWithDetails.funcTVShowAllSeasonsWithDetails(ctx, id)
+		return mmTVShowAllSeasonsWithDetails.funcTVShowAllSeasonsWithDetails(ctx, id, language)
 	}
-	mmTVShowAllSeasonsWithDetails.t.Fatalf("Unexpected call to TvMetaClientMock.TVShowAllSeasonsWithDetails. %v %v", ctx, id)
+	mmTVShowAllSeasonsWithDetails.t.Fatalf("Unexpected call to TvMetaClientMock.TVShowAllSeasonsWithDetails. %v %v %v", ctx, id, language)
 	return
 }
 

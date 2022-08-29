@@ -1,7 +1,6 @@
 package lazysoap
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -9,12 +8,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type searchResultsResp struct {
+	SearchResults []*searchResult `json:"searchResults"`
+	Language      string          `json:"language"`
+}
+
 type searchResult struct {
-	Title  string `json:"title"`
-	ImdbID string `json:"imdbID"`
-	Year   string `json:"year"`
-	Poster string `json:"poster"`
-	Rating string `json:"imdbRating"`
+	ID           int     `json:"id"`
+	Title        string  `json:"title"`
+	FirstAirDate string  `json:"firstAirDate"`
+	Poster       string  `json:"poster"`
+	Rating       float32 `json:"rating"`
 }
 
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +35,18 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	searchResults := make([]*searchResult, 0, len(tvShows.TVShows))
 	for _, tvShow := range tvShows.TVShows {
 		searchResults = append(searchResults, &searchResult{
-			Title:  tvShow.Name,
-			ImdbID: fmt.Sprintf("%d", tvShow.ID),
-			Year:   tvShow.FirstAirDate,
-			Poster: tvShow.PosterLink,
-			Rating: fmt.Sprintf("%.1f", tvShow.Rating),
+			Title:        tvShow.Name,
+			ID:           tvShow.ID,
+			FirstAirDate: tvShow.FirstAirDate,
+			Poster:       tvShow.PosterLink,
+			Rating:       tvShow.Rating,
 		})
 	}
 
-	rest.WriteJSON(searchResults, w)
+	resp := &searchResultsResp{
+		SearchResults: searchResults,
+		Language:      tvShows.Language,
+	}
+
+	rest.WriteJSON(resp, w)
 }

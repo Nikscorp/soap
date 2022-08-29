@@ -17,8 +17,15 @@ type TVShowEpisode struct {
 	Rating      float32
 }
 
-func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int) (*TVShowSeasonEpisodes, error) {
-	resp, err := c.client.GetTVSeasonDetails(id, seasonNumber, nil)
+func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
+	if language == "" {
+		language = defaultLangTag
+	}
+
+	urlOptions := map[string]string{
+		"language": language,
+	}
+	resp, err := c.client.GetTVSeasonDetails(id, seasonNumber, urlOptions)
 	if err != nil {
 		return nil, fmt.Errorf("get TV Season Details: %w", err)
 	}
