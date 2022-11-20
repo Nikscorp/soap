@@ -25,7 +25,7 @@ type Server struct {
 
 type tvMetaClient interface {
 	SearchTVShows(ctx context.Context, query string) (*tvmeta.TVShows, error)
-	TVShowAllSeasonsWithDetails(ctx context.Context, id int) (*tvmeta.AllSeasonsWithDetails, error)
+	TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*tvmeta.AllSeasonsWithDetails, error)
 }
 
 func New(address string, tvMetaClient tvMetaClient) *Server {

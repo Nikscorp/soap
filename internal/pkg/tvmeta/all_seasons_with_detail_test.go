@@ -67,7 +67,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 		return nil, errors.New("some error")
 	})
 
-	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42)
+	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, defaultLangTag)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.Equal(t, 3, len(client.mockedTMDB.GetTVSeasonDetailsMock.Calls()))
@@ -132,7 +132,7 @@ func TestTVShowAllSeasonsWithDetailsErrorDetails(t *testing.T) {
 		return nil, wantErr
 	})
 
-	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42)
+	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, defaultLangTag)
 	require.ErrorIs(t, err, wantErr)
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.Equal(t, 0, len(client.mockedTMDB.GetTVSeasonDetailsMock.Calls()))
@@ -184,7 +184,7 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 		return nil, errors.New("some error")
 	})
 
-	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42)
+	resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, defaultLangTag)
 	require.ErrorIs(t, err, wantErr)
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.Equal(t, 3, len(client.mockedTMDB.GetTVSeasonDetailsMock.Calls()))

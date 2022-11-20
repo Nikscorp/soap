@@ -14,48 +14,51 @@ A simple website to get the best episodes of favorite TV series. It may be helpf
 It's publicly available at [https://soap.nikscorp.com](https://soap.nikscorp.com). You also can host your instance by building/pulling the image or building binary from sources.
 Note that frontend statics included in the Docker image and hosted by the application itself.
 
-You can use frontend based version [https://soap.nikscorp.com](https://soap.nikscorp.com) or use json api directly. There are only 2 methods:
+You can use frontend based version [https://soap.nikscorp.com](https://soap.nikscorp.com) or use JSON API directly. There are only 2 methods:
 
 - `GET /search/{query}` to search id of series
 
 ```json
-[
-	{
-		"title": "Black Mirror",
-		"imdbID": "42009",
-		"year": "2011-12-04",
-		"poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
-		"imdbRating": "8.3"
-	}
-]
+{
+	"searchResults": [
+		{
+			"id": 42009,
+			"title": "Black Mirror",
+			"firstAirDate": "2011-12-04",
+			"poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
+			"rating": 8.3
+		}
+	],
+	"language": "en"
+}
 ```
 
-- `GET /id/{id}` to get the best episodes by id
+- `GET /id/{id}?language=string` to get the best episodes by id
 
 ```json
 {
-	"Episodes": [
+	"episodes": [
 		{
-			"Title": "The National Anthem",
-			"imdbRating": "7.5",
-			"Episode": "1",
-			"Season": "1"
+			"title": "The National Anthem",
+			"rating": 7.504,
+			"number": 1,
+			"season": 1
 		},
 		{
-			"Title": "Fifteen Million Merits",
-			"imdbRating": "7.7",
-			"Episode": "2",
-			"Season": "1"
+			"title": "Fifteen Million Merits",
+			"rating": 7.696,
+			"number": 2,
+			"season": 1
 		},
 		{
-			"Title": "Black Museum",
-			"imdbRating": "7.9",
-			"Episode": "6",
-			"Season": "4"
+			"title": "Black Museum",
+			"rating": 7.858,
+			"number": 6,
+			"season": 4
 		}
 	],
-	"Title": "Black Mirror",
-	"Poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg"
+	"title": "Black Mirror",
+	"poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg"
 }
 ```
 

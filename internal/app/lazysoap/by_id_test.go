@@ -15,141 +15,168 @@ func TestIDHandler(t *testing.T) {
 	srv := NewServerM(t)
 	defer srv.server.Close()
 
-	srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
-		require.Equal(t, 42, id)
-		return &tvmeta.AllSeasonsWithDetails{
-			Details: &tvmeta.TvShowDetails{
-				ID:         42,
-				Title:      "Lost",
-				PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
-				SeasonsCnt: 3,
-			},
-			Seasons: []*tvmeta.TVShowSeasonEpisodes{
-				{
-					SeasonNumber: 1,
-					Episodes: []*tvmeta.TVShowEpisode{
-						{
-							Number:      1,
-							Name:        "First One",
-							Description: "Greatest episode ever",
-							Rating:      9,
-						},
-						{
-							Number:      2,
-							Name:        "Second One",
-							Description: "Greatest episode ever2",
-							Rating:      9,
-						},
-						{
-							Number:      3,
-							Name:        "Third One",
-							Description: "Not so great episode",
-							Rating:      1,
-						},
-					},
-				},
-				{
-					SeasonNumber: 2,
-					Episodes: []*tvmeta.TVShowEpisode{
-						{
-							Number:      1,
-							Name:        "S2 First One",
-							Description: "Greatest episode ever",
-							Rating:      9,
-						},
-						{
-							Number:      2,
-							Name:        "S2 Second One",
-							Description: "Greatest episode ever2",
-							Rating:      9,
-						},
-						{
-							Number:      3,
-							Name:        "S2 Third One",
-							Description: "Not so great episode",
-							Rating:      1,
-						},
-					},
-				},
-				{
-					SeasonNumber: 3,
-					Episodes: []*tvmeta.TVShowEpisode{
-						{
-							Number:      1,
-							Name:        "S3 First One",
-							Description: "Greatest episode ever",
-							Rating:      9,
-						},
-						{
-							Number:      2,
-							Name:        "S3 Second One",
-							Description: "Greatest episode ever2",
-							Rating:      9,
-						},
-						{
-							Number:      3,
-							Name:        "S3 Third One",
-							Description: "Not so great episode",
-							Rating:      1,
-						},
-					},
-				},
-			},
-		}, nil
-	})
-
-	resp, err := http.Get(srv.server.URL + "/id/42")
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.JSONEq(t, `
-	{
-		"Episodes": [
-			{
-				"Title": "First One",
-				"imdbRating": "9.0",
-				"Episode": "1",
-				"Season": "1"
-			},
-			{
-				"Title": "Second One",
-				"imdbRating": "9.0",
-				"Episode": "2",
-				"Season": "1"
-			},
-			{
-				"Title": "S2 First One",
-				"imdbRating": "9.0",
-				"Episode": "1",
-				"Season": "2"
-			},
-			{
-				"Title": "S2 Second One",
-				"imdbRating": "9.0",
-				"Episode": "2",
-				"Season": "2"
-			},
-			{
-				"Title": "S3 First One",
-				"imdbRating": "9.0",
-				"Episode": "1",
-				"Season": "3"
-			},
-			{
-				"Title": "S3 Second One",
-				"imdbRating": "9.0",
-				"Episode": "2",
-				"Season": "3"
-			}
-		],
-		"Title": "Lost",
-		"Poster": "https://image.tmdb.org/t/p/w92/lost.png"
+	var testCases = []struct {
+		name       string
+		inputQuery string
+		wantLang   string
+	}{
+		{
+			name:       "default",
+			inputQuery: "/id/42",
+			wantLang:   "",
+		},
+		{
+			name:       "enLangTag",
+			inputQuery: "/id/42?language=en",
+			wantLang:   "en",
+		},
+		{
+			name:       "ruLangTag",
+			inputQuery: "/id/42?language=ru",
+			wantLang:   "ru",
+		},
 	}
-	`, string(body))
-	require.Equal(t, 1, len(srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Calls()))
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
+				require.Equal(t, 42, id)
+				require.Equal(t, tc.wantLang, language)
+				return &tvmeta.AllSeasonsWithDetails{
+					Details: &tvmeta.TvShowDetails{
+						ID:         42,
+						Title:      "Lost",
+						PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+						SeasonsCnt: 3,
+					},
+					Seasons: []*tvmeta.TVShowSeasonEpisodes{
+						{
+							SeasonNumber: 1,
+							Episodes: []*tvmeta.TVShowEpisode{
+								{
+									Number:      1,
+									Name:        "First One",
+									Description: "Greatest episode ever",
+									Rating:      9.9,
+								},
+								{
+									Number:      2,
+									Name:        "Second One",
+									Description: "Greatest episode ever2",
+									Rating:      9.8,
+								},
+								{
+									Number:      3,
+									Name:        "Third One",
+									Description: "Not so great episode",
+									Rating:      1.1,
+								},
+							},
+						},
+						{
+							SeasonNumber: 2,
+							Episodes: []*tvmeta.TVShowEpisode{
+								{
+									Number:      1,
+									Name:        "S2 First One",
+									Description: "Greatest episode ever",
+									Rating:      9,
+								},
+								{
+									Number:      2,
+									Name:        "S2 Second One",
+									Description: "Greatest episode ever2",
+									Rating:      9,
+								},
+								{
+									Number:      3,
+									Name:        "S2 Third One",
+									Description: "Not so great episode",
+									Rating:      1,
+								},
+							},
+						},
+						{
+							SeasonNumber: 3,
+							Episodes: []*tvmeta.TVShowEpisode{
+								{
+									Number:      1,
+									Name:        "S3 First One",
+									Description: "Greatest episode ever",
+									Rating:      9,
+								},
+								{
+									Number:      2,
+									Name:        "S3 Second One",
+									Description: "Greatest episode ever2",
+									Rating:      9,
+								},
+								{
+									Number:      3,
+									Name:        "S3 Third One",
+									Description: "Not so great episode",
+									Rating:      1,
+								},
+							},
+						},
+					},
+				}, nil
+			})
+
+			resp, err := http.Get(srv.server.URL + tc.inputQuery)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.JSONEq(t, `
+			{
+				"episodes": [
+					{
+						"title": "First One",
+						"rating": 9.9,
+						"number": 1,
+						"season": 1
+					},
+					{
+						"title": "Second One",
+						"rating": 9.8,
+						"number": 2,
+						"season": 1
+					},
+					{
+						"title": "S2 First One",
+						"rating": 9,
+						"number": 1,
+						"season": 2
+					},
+					{
+						"title": "S2 Second One",
+						"rating": 9,
+						"number": 2,
+						"season": 2
+					},
+					{
+						"title": "S3 First One",
+						"rating": 9,
+						"number": 1,
+						"season": 3
+					},
+					{
+						"title": "S3 Second One",
+						"rating": 9,
+						"number": 2,
+						"season": 3
+					}
+				],
+				"title": "Lost",
+				"poster": "https://image.tmdb.org/t/p/w92/lost.png"
+			}
+			`, string(body))
+		})
+	}
+	require.Equal(t, len(testCases), len(srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Calls()))
 }
 
 func TestIDHandlerInvalidID(t *testing.T) {
@@ -173,7 +200,7 @@ func TestIDHandlerTVShowEpisodesBySeasonError(t *testing.T) {
 	srv := NewServerM(t)
 	defer srv.server.Close()
 
-	srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
+	srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
 		require.Equal(t, 42, id)
 		return nil, errors.New("some error")
 	})
@@ -193,7 +220,7 @@ func TestIDHandlerZeroEpisodes(t *testing.T) {
 	srv := NewServerM(t)
 	defer srv.server.Close()
 
-	srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
+	srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
 		require.Equal(t, 42, id)
 		return &tvmeta.AllSeasonsWithDetails{
 			Details: &tvmeta.TvShowDetails{
