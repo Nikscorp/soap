@@ -1,4 +1,4 @@
-# github.com/cyruzin/golang-tmdb v1.4.4
+# github.com/cyruzin/golang-tmdb v1.4.5
 ## explicit; go 1.13
 github.com/cyruzin/golang-tmdb
 # github.com/davecgh/go-spew v1.1.1
