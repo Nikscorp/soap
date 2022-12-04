@@ -3,7 +3,7 @@ module github.com/Nikscorp/soap
 go 1.19
 
 require (
-	github.com/cyruzin/golang-tmdb v1.4.4
+	github.com/cyruzin/golang-tmdb v1.4.5
 	github.com/gojuno/minimock/v3 v3.0.10
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
