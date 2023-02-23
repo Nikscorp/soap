@@ -10,6 +10,7 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
@@ -21,6 +22,7 @@ const (
 type Server struct {
 	address string
 	tvMeta  tvMetaClient
+	metrics *rest.Metrics
 }
 
 type tvMetaClient interface {
@@ -32,6 +34,7 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 	return &Server{
 		address: address,
 		tvMeta:  tvMetaClient,
+		metrics: rest.NewMetrics(),
 	}
 }
 
@@ -60,6 +63,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) newRouter() *mux.Router {
 	r := mux.NewRouter()
+	r.Use(s.metrics.Middleware)
 	r.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
 	r.Use(handlers.RecoveryHandler())
 	r.Use(func(next http.Handler) http.Handler { return handlers.LoggingHandler(log.Writer(), next) })
@@ -67,6 +71,7 @@ func (s *Server) newRouter() *mux.Router {
 
 	r.Handle("/id/{id}", http.HandlerFunc(s.idHandler)).Methods("GET", "POST")
 	r.Handle("/search/{query}", http.HandlerFunc(s.searchHandler)).Methods("GET", "POST")
+	r.Handle("/metrics", promhttp.Handler())
 	rest.AddFileServer(r)
 
 	return r
