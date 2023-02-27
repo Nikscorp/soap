@@ -63,7 +63,14 @@ func NewMetrics(paths []string) *Metrics {
 
 func (m *Metrics) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := strings.ToLower(strings.Split(r.URL.Path, "/")[0])
+		splitted := strings.Split(r.URL.Path, "/")
+		path := splitted[0]
+		if path == "" && len(splitted) > 1 {
+			path = splitted[1]
+		}
+		log.Printf("%v", splitted)
+		path = strings.ToLower(path)
+
 		if _, ok := m.pathSet[path]; !ok {
 			next.ServeHTTP(w, r)
 			return
