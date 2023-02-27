@@ -34,7 +34,7 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 	return &Server{
 		address: address,
 		tvMeta:  tvMetaClient,
-		metrics: rest.NewMetrics(),
+		metrics: rest.NewMetrics([]string{"id", "search"}),
 	}
 }
 

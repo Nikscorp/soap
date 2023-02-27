@@ -14,9 +14,10 @@ type Metrics struct {
 	totalRequests  *prometheus.CounterVec
 	responseStatus *prometheus.CounterVec
 	httpDuration   *prometheus.HistogramVec
+	pathSet        map[string]struct{}
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(paths []string) *Metrics {
 	res := &Metrics{}
 
 	res.totalRequests = prometheus.NewCounterVec(
@@ -24,7 +25,7 @@ func NewMetrics() *Metrics {
 			Name: "http_requests_total",
 			Help: "Number of incoming requests.",
 		},
-		[]string{"server"},
+		[]string{"path"},
 	)
 
 	res.responseStatus = prometheus.NewCounterVec(
@@ -51,22 +52,24 @@ func NewMetrics() *Metrics {
 		log.Printf("[WARN] can't register prometheus httpDuration: %v", err)
 	}
 
+	pathSet := make(map[string]struct{}, len(paths))
+	for _, path := range paths {
+		pathSet[strings.ToLower(path)] = struct{}{}
+	}
+	res.pathSet = pathSet
+
 	return res
 }
 
 func (m *Metrics) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pathSplit := strings.Split(r.URL.Path, "/")
-		// NOTE: bad path in API design, need to refactor API
-		path := pathSplit[0]
-		if pathSplit[0] == "" && len(pathSplit) > 1 {
-			path = pathSplit[1]
+		path := strings.ToLower(strings.Split(r.URL.Path, "/")[0])
+		if _, ok := m.pathSet[path]; !ok {
+			next.ServeHTTP(w, r)
+			return
 		}
-		server := r.URL.Hostname()
-		if server == "" {
-			server = strings.Split(r.Host, ":")[0]
-		}
-		m.totalRequests.WithLabelValues(server).Inc()
+
+		m.totalRequests.WithLabelValues(path).Inc()
 
 		rw := NewResponseWriter(w)
 		start := time.Now()
