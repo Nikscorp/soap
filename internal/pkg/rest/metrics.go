@@ -77,7 +77,7 @@ func (m *Metrics) Middleware(next http.Handler) http.Handler {
 
 		m.totalRequests.WithLabelValues(path).Inc()
 
-		rw := NewResponseWriter(w)
+		rw := newResponseWriter(w)
 		start := time.Now()
 
 		next.ServeHTTP(rw, r)
@@ -93,7 +93,7 @@ type responseWriter struct {
 	statusCode int
 }
 
-func NewResponseWriter(w http.ResponseWriter) *responseWriter { //nolint
+func newResponseWriter(w http.ResponseWriter) *responseWriter { //nolint
 	return &responseWriter{w, http.StatusOK}
 }
 
