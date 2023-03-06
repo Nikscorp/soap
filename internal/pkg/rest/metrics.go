@@ -68,7 +68,6 @@ func (m *Metrics) Middleware(next http.Handler) http.Handler {
 		if path == "" && len(splitted) > 1 {
 			path = splitted[1]
 		}
-		log.Printf("%v", splitted)
 		path = strings.ToLower(path)
 
 		if _, ok := m.pathSet[path]; !ok {
