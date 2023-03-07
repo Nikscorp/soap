@@ -6,3 +6,4 @@ etc/redis.conf
 app/app
 .DS_Store
 lazysoap
+bin/
