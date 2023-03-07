@@ -1,4 +1,4 @@
-FROM nikscorp/go-builder:0.1.4 as build-backend
+FROM nikscorp/go-builder:0.1.6 as build-backend
 
 ENV \
     CGO_ENABLED=0 \
