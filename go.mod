@@ -1,6 +1,6 @@
 module github.com/Nikscorp/soap
 
-go 1.19
+go 1.20
 
 require (
 	github.com/cyruzin/golang-tmdb v1.4.5
