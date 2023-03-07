@@ -43,7 +43,7 @@ func TestSearchHandler(t *testing.T) {
 					ID:           4815162342,
 					Name:         "Lost",
 					Rating:       9.9,
-					PosterLink:   "https://image.tmdb.org/t/p/w92/lost.jpg",
+					PosterLink:   "/img/lost.jpg",
 					FirstAirDate: "2022",
 					Description:  "Greatest tv show ever",
 				},
@@ -66,7 +66,7 @@ func TestSearchHandler(t *testing.T) {
 					"id": 4815162342,
 					"title": "Lost",
 					"firstAirDate": "2022",
-					"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
+					"poster": "/img/lost.jpg",
 					"rating": 9.9
 				}
 			],
@@ -89,7 +89,7 @@ func TestSearchHandlerUnicode(t *testing.T) {
 					ID:           4815162342,
 					Name:         "Лост",
 					Rating:       9.9,
-					PosterLink:   "https://image.tmdb.org/t/p/w92/lost.jpg",
+					PosterLink:   "/img/lost.jpg",
 					FirstAirDate: "2022",
 					Description:  "Greatest tv show ever",
 				},
@@ -114,7 +114,7 @@ func TestSearchHandlerUnicode(t *testing.T) {
 					"id": 4815162342,
 					"title": "Лост",
 					"firstAirDate": "2022",
-					"poster": "https://image.tmdb.org/t/p/w92/lost.jpg",
+					"poster": "/img/lost.jpg",
 					"rating": 9.9
 				}
 			],

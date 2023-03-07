@@ -3,8 +3,6 @@ package tvmeta
 import (
 	"context"
 	"fmt"
-
-	tmdb "github.com/cyruzin/golang-tmdb"
 )
 
 type TvShowDetails struct {
@@ -26,7 +24,7 @@ func (c *Client) TvShowDetails(ctx context.Context, id int) (*TvShowDetails, err
 	return &TvShowDetails{
 		ID:         id,
 		Title:      resp.Name,
-		PosterLink: tmdb.GetImageURL(resp.PosterPath, tmdb.W92),
+		PosterLink: posterToInternalPath(resp.PosterPath),
 		SeasonsCnt: resp.NumberOfSeasons,
 	}, nil
 }

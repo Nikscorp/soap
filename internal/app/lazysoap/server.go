@@ -20,9 +20,10 @@ const (
 )
 
 type Server struct {
-	address string
-	tvMeta  tvMetaClient
-	metrics *rest.Metrics
+	address   string
+	tvMeta    tvMetaClient
+	metrics   *rest.Metrics
+	imgClient *http.Client
 }
 
 type tvMetaClient interface {
@@ -34,7 +35,14 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 	return &Server{
 		address: address,
 		tvMeta:  tvMetaClient,
-		metrics: rest.NewMetrics([]string{"id", "search"}),
+		metrics: rest.NewMetrics([]string{"id", "search", "img"}),
+		imgClient: &http.Client{
+			Timeout: time.Second * 5,
+			Transport: &http.Transport{
+				MaxIdleConns:    100,
+				IdleConnTimeout: 60 * time.Second,
+			},
+		},
 	}
 }
 
@@ -71,6 +79,7 @@ func (s *Server) newRouter() *mux.Router {
 
 	r.Handle("/id/{id}", http.HandlerFunc(s.idHandler)).Methods("GET", "POST")
 	r.Handle("/search/{query}", http.HandlerFunc(s.searchHandler)).Methods("GET", "POST")
+	r.Handle("/img/{path}", http.HandlerFunc(s.imgProxyHandler)).Methods("GET")
 	r.Handle("/metrics", promhttp.Handler())
 	rest.AddFileServer(r)
 

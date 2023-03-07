@@ -15,7 +15,7 @@ import (
 func TestRun(t *testing.T) {
 	address := "127.0.0.1:50042"
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
-	srv := Server{address, tvMetaClientMock, rest.NewMetrics([]string{"id", "search"})}
+	srv := Server{address, tvMetaClientMock, rest.NewMetrics([]string{"id", "search"}), nil}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -27,7 +27,7 @@ func TestTvShowDetails(t *testing.T) {
 	require.Equal(t, &TvShowDetails{
 		ID:         42,
 		Title:      "Lost",
-		PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+		PosterLink: "/img/lost.png",
 		SeasonsCnt: 23,
 	}, resp)
 }

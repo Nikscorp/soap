@@ -3,6 +3,7 @@ package lazysoap
 import (
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -71,6 +72,7 @@ func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, e
 
 	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
+			e.Rating = float32(math.Round(float64(e.Rating*100))) / 100
 			sumRating += e.Rating
 			episodesCount++
 		}
