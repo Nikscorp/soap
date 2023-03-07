@@ -46,7 +46,7 @@ func TestIDHandler(t *testing.T) {
 					Details: &tvmeta.TvShowDetails{
 						ID:         42,
 						Title:      "Lost",
-						PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+						PosterLink: "/img/lost.png",
 						SeasonsCnt: 3,
 					},
 					Seasons: []*tvmeta.TVShowSeasonEpisodes{
@@ -57,7 +57,7 @@ func TestIDHandler(t *testing.T) {
 									Number:      1,
 									Name:        "First One",
 									Description: "Greatest episode ever",
-									Rating:      9.9,
+									Rating:      9.9898989898,
 								},
 								{
 									Number:      2,
@@ -135,7 +135,7 @@ func TestIDHandler(t *testing.T) {
 				"episodes": [
 					{
 						"title": "First One",
-						"rating": 9.9,
+						"rating": 9.99,
 						"number": 1,
 						"season": 1
 					},
@@ -171,7 +171,7 @@ func TestIDHandler(t *testing.T) {
 					}
 				],
 				"title": "Lost",
-				"poster": "https://image.tmdb.org/t/p/w92/lost.png"
+				"poster": "/img/lost.png"
 			}
 			`, string(body))
 		})
@@ -226,7 +226,7 @@ func TestIDHandlerZeroEpisodes(t *testing.T) {
 			Details: &tvmeta.TvShowDetails{
 				ID:         42,
 				Title:      "Lost",
-				PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+				PosterLink: "/img/lost.png",
 				SeasonsCnt: 3,
 			},
 			Seasons: []*tvmeta.TVShowSeasonEpisodes{

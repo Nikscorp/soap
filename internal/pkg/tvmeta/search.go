@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-
-	tmdb "github.com/cyruzin/golang-tmdb"
 )
 
 type TVShow struct {
@@ -37,12 +35,13 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 
 	tvShows := make([]*TVShow, 0, len(resp.Results))
 	for _, tvShow := range resp.Results {
+		// tvShow.PosterPath = /ie1zLLjtspacRfpcVkLvNt7mUx9.jpg
 		parsedShow := &TVShow{
 			ID:           int(tvShow.ID),
 			Name:         tvShow.Name,
 			Rating:       tvShow.VoteAverage,
 			Description:  tvShow.Overview,
-			PosterLink:   tmdb.GetImageURL(tvShow.PosterPath, tmdb.W92),
+			PosterLink:   posterToInternalPath(tvShow.PosterPath),
 			FirstAirDate: tvShow.FirstAirDate,
 			Popularity:   tvShow.Popularity,
 		}

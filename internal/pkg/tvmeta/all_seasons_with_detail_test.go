@@ -77,7 +77,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 			ID:         42,
 			Title:      "Lost",
 			SeasonsCnt: 3,
-			PosterLink: "https://image.tmdb.org/t/p/w92/lost.png",
+			PosterLink: "/img/lost.png",
 		},
 		Seasons: []*TVShowSeasonEpisodes{
 			{
