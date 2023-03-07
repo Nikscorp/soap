@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap/mocks"
+	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRun(t *testing.T) {
 	address := "127.0.0.1:50042"
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
-	srv := Server{address, tvMetaClientMock}
+	srv := Server{address, tvMetaClientMock, rest.NewMetrics([]string{"id", "search"})}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
