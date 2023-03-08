@@ -83,8 +83,9 @@ func (s *Server) newRouter() *mux.Router {
 	r.HandleFunc("/img/{path}", s.imgProxyHandler).Methods("GET")
 
 	r.Handle("/metrics", promhttp.Handler())
-	r.HandleFunc("/debug/pprof/", pprof.Index)
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
+
 	rest.AddFileServer(r)
 
 	return r
