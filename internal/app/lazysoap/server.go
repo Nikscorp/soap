@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
@@ -14,9 +15,9 @@ import (
 )
 
 const (
-	ioTimeout   = 15 * time.Second
-	readTimeout = 15 * time.Second
-	idleTimeout = 15 * time.Second
+	writeTimeout = 60 * time.Second
+	readTimeout  = 15 * time.Second
+	idleTimeout  = 15 * time.Second
 )
 
 type Server struct {
@@ -49,7 +50,7 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
 		Addr:              s.address,
-		WriteTimeout:      ioTimeout,
+		WriteTimeout:      writeTimeout,
 		ReadHeaderTimeout: readTimeout,
 		ReadTimeout:       readTimeout,
 		IdleTimeout:       idleTimeout,
@@ -77,10 +78,13 @@ func (s *Server) newRouter() *mux.Router {
 	r.Use(func(next http.Handler) http.Handler { return handlers.LoggingHandler(log.Writer(), next) })
 	r.Use(rest.Ping)
 
-	r.Handle("/id/{id}", http.HandlerFunc(s.idHandler)).Methods("GET", "POST")
-	r.Handle("/search/{query}", http.HandlerFunc(s.searchHandler)).Methods("GET", "POST")
-	r.Handle("/img/{path}", http.HandlerFunc(s.imgProxyHandler)).Methods("GET")
+	r.HandleFunc("/id/{id}", s.idHandler).Methods("GET", "POST")
+	r.HandleFunc("/search/{query}", s.searchHandler).Methods("GET", "POST")
+	r.HandleFunc("/img/{path}", s.imgProxyHandler).Methods("GET")
+
 	r.Handle("/metrics", promhttp.Handler())
+	r.HandleFunc("/debug/pprof", pprof.Index)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	rest.AddFileServer(r)
 
 	return r
