@@ -36,7 +36,7 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 	return &Server{
 		address: address,
 		tvMeta:  tvMetaClient,
-		metrics: rest.NewMetrics([]string{"id", "search", "img"}),
+		metrics: rest.NewMetrics([]string{"id", "search", "img", "ping"}),
 		imgClient: &http.Client{
 			Timeout: time.Second * 5,
 			Transport: &http.Transport{
