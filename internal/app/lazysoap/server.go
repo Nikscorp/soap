@@ -9,8 +9,9 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -70,21 +71,22 @@ func (s *Server) Run(ctx context.Context) error {
 	return srv.ListenAndServe()
 }
 
-func (s *Server) newRouter() *mux.Router {
-	r := mux.NewRouter()
+func (s *Server) newRouter() http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{Logger: log.Default(), NoColor: true}))
+
+	r.Use(middleware.Recoverer)
+	r.Use(cors.AllowAll().Handler)
 	r.Use(s.metrics.Middleware)
-	r.Use(handlers.CORS(handlers.AllowedOrigins([]string{"*"})))
-	r.Use(handlers.RecoveryHandler())
-	r.Use(func(next http.Handler) http.Handler { return handlers.LoggingHandler(log.Writer(), next) })
 	r.Use(rest.Ping)
 
-	r.HandleFunc("/id/{id}", s.idHandler).Methods("GET", "POST")
-	r.HandleFunc("/search/{query}", s.searchHandler).Methods("GET", "POST")
-	r.HandleFunc("/img/{path}", s.imgProxyHandler).Methods("GET")
+	r.HandleFunc("/id/{id}", s.idHandler)
+	r.HandleFunc("/search/{query}", s.searchHandler)
+	r.HandleFunc("/img/{path}", s.imgProxyHandler)
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	r.PathPrefix("/debug/pprof/").HandlerFunc(pprof.Index)
+	r.HandleFunc("/debug/pprof/*", pprof.Index)
 
 	rest.AddFileServer(r)
 

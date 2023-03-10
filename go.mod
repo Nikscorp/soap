@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/cyruzin/golang-tmdb v1.4.5
+	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/cors v1.2.1
 	github.com/gojuno/minimock/v3 v3.1.1
-	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/mux v1.8.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.2
@@ -17,7 +17,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

@@ -10,9 +10,13 @@ github.com/cyruzin/golang-tmdb
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/felixge/httpsnoop v1.0.1
-## explicit; go 1.13
-github.com/felixge/httpsnoop
+# github.com/go-chi/chi/v5 v5.0.8
+## explicit; go 1.14
+github.com/go-chi/chi/v5
+github.com/go-chi/chi/v5/middleware
+# github.com/go-chi/cors v1.2.1
+## explicit; go 1.14
+github.com/go-chi/cors
 # github.com/gojuno/minimock/v3 v3.1.1
 ## explicit; go 1.18
 github.com/gojuno/minimock/v3
@@ -20,12 +24,6 @@ github.com/gojuno/minimock/v3
 ## explicit; go 1.9
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/gorilla/handlers v1.5.1
-## explicit; go 1.14
-github.com/gorilla/handlers
-# github.com/gorilla/mux v1.8.0
-## explicit; go 1.12
-github.com/gorilla/mux
 # github.com/jessevdk/go-flags v1.5.0
 ## explicit; go 1.15
 github.com/jessevdk/go-flags

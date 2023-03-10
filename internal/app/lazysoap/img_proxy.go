@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	path := vars["path"]
+	path := chi.URLParam(r, "path")
 	url := tvmeta.GetURLByPosterPath(path)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 var errZeroEpisodes = errors.New("0 episodes")
@@ -28,8 +28,7 @@ type episode struct {
 }
 
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
+	id := chi.URLParam(r, "id")
 	language := r.URL.Query().Get("language")
 
 	intID, err := strconv.Atoi(id)

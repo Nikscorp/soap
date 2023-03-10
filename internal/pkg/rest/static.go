@@ -4,19 +4,17 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 const (
 	staticPath = "/static"
-	staticURI  = "/"
 )
 
-func AddFileServer(r *mux.Router) {
+func AddFileServer(r *chi.Mux) {
 	fileSystem := customFileSystem{http.Dir(staticPath)}
 	fileServer := http.FileServer(fileSystem)
-	handler := http.StripPrefix(staticURI, fileServer)
-	r.PathPrefix(staticURI).Handler(handler)
+	r.Handle("/*", fileServer)
 }
 
 type customFileSystem struct {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 type searchResultsResp struct {
@@ -22,8 +22,7 @@ type searchResult struct {
 }
 
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	query := vars["query"]
+	query := chi.URLParam(r, "query")
 
 	tvShows, err := s.tvMeta.SearchTVShows(r.Context(), query)
 	if err != nil {
