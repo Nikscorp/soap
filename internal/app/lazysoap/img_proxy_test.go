@@ -3,7 +3,6 @@ package lazysoap
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -39,19 +38,19 @@ func NewServerWithImgClient(t *testing.T) *ServerM {
 			case "https://image.tmdb.org/t/p/w92/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg":
 				return &http.Response{
 					StatusCode: http.StatusOK,
-					Body:       ioutil.NopCloser(bytes.NewBufferString("i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg binary data")),
+					Body:       io.NopCloser(bytes.NewBufferString("i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg binary data")),
 					Header:     make(http.Header),
 				}
 			case "https://image.tmdb.org/t/p/w92/not_found.jpg":
 				return &http.Response{
 					StatusCode: http.StatusNotFound,
-					Body:       ioutil.NopCloser(bytes.NewBufferString("some html data")),
+					Body:       io.NopCloser(bytes.NewBufferString("some html data")),
 					Header:     make(http.Header),
 				}
 			case "https://image.tmdb.org/t/p/w92/internal_error.jpg":
 				return &http.Response{
 					StatusCode: http.StatusInternalServerError,
-					Body:       ioutil.NopCloser(bytes.NewBufferString("some html data")),
+					Body:       io.NopCloser(bytes.NewBufferString("some html data")),
 					Header:     make(http.Header),
 				}
 			case "https://image.tmdb.org/t/p/w92/nil_body.jpg":
