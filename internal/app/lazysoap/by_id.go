@@ -10,6 +10,9 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var errZeroEpisodes = errors.New("0 episodes")
@@ -28,20 +31,32 @@ type episode struct {
 }
 
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.idHandler")
+	defer span.End()
+
 	id := chi.URLParam(r, "id")
 	language := r.URL.Query().Get("language")
+
+	span.SetAttributes(
+		attribute.String("id", id),
+		attribute.String("language", language),
+	)
 
 	intID, err := strconv.Atoi(id)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse id: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
-	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(r.Context(), intID, language)
+	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(ctx, intID, language)
 	if err != nil {
 		log.Printf("[ERROR] Failed to get episodes: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
@@ -49,6 +64,8 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[ERROR] error counting avg rating: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 	log.Printf("[INFO] Avg Rating for id %d is %v", intID, avgRating)

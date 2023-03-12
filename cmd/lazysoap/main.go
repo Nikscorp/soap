@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap"
+	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
@@ -18,6 +19,10 @@ import (
 func main() {
 	parseOpts(&opts)
 	log.Printf("[INFO] Opts parsed successfully")
+	if opts.Version {
+		log.Printf("version=%s", trace.Version)
+		os.Exit(0)
+	}
 
 	tmdbClient, err := newTMDB(opts.APIKey)
 	if err != nil {
@@ -27,6 +32,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	go func() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -35,11 +41,23 @@ func main() {
 		cancel()
 	}()
 
+	tp, err := trace.SetupTracing(opts.JaegerURL)
+	if err != nil {
+		//nolint:gocritic
+		log.Fatalf("[CRITICAL] Failed to init tracing")
+	}
+
 	err = server.Run(ctx)
 	if !errors.Is(err, http.ErrServerClosed) {
 		cancel()
 		//nolint:gocritic
 		log.Fatalf("[CRITICAL] Server failed to start: %v", err)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	if err := tp.Shutdown(ctx); err != nil {
+		log.Fatal(err)
 	}
 	log.Printf("[INFO] Gracefully shutted down")
 }
