@@ -20,7 +20,7 @@ func TestTvShowDetails(t *testing.T) {
 		}, nil
 	})
 
-	resp, err := client.client.TvShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42)
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestTvShowDetailsErrorResp(t *testing.T) {
 		return nil, someError
 	})
 
-	resp, err := client.client.TvShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42)
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.ErrorIs(t, err, someError)
@@ -54,7 +54,7 @@ func TestTvShowDetailsNilResp(t *testing.T) {
 		return nil, nil
 	})
 
-	resp, err := client.client.TvShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42)
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.ErrorIs(t, err, ErrNilResp)

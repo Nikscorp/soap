@@ -4,6 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
+
+	tmdb "github.com/cyruzin/golang-tmdb"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type TVShow struct {
@@ -22,15 +27,32 @@ type TVShows struct {
 }
 
 func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.SearchTVShows")
+	defer span.End()
+	span.SetAttributes(attribute.String("query", query))
+
 	tag := languageTag(query)
-	resp, err := c.client.GetSearchTVShow(query, map[string]string{
-		"language": tag,
-	})
+	resp, err := func() (*tmdb.SearchTVShows, error) {
+		_, span := otel.Tracer(tracerName).Start(ctx, "tmdb.GetSearchTVShow")
+		defer span.End()
+
+		resp, err := c.client.GetSearchTVShow(query, map[string]string{
+			"language": tag,
+		})
+		return resp, err
+	}()
+
 	if err != nil {
-		return nil, fmt.Errorf("search TV Shows: %w", err)
+		err = fmt.Errorf("search TV Shows: %w", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
 	if resp == nil || resp.SearchTVShowsResults == nil || resp.SearchTVShowsResults.Results == nil {
-		return nil, fmt.Errorf("search TV Shows: %w", ErrNilResp)
+		err = fmt.Errorf("search TV Shows: %w", ErrNilResp)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
 
 	tvShows := make([]*TVShow, 0, len(resp.Results))

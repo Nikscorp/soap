@@ -13,12 +13,14 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
 	writeTimeout = 60 * time.Second
 	readTimeout  = 15 * time.Second
 	idleTimeout  = 15 * time.Second
+	tracerName   = "github.com/Nikscorp/internal/app/lazysoap"
 )
 
 type Server struct {
@@ -40,10 +42,10 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 		metrics: rest.NewMetrics([]string{"id", "search", "img", "ping"}),
 		imgClient: &http.Client{
 			Timeout: time.Second * 5,
-			Transport: &http.Transport{
+			Transport: otelhttp.NewTransport(&http.Transport{
 				MaxIdleConns:    100,
 				IdleConnTimeout: 60 * time.Second,
-			},
+			}),
 		},
 	}
 }
@@ -80,9 +82,9 @@ func (s *Server) newRouter() http.Handler {
 	r.Use(s.metrics.Middleware)
 	r.Use(rest.Ping)
 
-	r.HandleFunc("/id/{id}", s.idHandler)
-	r.HandleFunc("/search/{query}", s.searchHandler)
-	r.HandleFunc("/img/{path}", s.imgProxyHandler)
+	r.Handle("/id/{id}", otelhttp.NewHandler(http.HandlerFunc(s.idHandler), "id"))
+	r.Handle("/search/{query}", otelhttp.NewHandler(http.HandlerFunc(s.searchHandler), "search"))
+	r.Handle("/img/{path}", otelhttp.NewHandler(http.HandlerFunc(s.imgProxyHandler), "img"))
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)

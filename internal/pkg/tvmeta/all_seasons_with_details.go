@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -13,10 +16,22 @@ type AllSeasonsWithDetails struct {
 }
 
 func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
-	tvShowDetails, err := c.TvShowDetails(ctx, id)
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.TVShowAllSeasonsWithDetails")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int("id", id),
+		attribute.String("language", language),
+	)
+
+	tvShowDetails, err := c.TVShowDetails(ctx, id)
+
 	if err != nil {
-		return nil, fmt.Errorf("get all episodes: %w", err)
+		err = fmt.Errorf("get all episodes: %w", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
 	}
+	span.AddEvent(fmt.Sprintf("got seasons count=%d", tvShowDetails.SeasonsCnt))
 
 	eg := errgroup.Group{}
 	seasons := make([]*TVShowSeasonEpisodes, tvShowDetails.SeasonsCnt)
@@ -25,7 +40,7 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 		eg.Go(func() error {
 			episodes, err := c.TVShowEpisodesBySeason(ctx, id, i, language)
 			if err != nil {
-				return fmt.Errorf("get all episodes: %w", err)
+				return fmt.Errorf("get all episodes for season %d: %w", i, err)
 			}
 			seasons[i-1] = episodes
 			return nil
@@ -33,6 +48,8 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 	}
 
 	if err := eg.Wait(); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 

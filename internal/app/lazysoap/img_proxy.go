@@ -9,13 +9,19 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.idHandler")
+	defer span.End()
+
 	path := chi.URLParam(r, "path")
+	span.SetAttributes(attribute.String("path", path))
 	url := tvmeta.GetURLByPosterPath(path)
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

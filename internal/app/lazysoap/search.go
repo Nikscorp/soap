@@ -6,6 +6,9 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/go-chi/chi/v5"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type searchResultsResp struct {
@@ -22,12 +25,18 @@ type searchResult struct {
 }
 
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
-	query := chi.URLParam(r, "query")
+	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.searchHandler")
+	defer span.End()
 
-	tvShows, err := s.tvMeta.SearchTVShows(r.Context(), query)
+	query := chi.URLParam(r, "query")
+	span.SetAttributes(attribute.Key("query").String(query))
+
+	tvShows, err := s.tvMeta.SearchTVShows(ctx, query)
 	if err != nil {
 		log.Printf("[ERROR] Failed search tv shows %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
