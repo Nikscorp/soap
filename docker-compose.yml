@@ -13,11 +13,10 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8202:8080"
-    networks:
-      - monitoring_default
+    # networks:
+    #   - monitoring_default
     command: /srv/soap --api-key="${API_KEY}"
 
-networks:
-  monitoring_default:
-    # comment this if you get an error
-    external: true
+# networks:
+#   monitoring_default:
+#     external: true
