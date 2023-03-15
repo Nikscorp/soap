@@ -1,4 +1,4 @@
-FROM nikscorp/go-builder:0.1.6 as build-backend
+FROM nikscorp/go-builder:0.1.7 as build-backend
 
 ENV \
     CGO_ENABLED=0 \
@@ -8,9 +8,13 @@ ENV \
 ADD . /go/src/soap/
 
 WORKDIR /go/src/soap
-RUN go build -o soap ./cmd/...
+RUN VERSION=$(git rev-parse --abbrev-ref HEAD)-$(git log -1 --format=%h) && \
+    echo version=$VERSION && \
+    go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap && \
+    sed -i "s/OVERRIDE_VERSION/$VERSION/g" swagger/swagger.yaml
+
 RUN golangci-lint run ./...
-RUN go test -coverprofile cover.out -count=1 -v ./...
+RUN go test -count=1 -v ./...
 
 
 FROM node:13.10.1-alpine3.11 as frontend-deps
@@ -34,6 +38,7 @@ LABEL maintainer="Nikscorp <voynov@nikscorp.com>"
 
 COPY --from=build-backend /go/src/soap/soap /srv/soap
 COPY --from=build-frontend /srv/frontend/build /static/
+COPY --from=build-backend /go/src/soap/swagger /swagger
 
 CMD ["/srv/soap"]
 EXPOSE 8080

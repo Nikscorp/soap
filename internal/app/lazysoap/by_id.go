@@ -17,12 +17,22 @@ import (
 
 var errZeroEpisodes = errors.New("0 episodes")
 
+// swagger:parameters id-series
+type IDParams struct {
+	// ID of the series to get the best episodes.
+	// in:path
+	// example: 4607
+	ID int `json:"id"`
+}
+
+// swagger:model
 type episodesResp struct {
 	Episodes []episode `json:"episodes"`
 	Title    string    `json:"title"`
 	Poster   string    `json:"poster"`
 }
 
+// swagger:model
 type episode struct {
 	Title  string  `json:"title"`
 	Rating float32 `json:"rating"`
@@ -30,6 +40,16 @@ type episode struct {
 	Season int     `json:"season"`
 }
 
+// swagger:route GET /id/{id} series id-series
+//
+// # Get the best episodes of series by id.
+//
+// Get the best episodes of series by id. Includes season, episode number, rating and title.
+// Sorted by season and number.
+//
+// responses:
+//
+// 200: episodesResp
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.idHandler")
 	defer span.End()
