@@ -76,10 +76,10 @@ info:
         email: voynov@nikscorp.com
         name: Nikita Voynov
         url: https://www.nikscorp.com
-    description: Package classification LazySoap
     license:
         name: MIT
         url: http://opensource.org/licenses/MIT
+    title: LazySoap.
     version: OVERRIDE_VERSION
 paths:
     /id/{id}:

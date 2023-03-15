@@ -1,4 +1,4 @@
-// Package classification LazySoap
+// Package classification LazySoap.
 //
 // Schemes: http, https
 // Version: OVERRIDE_VERSION
