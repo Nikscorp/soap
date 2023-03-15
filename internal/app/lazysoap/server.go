@@ -1,3 +1,17 @@
+// Package classification LazySoap
+//
+// Schemes: http, https
+// Version: OVERRIDE_VERSION
+// License: MIT http://opensource.org/licenses/MIT
+// Contact: Nikita Voynov<voynov@nikscorp.com> https://www.nikscorp.com
+//
+// Consumes:
+// - application/json
+//
+// Produces:
+// - application/json
+//
+// swagger:meta
 package lazysoap
 
 import (
@@ -8,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
+	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -81,6 +96,7 @@ func (s *Server) newRouter() http.Handler {
 	r.Use(cors.AllowAll().Handler)
 	r.Use(s.metrics.Middleware)
 	r.Use(rest.Ping)
+	r.Use(rest.Version(trace.Version))
 
 	r.Handle("/id/{id}", otelhttp.NewHandler(http.HandlerFunc(s.idHandler), "id"))
 	r.Handle("/search/{query}", otelhttp.NewHandler(http.HandlerFunc(s.searchHandler), "search"))

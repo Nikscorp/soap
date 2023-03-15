@@ -1,0 +1,133 @@
+consumes:
+    - application/json
+definitions:
+    episode:
+        properties:
+            number:
+                format: int64
+                type: integer
+                x-go-name: Number
+            rating:
+                format: float
+                type: number
+                x-go-name: Rating
+            season:
+                format: int64
+                type: integer
+                x-go-name: Season
+            title:
+                type: string
+                x-go-name: Title
+        type: object
+        x-go-package: github.com/Nikscorp/soap/internal/app/lazysoap
+    episodesResp:
+        properties:
+            episodes:
+                items:
+                    $ref: '#/definitions/episode'
+                type: array
+                x-go-name: Episodes
+            poster:
+                type: string
+                x-go-name: Poster
+            title:
+                type: string
+                x-go-name: Title
+        type: object
+        x-go-package: github.com/Nikscorp/soap/internal/app/lazysoap
+    searchResult:
+        properties:
+            firstAirDate:
+                type: string
+                x-go-name: FirstAirDate
+            id:
+                format: int64
+                type: integer
+                x-go-name: ID
+            poster:
+                type: string
+                x-go-name: Poster
+            rating:
+                format: float
+                type: number
+                x-go-name: Rating
+            title:
+                type: string
+                x-go-name: Title
+        type: object
+        x-go-package: github.com/Nikscorp/soap/internal/app/lazysoap
+    searchResultsResp:
+        properties:
+            language:
+                description: Language of the result
+                example: en
+                type: string
+                x-go-name: Language
+            searchResults:
+                description: Actual search results
+                items:
+                    $ref: '#/definitions/searchResult'
+                type: array
+                x-go-name: SearchResults
+        type: object
+        x-go-package: github.com/Nikscorp/soap/internal/app/lazysoap
+info:
+    contact:
+        email: voynov@nikscorp.com
+        name: Nikita Voynov
+        url: https://www.nikscorp.com
+    description: Package classification LazySoap
+    license:
+        name: MIT
+        url: http://opensource.org/licenses/MIT
+    version: OVERRIDE_VERSION
+paths:
+    /id/{id}:
+        get:
+            description: |-
+                Get the best episodes of series by id. Includes season, episode number, rating and title.
+                Sorted by season and number.
+            operationId: id-series
+            parameters:
+                - description: ID of the series to get the best episodes.
+                  example: 4607
+                  format: int64
+                  in: path
+                  name: id
+                  required: true
+                  type: integer
+                  x-go-name: ID
+            responses:
+                "200":
+                    description: episodesResp
+                    schema:
+                        $ref: '#/definitions/episodesResp'
+            summary: Get the best episodes of series by id.
+            tags:
+                - series
+    /search/{query}:
+        get:
+            description: This handler searches series by query and return results with derived language.
+            operationId: search-series
+            parameters:
+                - description: Query for search.
+                  example: Lost
+                  in: path
+                  name: query
+                  required: true
+                  type: string
+                  x-go-name: Query
+            responses:
+                "200":
+                    description: searchResultsResp
+                    schema:
+                        $ref: '#/definitions/searchResultsResp'
+            summary: Search series by query.
+            tags:
+                - series
+produces:
+    - application/json
+schemes:
+    - http
+    - https
+swagger: "2.0"

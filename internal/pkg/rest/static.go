@@ -14,6 +14,10 @@ const (
 func AddFileServer(r *chi.Mux) {
 	fileSystem := customFileSystem{http.Dir(staticPath)}
 	fileServer := http.FileServer(fileSystem)
+
+	swagger := customFileSystem{http.Dir("/swagger")}
+	swaggerServer := http.FileServer(swagger)
+	r.Handle("/swagger/*", http.StripPrefix("/swagger/", swaggerServer))
 	r.Handle("/*", fileServer)
 }
 
