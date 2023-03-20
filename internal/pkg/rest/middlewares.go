@@ -3,6 +3,8 @@ package rest
 import (
 	"net/http"
 	"strings"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 func Ping(next http.Handler) http.Handler {
@@ -31,4 +33,16 @@ func Version(version string) func(http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(fn)
 	}
+}
+
+// TraceIDToOutHeader is a middleware that appends trace id to the response header.
+func TraceIDToOutHeader(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		span := trace.SpanFromContext(r.Context())
+		if span != nil {
+			w.Header().Set("x-trace-id", span.SpanContext().TraceID().String())
+		}
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }

@@ -19,6 +19,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/pprof"
+	"strings"
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/rest"
@@ -97,10 +98,11 @@ func (s *Server) newRouter() http.Handler {
 	r.Use(s.metrics.Middleware)
 	r.Use(rest.Ping)
 	r.Use(rest.Version(trace.Version))
+	r.Use(rest.TraceIDToOutHeader)
 
-	r.Handle("/id/{id}", otelhttp.NewHandler(http.HandlerFunc(s.idHandler), "id"))
-	r.Handle("/search/{query}", otelhttp.NewHandler(http.HandlerFunc(s.searchHandler), "search"))
-	r.Handle("/img/{path}", otelhttp.NewHandler(http.HandlerFunc(s.imgProxyHandler), "img"))
+	r.HandleFunc("/id/{id}", s.idHandler)
+	r.HandleFunc("/search/{query}", s.searchHandler)
+	r.HandleFunc("/img/{path}", s.imgProxyHandler)
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
@@ -108,5 +110,9 @@ func (s *Server) newRouter() http.Handler {
 
 	rest.AddFileServer(r)
 
-	return r
+	return otelhttp.NewHandler(r, "lazysoap.http.server", otelhttp.WithFilter(func(r *http.Request) bool {
+		return strings.HasPrefix(r.URL.Path, "/id/") ||
+			strings.HasPrefix(r.URL.Path, "/search/") ||
+			strings.HasPrefix(r.URL.Path, "/img/")
+	}))
 }
