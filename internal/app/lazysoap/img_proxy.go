@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.idHandler")
+	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.imgProxyHandler")
 	defer span.End()
 
 	path := chi.URLParam(r, "path")
