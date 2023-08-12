@@ -11,7 +11,7 @@ WORKDIR /go/src/soap
 RUN VERSION=$(git rev-parse --abbrev-ref HEAD)-$(git log -1 --format=%h) && \
     echo version=$VERSION && \
     go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap && \
-    sed -i "s/OVERRIDE_VERSION/$VERSION/g" swagger/swagger.yaml
+    sed -i "s/OVERRIDE_VERSION/${VERSION//\//\\/}/g" swagger/swagger.yaml
 
 RUN golangci-lint run ./...
 RUN go test -count=1 -v ./...
