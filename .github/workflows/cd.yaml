@@ -36,4 +36,4 @@ jobs:
             echo VERSION=$VERSION
             docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
             docker push $IMAGE_ID:$VERSION
-            [ "$VERSION" == "latest" ] && curl -X POST -d '{"task":"soap", "secret":"${{ secrets.UPDATER_SECRET }}"}' https://updater.nikscorp.com/update
+            [ "$VERSION" == "latest" ] && curl -v --fail -X POST -d '{"task":"soap", "secret":"${{ secrets.UPDATER_SECRET }}"}' https://updater.nikscorp.com/update
