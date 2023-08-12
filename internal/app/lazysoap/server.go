@@ -1,6 +1,6 @@
 // Package classification LazySoap.
 //
-// Schemes: http, https
+// Schemes: https
 // Version: OVERRIDE_VERSION
 // License: MIT http://opensource.org/licenses/MIT
 // Contact: Nikita Voynov<voynov@nikscorp.com> https://www.nikscorp.com
