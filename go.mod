@@ -6,7 +6,7 @@ require (
 	github.com/cyruzin/golang-tmdb v1.5.1
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
-	github.com/gojuno/minimock/v3 v3.1.2
+	github.com/gojuno/minimock/v3 v3.1.3
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.2
