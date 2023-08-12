@@ -54,7 +54,13 @@ func TraceIDToOutHeader(next http.Handler) http.Handler {
 
 func LogRequest(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx := logger.ContextWithAttrs(r.Context(), "route", routePattern(r))
+		route := routePattern(r)
+		if strings.HasPrefix(route, "/debug") || strings.HasPrefix(route, "/metrics") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := logger.ContextWithAttrs(r.Context(), "route", route)
 		r = r.WithContext(ctx)
 
 		logger.Info(ctx, "New incoming request",
