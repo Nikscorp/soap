@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/sync/errgroup"
 )
@@ -18,10 +17,6 @@ type AllSeasonsWithDetails struct {
 func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.TVShowAllSeasonsWithDetails")
 	defer span.End()
-	span.SetAttributes(
-		attribute.Int("id", id),
-		attribute.String("language", language),
-	)
 
 	tvShowDetails, err := c.TVShowDetails(ctx, id)
 

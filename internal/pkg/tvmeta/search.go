@@ -7,7 +7,6 @@ import (
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -29,7 +28,6 @@ type TVShows struct {
 func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, error) {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.SearchTVShows")
 	defer span.End()
-	span.SetAttributes(attribute.String("query", query))
 
 	tag := languageTag(query)
 	resp, err := func() (*tmdb.SearchTVShows, error) {

@@ -16,12 +16,12 @@ package lazysoap
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"net/http/pprof"
 	"strings"
 	"time"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
@@ -55,7 +55,7 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 	return &Server{
 		address: address,
 		tvMeta:  tvMetaClient,
-		metrics: rest.NewMetrics([]string{"id", "search", "img", "ping"}),
+		metrics: rest.NewMetrics(),
 		imgClient: &http.Client{
 			Timeout: time.Second * 5,
 			Transport: otelhttp.NewTransport(&http.Transport{
@@ -78,20 +78,20 @@ func (s *Server) Run(ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		log.Printf("[INFO] Closing server (context done)")
+		logger.Info(ctx, "Closing server (context done)")
 		err := srv.Close()
 		if err != nil {
-			log.Printf("[ERROR] Failed to close server: %v", err)
+			logger.Error(ctx, "Failed to close server", "err", err)
 		}
 	}()
 
-	log.Printf("[INFO] Start to listen http requests")
+	logger.Info(ctx, "Start to listen http requests", "address", s.address)
 	return srv.ListenAndServe()
 }
 
 func (s *Server) newRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.RequestLogger(&middleware.DefaultLogFormatter{Logger: log.Default(), NoColor: true}))
+	r.Use(rest.LogRequest)
 
 	r.Use(middleware.Recoverer)
 	r.Use(cors.AllowAll().Handler)

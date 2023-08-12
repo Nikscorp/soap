@@ -1,13 +1,12 @@
 package lazysoap
 
 import (
-	"log"
 	"net/http"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -51,11 +50,11 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	defer span.End()
 
 	query := chi.URLParam(r, "query")
-	span.SetAttributes(attribute.Key("query").String(query))
+	ctx = logger.ContextWithAttrs(ctx, "query", query)
 
 	tvShows, err := s.tvMeta.SearchTVShows(ctx, query)
 	if err != nil {
-		log.Printf("[ERROR] Failed search tv shows %v", err)
+		logger.Error(ctx, "Failed search tv shows", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -78,5 +77,5 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		Language:      tvShows.Language,
 	}
 
-	rest.WriteJSON(resp, w)
+	rest.WriteJSON(r.Context(), resp, w)
 }

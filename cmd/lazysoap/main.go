@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,55 +11,67 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap"
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	tmdb "github.com/cyruzin/golang-tmdb"
+	"golang.org/x/exp/slog"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger.SetUpLogger(&logger.Opts{
+		Level: slog.LevelDebug,
+	})
+
 	parseOpts(&opts)
-	log.Printf("[INFO] Opts parsed successfully")
+
 	if opts.Version {
-		log.Printf("version=%s", trace.Version)
+		fmt.Println(trace.Version)
+		//nolint:gocritic
 		os.Exit(0)
 	}
 
 	tmdbClient, err := newTMDB(opts.APIKey)
 	if err != nil {
-		log.Fatalf("[CRITICAL] Failed to init tmdbClient")
+		logger.Error(ctx, "Failed to init tmdbClient")
+		//nolint:gocritic
+		os.Exit(1)
 	}
 	server := lazysoap.New(opts.Address, tvmeta.New(tmdbClient))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	go func() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 		gotS := <-stop
-		log.Printf("[WARN] Got signal %v, shutting down", gotS)
+		logger.Warn(ctx, "Got signal, shutting down", "signal", gotS)
 		cancel()
 	}()
 
 	tp, err := trace.SetupTracing(opts.JaegerURL)
 	if err != nil {
 		//nolint:gocritic
-		log.Fatalf("[CRITICAL] Failed to init tracing")
+		logger.Error(ctx, "Failed to init tracing", "err", err)
+		os.Exit(1)
 	}
 
 	err = server.Run(ctx)
 	if !errors.Is(err, http.ErrServerClosed) {
 		cancel()
 		//nolint:gocritic
-		log.Fatalf("[CRITICAL] Server failed to start: %v", err)
+		logger.Error(ctx, "Server failed to start", "err", err)
+		os.Exit(1)
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := tp.Shutdown(ctx); err != nil {
-		log.Fatal(err)
+		logger.Error(ctx, "Server failed to shutdown", "err", err)
+		os.Exit(1)
 	}
-	log.Printf("[INFO] Gracefully shutted down")
+	logger.Info(ctx, "Gracefully shutted down")
 }
 
 func newTMDB(apiKey string) (*tmdb.Client, error) {
