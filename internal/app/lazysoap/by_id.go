@@ -2,16 +2,16 @@ package lazysoap
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -57,14 +57,14 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	language := r.URL.Query().Get("language")
 
-	span.SetAttributes(
-		attribute.String("id", id),
-		attribute.String("language", language),
+	ctx = logger.ContextWithAttrs(ctx,
+		"id", id,
+		"language", language,
 	)
 
 	intID, err := strconv.Atoi(id)
 	if err != nil {
-		log.Printf("[ERROR] Failed to parse id: %v", err)
+		logger.Error(ctx, "Failed to parse id", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -73,7 +73,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 
 	seasons, err := s.tvMeta.TVShowAllSeasonsWithDetails(ctx, intID, language)
 	if err != nil {
-		log.Printf("[ERROR] Failed to get episodes: %v", err)
+		logger.Error(ctx, "Failed to get episodes", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -82,13 +82,13 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 
 	avgRating, err := s.getAvgRating(seasons)
 	if err != nil {
-		log.Printf("[ERROR] error counting avg rating: %v", err)
+		logger.Error(ctx, "Failed to count avg rating", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return
 	}
-	log.Printf("[INFO] Avg Rating for id %d is %v", intID, avgRating)
+	logger.Info(ctx, fmt.Sprintf("Avg Rating for id %d is %v", intID, avgRating))
 
 	respEpisodes := s.episodesAboveRating(seasons, avgRating)
 	fullRespEpisodes := episodesResp{
@@ -97,7 +97,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		Poster:   seasons.Details.PosterLink,
 	}
 
-	rest.WriteJSON(fullRespEpisodes, w)
+	rest.WriteJSON(r.Context(), fullRespEpisodes, w)
 }
 
 func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, error) {

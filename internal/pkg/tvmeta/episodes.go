@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -25,11 +25,8 @@ type TVShowEpisode struct {
 func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
 	ctx, span := otel.GetTracerProvider().Tracer(tracerName).Start(ctx, "tvmeta.TVShowEpisodesBySeason")
 	defer span.End()
-	span.SetAttributes(
-		attribute.Int("id", id),
-		attribute.Int("seasonNumber", seasonNumber),
-		attribute.String("language", language),
-	)
+
+	ctx = logger.ContextWithAttrs(ctx, "seasonNumber", seasonNumber)
 
 	if language == "" {
 		language = defaultLangTag

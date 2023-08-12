@@ -6,7 +6,6 @@ import (
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 )
 
@@ -20,8 +19,6 @@ type TvShowDetails struct {
 func (c *Client) TVShowDetails(ctx context.Context, id int) (*TvShowDetails, error) {
 	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.TVShowDetails")
 	defer span.End()
-
-	span.SetAttributes(attribute.Int("id", id))
 
 	resp, err := func() (*tmdb.TVDetails, error) {
 		_, span := otel.Tracer(tracerName).Start(ctx, "tmdb.GetTVDetails")

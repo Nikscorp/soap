@@ -1,12 +1,12 @@
 package rest
 
 import (
-	"log"
+	"context"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -14,10 +14,9 @@ type Metrics struct {
 	totalRequests  *prometheus.CounterVec
 	responseStatus *prometheus.CounterVec
 	httpDuration   *prometheus.HistogramVec
-	pathSet        map[string]struct{}
 }
 
-func NewMetrics(paths []string) *Metrics {
+func NewMetrics() *Metrics {
 	res := &Metrics{}
 
 	res.totalRequests = prometheus.NewCounterVec(
@@ -43,37 +42,21 @@ func NewMetrics(paths []string) *Metrics {
 	}, []string{"path", "status"})
 
 	if err := prometheus.Register(res.totalRequests); err != nil {
-		log.Printf("[WARN] can't register prometheus totalRequests: %v", err)
+		logger.Warn(context.Background(), "Can't register prometheus totalRequests", "err", err)
 	}
 	if err := prometheus.Register(res.responseStatus); err != nil {
-		log.Printf("[WARN] can't register prometheus responseStatus: %v", err)
+		logger.Warn(context.Background(), "Can't register prometheus responseStatus", "err", err)
 	}
 	if err := prometheus.Register(res.httpDuration); err != nil {
-		log.Printf("[WARN] can't register prometheus httpDuration: %v", err)
+		logger.Warn(context.Background(), "Can't register prometheus httpDuration", "err", err)
 	}
-
-	pathSet := make(map[string]struct{}, len(paths))
-	for _, path := range paths {
-		pathSet[strings.ToLower(path)] = struct{}{}
-	}
-	res.pathSet = pathSet
 
 	return res
 }
 
 func (m *Metrics) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		splitted := strings.Split(r.URL.Path, "/")
-		path := splitted[0]
-		if path == "" && len(splitted) > 1 {
-			path = splitted[1]
-		}
-		path = strings.ToLower(path)
-
-		if _, ok := m.pathSet[path]; !ok {
-			next.ServeHTTP(w, r)
-			return
-		}
+		path := routePattern(r)
 
 		m.totalRequests.WithLabelValues(path).Inc()
 

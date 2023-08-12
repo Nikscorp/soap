@@ -1,15 +1,18 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
+
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 )
 
-func WriteJSON(data interface{}, w http.ResponseWriter) {
+func WriteJSON(ctx context.Context, data interface{}, w http.ResponseWriter) {
 	marshalledResp, err := json.Marshal(data)
 	if err != nil {
-		log.Printf("[ERROR] Failed to marshal response %+v: %v", data, err)
+		logger.Error(ctx, "Failed to marshal response", "err", err, "data", fmt.Sprintf("%+v", data))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -32,7 +32,7 @@ func NewServerWithImgClient(t *testing.T) *ServerM {
 	srv := &Server{
 		address: "",
 		tvMeta:  tvMetaClientMock,
-		metrics: rest.NewMetrics([]string{"id", "search", "img"}),
+		metrics: rest.NewMetrics(),
 		imgClient: NewTestClient(func(req *http.Request) *http.Response {
 			switch path := req.URL.String(); path {
 			case "https://image.tmdb.org/t/p/w92/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg":
