@@ -1,9 +1,7 @@
 version: "3"
 services:
   soap:
-    image: nikscorp/soap:latest
-    build:
-      context: .
+    image: ghcr.io/nikscorp/soap:latest
     container_name: soap
     logging: &default_logging
       driver: json-file
@@ -13,4 +11,10 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8202:8080"
+    networks:
+      - monitoring_default
     command: /srv/soap --api-key="${API_KEY}"
+
+networks:
+  monitoring_default:
+    external: true
