@@ -79,9 +79,11 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		logger.Info(ctx, "Closing server (context done)")
-		err := srv.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err := srv.Shutdown(ctx)
 		if err != nil {
-			logger.Error(ctx, "Failed to close server", "err", err)
+			logger.Error(ctx, "Failed to shutdown server", "err", err)
 		}
 	}()
 
