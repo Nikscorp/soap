@@ -14,8 +14,8 @@ var opts struct {
 	JaegerURL string `long:"jaeger-url" short:"j" default:"http://jaeger:14268/api/traces" description:"jaeger url"`
 }
 
-func parseOpts(opts interface{}) {
-	p := flags.NewParser(opts, flags.PrintErrors|flags.HelpFlag)
+func parseOpts() {
+	p := flags.NewParser(&opts, flags.PrintErrors|flags.HelpFlag)
 	if _, err := p.Parse(); err != nil {
 		os.Exit(1)
 	}

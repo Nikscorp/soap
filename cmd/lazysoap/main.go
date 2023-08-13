@@ -26,7 +26,7 @@ func main() {
 		Level: slog.LevelDebug,
 	})
 
-	parseOpts(&opts)
+	parseOpts()
 
 	if opts.Version {
 		fmt.Println(trace.Version)
@@ -46,7 +46,7 @@ func main() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 		gotS := <-stop
-		logger.Warn(ctx, "Got signal, shutting down", "signal", gotS)
+		logger.Warn(ctx, "Got signal, shutting down", "signal", gotS.String())
 		cancel()
 	}()
 
@@ -68,9 +68,10 @@ func main() {
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := tp.Shutdown(ctx); err != nil {
-		logger.Error(ctx, "Server failed to shutdown", "err", err)
+		logger.Error(ctx, "Trace provider failed to shutdown", "err", err)
 		os.Exit(1)
 	}
+
 	logger.Info(ctx, "Gracefully shutted down")
 }
 
