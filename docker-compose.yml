@@ -13,4 +13,6 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8202:8080"
-    command: /srv/soap --api-key="${API_KEY}"
+    command: "/srv/soap -c  /srv/config/config.yaml"
+    volumes:
+      - ./config:/srv/config

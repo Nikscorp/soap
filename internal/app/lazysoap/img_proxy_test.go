@@ -30,7 +30,7 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 func NewServerWithImgClient(t *testing.T) *ServerM {
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
 	srv := &Server{
-		address: "",
+		config:  Config{},
 		tvMeta:  tvMetaClientMock,
 		metrics: rest.NewMetrics(),
 		imgClient: NewTestClient(func(req *http.Request) *http.Response {

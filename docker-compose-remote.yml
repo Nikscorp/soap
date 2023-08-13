@@ -13,7 +13,9 @@ services:
       - "127.0.0.1:8202:8080"
     networks:
       - monitoring_default
-    command: /srv/soap --api-key="${API_KEY}"
+    command: "/srv/soap -config /srv/config/soap.yaml"
+    volumes:
+      - ./config:/srv/config
 
 networks:
   monitoring_default:

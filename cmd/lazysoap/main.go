@@ -8,13 +8,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap"
+	"github.com/Nikscorp/soap/internal/pkg/clients/tmdb"
+	"github.com/Nikscorp/soap/internal/pkg/config"
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
-	tmdb "github.com/cyruzin/golang-tmdb"
 	"golang.org/x/exp/slog"
 )
 
@@ -30,17 +30,23 @@ func main() {
 
 	if opts.Version {
 		fmt.Println(trace.Version)
+		cancel()
 		//nolint:gocritic
 		os.Exit(0)
 	}
 
-	tmdbClient, err := newTMDB(opts.APIKey)
+	cfg, err := config.ParseConfig(opts.Config)
 	if err != nil {
-		logger.Error(ctx, "Failed to init tmdbClient")
-		//nolint:gocritic
+		logger.Error(ctx, "Failed to parse config", "err", err)
 		os.Exit(1)
 	}
-	server := lazysoap.New(opts.Address, tvmeta.New(tmdbClient))
+
+	tmdbClient, err := tmdb.NewTMDB(cfg.TMDBConfig)
+	if err != nil {
+		logger.Error(ctx, "Failed to init tmdbClient")
+		os.Exit(1)
+	}
+	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient))
 
 	go func() {
 		stop := make(chan os.Signal, 1)
@@ -50,22 +56,20 @@ func main() {
 		cancel()
 	}()
 
-	tp, err := trace.SetupTracing(opts.JaegerURL)
+	tp, err := trace.SetupTracing(cfg.Trace)
 	if err != nil {
-		//nolint:gocritic
-		logger.Error(ctx, "Failed to init tracing", "err", err)
+		logger.Error(ctx, "Failed to setup tracing", "err", err)
 		os.Exit(1)
 	}
 
 	err = server.Run(ctx)
 	if !errors.Is(err, http.ErrServerClosed) {
 		cancel()
-		//nolint:gocritic
 		logger.Error(ctx, "Server failed to start", "err", err)
 		os.Exit(1)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel = context.WithTimeout(context.Background(), cfg.Trace.GracefulTimeout)
 	defer cancel()
 	if err := tp.Shutdown(ctx); err != nil {
 		logger.Error(ctx, "Trace provider failed to shutdown", "err", err)
@@ -73,23 +77,4 @@ func main() {
 	}
 
 	logger.Info(ctx, "Gracefully shutted down")
-}
-
-func newTMDB(apiKey string) (*tmdb.Client, error) {
-	tmdbClient, err := tmdb.Init(apiKey)
-	if err != nil {
-		return nil, err
-	}
-
-	httpClient := http.Client{
-		Timeout: time.Second * 5,
-		Transport: &http.Transport{
-			MaxIdleConns:    10,
-			IdleConnTimeout: 15 * time.Second,
-		},
-	}
-	tmdbClient.SetClientConfig(httpClient)
-	tmdbClient.SetClientAutoRetry()
-
-	return tmdbClient, nil
 }

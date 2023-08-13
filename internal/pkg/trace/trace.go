@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
@@ -20,14 +21,20 @@ var (
 	Version = "local"
 )
 
+type Config struct {
+	Endpoint        string        `yaml:"endpoint" env:"TRACE_ENDPOINT" env-default:"http://jaeger:14268/api/traces"`
+	Ratio           float64       `yaml:"ratio" env:"TRACE_RATIO" env-default:"1.0"`
+	GracefulTimeout time.Duration `yaml:"graceful_timeout" env:"TRACE_GRACEFUL_TIMEOUT" env-default:"10s"`
+}
+
 // SetupTracing returns an OpenTelemetry TracerProvider configured to use
 // the Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
-func SetupTracing(url string) (*tracesdk.TracerProvider, error) {
+func SetupTracing(cfg Config) (*tracesdk.TracerProvider, error) {
 	// Create the Jaeger exporter
 	exp, err := jaeger.New(
-		jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)),
+		jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(cfg.Endpoint)),
 	)
 	if err != nil {
 		return nil, err
@@ -51,7 +58,7 @@ func SetupTracing(url string) (*tracesdk.TracerProvider, error) {
 		tracesdk.WithBatcher(exp),
 		// Record information about this application in a Resource.
 		tracesdk.WithResource(resources),
-		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(1))),
+		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(cfg.Ratio))),
 	)
 
 	otel.SetTracerProvider(tp)
