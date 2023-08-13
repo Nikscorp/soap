@@ -18,7 +18,7 @@ test-race:
 	go test -race -count=1 -v ./...
 
 up:
-	./bin/lazysoap --api-key=$(API_KEY)
+	./bin/lazysoap
 
 docker-build:
 	docker-compose build

@@ -8,10 +8,8 @@ import (
 
 //nolint:gochecknoglobals
 var opts struct {
-	Address   string `long:"listen-address" short:"l" default:"0.0.0.0:8080" description:"listen address of http server"`
-	APIKey    string `long:"api-key" short:"k" description:"TMDB API key"`
-	Version   bool   `long:"version" short:"v" description:"print version and exit"`
-	JaegerURL string `long:"jaeger-url" short:"j" default:"http://jaeger:14268/api/traces" description:"jaeger url"`
+	Config  string `long:"config" short:"c" description:"path to config file" default:"config/config.yaml"`
+	Version bool   `long:"version" short:"v" description:"print version and exit"`
 }
 
 func parseOpts() {

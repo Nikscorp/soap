@@ -21,7 +21,7 @@ type ServerM struct {
 
 func NewServerM(t *testing.T) *ServerM {
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
-	srv := New("", tvMetaClientMock)
+	srv := New(Config{}, tvMetaClientMock)
 	ts := httptest.NewServer(srv.newRouter())
 
 	return &ServerM{

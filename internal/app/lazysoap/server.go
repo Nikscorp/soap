@@ -33,14 +33,27 @@ import (
 )
 
 const (
-	writeTimeout = 60 * time.Second
-	readTimeout  = 15 * time.Second
-	idleTimeout  = 15 * time.Second
-	tracerName   = "github.com/Nikscorp/internal/app/lazysoap"
+	tracerName = "github.com/Nikscorp/internal/app/lazysoap"
 )
 
+type Config struct {
+	Address           string          `yaml:"listen_addr" env:"LAZYSOAP_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
+	ReadTimeout       time.Duration   `yaml:"read_timeout" env:"LAZYSOAP_READ_TIMEOUT" env-default:"10s"`
+	ReadHeaderTimeout time.Duration   `yaml:"read_header_timeout" env:"LAZYSOAP_READ_HEADER_TIMEOUT" env-default:"10s"`
+	WriteTimeout      time.Duration   `yaml:"write_timeout" env:"LAZYSOAP_WRITE_TIMEOUT" env-default:"10s"`
+	IdleTimeout       time.Duration   `yaml:"idle_timeout" env:"LAZYSOAP_IDLE_TIMEOUT" env-default:"10s"`
+	GracefulTimeout   time.Duration   `yaml:"graceful_timeout" env:"LAZYSOAP_GRACEFUL_TIMEOUT" env-default:"10s"`
+	ImgClient         ImgClientConfig `yaml:"img_client"`
+}
+
+type ImgClientConfig struct {
+	Timeout         time.Duration `yaml:"timeout" env:"LAZYSOAP_IMG_CLIENT_TIMEOUT" env-default:"5s"`
+	MaxIdleConns    int           `yaml:"max_idle_conns" env:"LAZYSOAP_IMG_CLIENT_MAX_IDLE_CONNS" env-default:"100"`
+	IdleConnTimeout time.Duration `yaml:"idle_conn_timeout" env:"LAZYSOAP_IMG_CLIENT_IDLE_CONN_TIMEOUT" env-default:"60s"`
+}
+
 type Server struct {
-	address   string
+	config    Config
 	tvMeta    tvMetaClient
 	metrics   *rest.Metrics
 	imgClient *http.Client
@@ -51,16 +64,16 @@ type tvMetaClient interface {
 	TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*tvmeta.AllSeasonsWithDetails, error)
 }
 
-func New(address string, tvMetaClient tvMetaClient) *Server {
+func New(config Config, tvMetaClient tvMetaClient) *Server {
 	return &Server{
-		address: address,
+		config:  config,
 		tvMeta:  tvMetaClient,
 		metrics: rest.NewMetrics(),
 		imgClient: &http.Client{
-			Timeout: time.Second * 5,
+			Timeout: config.ImgClient.Timeout,
 			Transport: otelhttp.NewTransport(&http.Transport{
-				MaxIdleConns:    100,
-				IdleConnTimeout: 60 * time.Second,
+				MaxIdleConns:    config.ImgClient.MaxIdleConns,
+				IdleConnTimeout: config.ImgClient.IdleConnTimeout,
 			}),
 		},
 	}
@@ -68,18 +81,18 @@ func New(address string, tvMetaClient tvMetaClient) *Server {
 
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
-		Addr:              s.address,
-		WriteTimeout:      writeTimeout,
-		ReadHeaderTimeout: readTimeout,
-		ReadTimeout:       readTimeout,
-		IdleTimeout:       idleTimeout,
+		Addr:              s.config.Address,
+		WriteTimeout:      s.config.WriteTimeout,
+		ReadHeaderTimeout: s.config.ReadHeaderTimeout,
+		ReadTimeout:       s.config.ReadTimeout,
+		IdleTimeout:       s.config.IdleTimeout,
 		Handler:           s.newRouter(),
 	}
 
 	go func() {
 		<-ctx.Done()
 		logger.Info(ctx, "Closing server (context done)")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), s.config.GracefulTimeout)
 		defer cancel()
 		err := srv.Shutdown(ctx)
 		if err != nil {
@@ -87,7 +100,7 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	logger.Info(ctx, "Start to listen http requests", "address", s.address)
+	logger.Info(ctx, "Start to listen http requests", "address", s.config.Address)
 	return srv.ListenAndServe()
 }
 
