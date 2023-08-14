@@ -1,9 +1,10 @@
 package tvmeta
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"go.opentelemetry.io/otel"
@@ -67,8 +68,8 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 		tvShows = append(tvShows, parsedShow)
 	}
 
-	sort.Slice(tvShows, func(i, j int) bool {
-		return tvShows[i].Popularity > tvShows[j].Popularity
+	slices.SortFunc(tvShows, func(a, b *TVShow) int {
+		return cmp.Compare(b.Popularity, a.Popularity)
 	})
 
 	res := &TVShows{

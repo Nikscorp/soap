@@ -3,13 +3,13 @@ package logger
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/exp/slog"
 )
 
 var (

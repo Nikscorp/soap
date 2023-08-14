@@ -1,6 +1,6 @@
 module github.com/Nikscorp/soap
 
-go 1.20
+go 1.21
 
 require (
 	github.com/cyruzin/golang-tmdb v1.5.1
@@ -16,7 +16,6 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.16.0
 	go.opentelemetry.io/otel/sdk v1.16.0
 	go.opentelemetry.io/otel/trace v1.16.0
-	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
 	golang.org/x/sync v0.3.0
 )
 
