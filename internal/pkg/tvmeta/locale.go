@@ -1,7 +1,8 @@
 package tvmeta
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"unicode"
 )
 
@@ -36,8 +37,8 @@ func languageTag(input string) string {
 		cntValues = append(cntValues, &tag{k, v})
 	}
 
-	sort.Slice(cntValues, func(i, j int) bool {
-		return cntValues[i].cnt > cntValues[j].cnt
+	slices.SortFunc(cntValues, func(a, b *tag) int {
+		return cmp.Compare(b.cnt, a.cnt)
 	})
 
 	if len(cntValues) == 0 {

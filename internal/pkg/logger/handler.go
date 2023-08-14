@@ -4,11 +4,11 @@ package logger
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/exp/slog"
 )
 
 type CustomHandler struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,6 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
-	"golang.org/x/exp/slog"
 )
 
 func main() {
