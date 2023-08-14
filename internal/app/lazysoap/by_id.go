@@ -108,6 +108,7 @@ func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, e
 
 	for _, s := range seasons.Seasons {
 		for _, e := range s.Episodes {
+			//nolint:gomnd
 			e.Rating = float32(math.Round(float64(e.Rating*100))) / 100
 			sumRating += e.Rating
 			episodesCount++

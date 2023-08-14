@@ -6,9 +6,7 @@ import (
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
 
-var (
-	ErrNilResp = errors.New("nil resp error")
-)
+var ErrNilResp = errors.New("nil resp error")
 
 type Client struct {
 	client tmdbClient

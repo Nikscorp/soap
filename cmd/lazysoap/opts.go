@@ -8,8 +8,8 @@ import (
 
 //nolint:gochecknoglobals
 var opts struct {
-	Config  string `long:"config" short:"c" description:"path to config file" default:"config/config.yaml"`
-	Version bool   `long:"version" short:"v" description:"print version and exit"`
+	Config  string `default:"config/config.yaml"         description:"path to config file" long:"config" short:"c"`
+	Version bool   `description:"print version and exit" long:"version"                    short:"v"`
 }
 
 func parseOpts() {

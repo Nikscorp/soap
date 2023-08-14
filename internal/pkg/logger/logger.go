@@ -26,6 +26,7 @@ type Opts struct {
 //nolint:gochecknoinits
 func init() {
 	global = slog.New(NewCustomHandler(slog.NewJSONHandler(os.Stdout, nil)))
+	slog.SetDefault(global)
 }
 
 func SetUpLogger(opts *Opts) {

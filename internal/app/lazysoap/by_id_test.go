@@ -15,7 +15,7 @@ func TestIDHandler(t *testing.T) {
 	srv := NewServerM(t)
 	defer srv.server.Close()
 
-	var testCases = []struct {
+	testCases := []struct {
 		name       string
 		inputQuery string
 		wantLang   string

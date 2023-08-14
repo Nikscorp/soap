@@ -7,7 +7,7 @@ import (
 )
 
 func TestLanguageTag(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		input       string
 		expectedTag string
@@ -54,5 +54,4 @@ func TestLanguageTag(t *testing.T) {
 			require.Equal(t, tc.expectedTag, languageTag(tc.input))
 		})
 	}
-
 }

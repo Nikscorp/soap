@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/propagation"
@@ -16,15 +17,13 @@ const (
 	service = "soap"
 )
 
-var (
-	//nolint:gochecknoglobals
-	Version = "local"
-)
+//nolint:gochecknoglobals
+var Version = "local"
 
 type Config struct {
-	Endpoint        string        `yaml:"endpoint" env:"TRACE_ENDPOINT" env-default:"http://jaeger:14268/api/traces"`
-	Ratio           float64       `yaml:"ratio" env:"TRACE_RATIO" env-default:"1.0"`
-	GracefulTimeout time.Duration `yaml:"graceful_timeout" env:"TRACE_GRACEFUL_TIMEOUT" env-default:"10s"`
+	Endpoint        string        `env:"TRACE_ENDPOINT"         env-default:"http://jaeger:14268/api/traces" yaml:"endpoint"`
+	Ratio           float64       `env:"TRACE_RATIO"            env-default:"1.0"                            yaml:"ratio"`
+	GracefulTimeout time.Duration `env:"TRACE_GRACEFUL_TIMEOUT" env-default:"10s"                            yaml:"graceful_timeout"`
 }
 
 // SetupTracing returns an OpenTelemetry TracerProvider configured to use
@@ -68,6 +67,10 @@ func SetupTracing(cfg Config) (*tracesdk.TracerProvider, error) {
 			propagation.TraceContext{}, // W3C Trace Context format; https://www.w3.org/TR/trace-context/
 		),
 	)
+
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		logger.Error(context.Background(), "Got otel error", "err", err)
+	}))
 
 	return tp, nil
 }

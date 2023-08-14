@@ -6,47 +6,27 @@ run:
   skip-dirs:
     - vendor
 linters:
-  disable-all: true
-  enable:
-    - bodyclose
-    # - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    - exportloopref
-    # - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    # - gomnd
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    # - lll
-    - misspell
-    - nakedret
-    # - noctx TODO enable
-    # - nolintlint
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
-    - asciicheck
-    - gochecknoglobals
-    - gocognit
-    - godot
-    - godox
-    - goerr113
-    - nestif
-    - prealloc
-    - testpackage
-    - revive
-    # - wsl
+  enable-all: true
+  disable:
+  # need to try on
+    - promlinter
+    - wrapcheck
+  # too much false positive
+    - depguard
+    - lll
+    - wsl
+    - tagliatelle
+    - exhaustruct
+    - nlreturn
+    - varnamelen
+  # deprecated warns
+    - ifshort
+    - golint
+    - interfacer
+    - deadcode
+    - exhaustivestruct
+    - maligned
+    - nosnakecase
+    - scopelint
+    - structcheck
+    - varcheck

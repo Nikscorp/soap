@@ -42,7 +42,7 @@ type tmdbEpisode = struct {
 }
 
 func TestTVShowEpisodesBySeason(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name      string
 		inputLang string
 		wantLang  string
@@ -102,7 +102,6 @@ func TestTVShowEpisodesBySeason(t *testing.T) {
 			}, resp)
 		})
 	}
-
 }
 
 func TestTVShowEpisodesBySeasonError(t *testing.T) {

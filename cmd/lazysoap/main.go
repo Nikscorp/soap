@@ -29,6 +29,7 @@ func main() {
 	parseOpts()
 
 	if opts.Version {
+		//nolint:forbidigo
 		fmt.Println(trace.Version)
 		cancel()
 		//nolint:gocritic

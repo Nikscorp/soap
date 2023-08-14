@@ -19,7 +19,6 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 	defer span.End()
 
 	tvShowDetails, err := c.TVShowDetails(ctx, id)
-
 	if err != nil {
 		err = fmt.Errorf("get all episodes: %w", err)
 		span.RecordError(err)

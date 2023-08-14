@@ -37,19 +37,19 @@ const (
 )
 
 type Config struct {
-	Address           string          `yaml:"listen_addr" env:"LAZYSOAP_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
-	ReadTimeout       time.Duration   `yaml:"read_timeout" env:"LAZYSOAP_READ_TIMEOUT" env-default:"10s"`
-	ReadHeaderTimeout time.Duration   `yaml:"read_header_timeout" env:"LAZYSOAP_READ_HEADER_TIMEOUT" env-default:"10s"`
-	WriteTimeout      time.Duration   `yaml:"write_timeout" env:"LAZYSOAP_WRITE_TIMEOUT" env-default:"10s"`
-	IdleTimeout       time.Duration   `yaml:"idle_timeout" env:"LAZYSOAP_IDLE_TIMEOUT" env-default:"10s"`
-	GracefulTimeout   time.Duration   `yaml:"graceful_timeout" env:"LAZYSOAP_GRACEFUL_TIMEOUT" env-default:"10s"`
+	Address           string          `env:"LAZYSOAP_LISTEN_ADDR"         env-default:"0.0.0.0:8080" yaml:"listen_addr"`
+	ReadTimeout       time.Duration   `env:"LAZYSOAP_READ_TIMEOUT"        env-default:"10s"          yaml:"read_timeout"`
+	ReadHeaderTimeout time.Duration   `env:"LAZYSOAP_READ_HEADER_TIMEOUT" env-default:"10s"          yaml:"read_header_timeout"`
+	WriteTimeout      time.Duration   `env:"LAZYSOAP_WRITE_TIMEOUT"       env-default:"10s"          yaml:"write_timeout"`
+	IdleTimeout       time.Duration   `env:"LAZYSOAP_IDLE_TIMEOUT"        env-default:"10s"          yaml:"idle_timeout"`
+	GracefulTimeout   time.Duration   `env:"LAZYSOAP_GRACEFUL_TIMEOUT"    env-default:"10s"          yaml:"graceful_timeout"`
 	ImgClient         ImgClientConfig `yaml:"img_client"`
 }
 
 type ImgClientConfig struct {
-	Timeout         time.Duration `yaml:"timeout" env:"LAZYSOAP_IMG_CLIENT_TIMEOUT" env-default:"5s"`
-	MaxIdleConns    int           `yaml:"max_idle_conns" env:"LAZYSOAP_IMG_CLIENT_MAX_IDLE_CONNS" env-default:"100"`
-	IdleConnTimeout time.Duration `yaml:"idle_conn_timeout" env:"LAZYSOAP_IMG_CLIENT_IDLE_CONN_TIMEOUT" env-default:"60s"`
+	Timeout         time.Duration `env:"LAZYSOAP_IMG_CLIENT_TIMEOUT"           env-default:"5s"  yaml:"timeout"`
+	MaxIdleConns    int           `env:"LAZYSOAP_IMG_CLIENT_MAX_IDLE_CONNS"    env-default:"100" yaml:"max_idle_conns"`
+	IdleConnTimeout time.Duration `env:"LAZYSOAP_IMG_CLIENT_IDLE_CONN_TIMEOUT" env-default:"60s" yaml:"idle_conn_timeout"`
 }
 
 type Server struct {
@@ -94,8 +94,10 @@ func (s *Server) Run(ctx context.Context) error {
 		logger.Info(ctx, "Closing server (context done)")
 		ctx, cancel := context.WithTimeout(context.Background(), s.config.GracefulTimeout)
 		defer cancel()
+		//nolint:contextcheck
 		err := srv.Shutdown(ctx)
 		if err != nil {
+			//nolint:contextcheck
 			logger.Error(ctx, "Failed to shutdown server", "err", err)
 		}
 	}()

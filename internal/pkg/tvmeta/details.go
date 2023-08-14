@@ -26,7 +26,6 @@ func (c *Client) TVShowDetails(ctx context.Context, id int) (*TvShowDetails, err
 
 		return c.client.GetTVDetails(id, nil)
 	}()
-
 	if err != nil {
 		err = fmt.Errorf("get tv details error: %w", err)
 		span.RecordError(err)

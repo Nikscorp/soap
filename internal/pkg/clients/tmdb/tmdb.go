@@ -8,11 +8,11 @@ import (
 )
 
 type Config struct {
-	APIKey          string        `yaml:"api_key" env:"TMDB_API_KEY" env-required:"true"`
-	EnableAutoRetry bool          `yaml:"enable_auto_retry" env:"TMDB_ENABLE_AUTO_RETRY" env-default:"true"`
-	RequestTimeout  time.Duration `yaml:"request_timeout" env:"TMDB_REQUEST_TIMEOUT" env-default:"10s"`
-	MaxIdleConns    int           `yaml:"max_idle_conns" env:"TMDB_MAX_IDLE_CONNS" env-default:"100"`
-	IdleConnTimeout time.Duration `yaml:"idle_conn_timeout" env:"TMDB_IDLE_CONN_TIMEOUT" env-default:"60s"`
+	APIKey          string        `env:"TMDB_API_KEY"           env-required:"true" yaml:"api_key"`
+	EnableAutoRetry bool          `env:"TMDB_ENABLE_AUTO_RETRY" env-default:"true"  yaml:"enable_auto_retry"`
+	RequestTimeout  time.Duration `env:"TMDB_REQUEST_TIMEOUT"   env-default:"10s"   yaml:"request_timeout"`
+	MaxIdleConns    int           `env:"TMDB_MAX_IDLE_CONNS"    env-default:"100"   yaml:"max_idle_conns"`
+	IdleConnTimeout time.Duration `env:"TMDB_IDLE_CONN_TIMEOUT" env-default:"60s"   yaml:"idle_conn_timeout"`
 }
 
 func NewTMDB(cfg Config) (*tmdb.Client, error) {
@@ -22,13 +22,15 @@ func NewTMDB(cfg Config) (*tmdb.Client, error) {
 	}
 
 	httpClient := http.Client{
-		Timeout: time.Second * 5,
+		Timeout: cfg.RequestTimeout,
 		Transport: &http.Transport{
 			MaxIdleConns:    cfg.MaxIdleConns,
 			IdleConnTimeout: cfg.IdleConnTimeout,
 		},
 	}
 	tmdbClient.SetClientConfig(httpClient)
-	tmdbClient.SetClientAutoRetry()
+	if cfg.EnableAutoRetry {
+		tmdbClient.SetClientAutoRetry()
+	}
 	return tmdbClient, nil
 }

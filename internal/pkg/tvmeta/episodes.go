@@ -41,7 +41,6 @@ func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumbe
 		}
 		return c.client.GetTVSeasonDetails(id, seasonNumber, urlOptions)
 	}()
-
 	if err != nil {
 		err = fmt.Errorf("get TV Season Details: %w", err)
 		span.RecordError(err)

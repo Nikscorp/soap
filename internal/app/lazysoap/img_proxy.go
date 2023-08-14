@@ -1,10 +1,8 @@
 package lazysoap
 
 import (
-	"context"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
@@ -20,8 +18,6 @@ func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
 	ctx = logger.ContextWithAttrs(ctx, "path", path)
 	url := tvmeta.GetURLByPosterPath(path)
 
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		logger.Error(ctx, "Failed to create img-proxy request", "err", err)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -60,27 +61,13 @@ func (m *Metrics) Middleware(next http.Handler) http.Handler {
 
 		m.totalRequests.WithLabelValues(path).Inc()
 
-		rw := newResponseWriter(w)
+		rw := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		start := time.Now()
 
 		next.ServeHTTP(rw, r)
 
-		statusCodeStr := strconv.Itoa(rw.statusCode)
+		statusCodeStr := strconv.Itoa(rw.Status())
 		m.httpDuration.WithLabelValues(path, statusCodeStr).Observe(float64(time.Since(start)) / float64(time.Second))
 		m.responseStatus.WithLabelValues(path, statusCodeStr).Inc()
 	})
-}
-
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func newResponseWriter(w http.ResponseWriter) *responseWriter { //nolint
-	return &responseWriter{w, http.StatusOK}
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
 }
