@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=master)](https://coveralls.io/github/Nikscorp/soap?branch=master)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)&nbsp;[![Health Status](https://gatus.nikscorp.com/api/v1/endpoints/_soap-ping/health/badge.svg)](https://gatus.nikscorp.com/endpoints/_soap-ping)
+[![Coverage Status](https://coveralls.io/repos/github/Nikscorp/soap/badge.svg?branch=master)](https://coveralls.io/github/Nikscorp/soap?branch=master)&nbsp;[![Build Status](https://github.com/Nikscorp/soap/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Nikscorp/soap/actions)&nbsp;[![Go Report Card](https://goreportcard.com/badge/github.com/Nikscorp/soap)](https://goreportcard.com/report/github.com/Nikscorp/soap)&nbsp;[![Health Status](https://gatus.nikscorp.dev/api/v1/endpoints/_soap-ping/health/badge.svg)](https://gatus.nikscorp.dev/endpoints/_soap-ping)
 
 </div>
 
