@@ -17,6 +17,7 @@ func TestTvShowDetails(t *testing.T) {
 			Name:            "Lost",
 			NumberOfSeasons: 23,
 			PosterPath:      "/lost.png",
+			FirstAirDate:    "2004-09-22",
 		}, nil
 	})
 
@@ -25,10 +26,11 @@ func TestTvShowDetails(t *testing.T) {
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.NoError(t, err)
 	require.Equal(t, &TvShowDetails{
-		ID:         42,
-		Title:      "Lost",
-		PosterLink: "/img/lost.png",
-		SeasonsCnt: 23,
+		ID:           42,
+		Title:        "Lost",
+		PosterLink:   "/img/lost.png",
+		SeasonsCnt:   23,
+		FirstAirDate: "2004-09-22",
 	}, resp)
 }
 

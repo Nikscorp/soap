@@ -6,10 +6,11 @@ import (
 )
 
 type TvShowDetails struct {
-	ID         int
-	Title      string
-	PosterLink string
-	SeasonsCnt int
+	ID           int
+	Title        string
+	PosterLink   string
+	SeasonsCnt   int
+	FirstAirDate string
 }
 
 func (c *Client) TVShowDetails(_ context.Context, id int) (*TvShowDetails, error) {
@@ -22,9 +23,10 @@ func (c *Client) TVShowDetails(_ context.Context, id int) (*TvShowDetails, error
 	}
 
 	return &TvShowDetails{
-		ID:         id,
-		Title:      resp.Name,
-		PosterLink: posterToInternalPath(resp.PosterPath),
-		SeasonsCnt: resp.NumberOfSeasons,
+		ID:           id,
+		Title:        resp.Name,
+		PosterLink:   posterToInternalPath(resp.PosterPath),
+		SeasonsCnt:   resp.NumberOfSeasons,
+		FirstAirDate: resp.FirstAirDate,
 	}, nil
 }

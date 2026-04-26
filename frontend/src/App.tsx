@@ -4,20 +4,45 @@ import { Header } from './components/Header';
 import { SeriesCombobox } from './components/SeriesCombobox';
 import { EpisodesList } from './components/EpisodesList';
 import { SearchResultsPage } from './components/SearchResultsPage';
-import { useUrlQuery } from './hooks/useUrlQuery';
+import { useUrlState } from './hooks/useUrlState';
 import type { SearchResult } from './lib/types';
 
-interface Selection {
-  series: SearchResult;
-  language: string;
+interface SeriesHint {
+  id: number;
+  title: string;
+  poster: string;
+  firstAirDate: string;
 }
 
 export default function App() {
-  const { q, setQ } = useUrlQuery();
-  const [selection, setSelection] = useState<Selection | null>(null);
+  const { q, id, lang, best, setUrlState } = useUrlState();
+  // Hint carries the user's clicked SearchResult so SelectedSeriesCard can
+  // render instantly without waiting for /id/{id}. Tagged with `id` so a stale
+  // hint (after back/forward or a direct URL hit) is filtered out at render.
+  const [hint, setHint] = useState<SeriesHint | null>(null);
+  const activeHint = hint && hint.id === id ? hint : null;
 
-  const showResults = q.length > 0 && !selection;
-  const showBackToResults = selection !== null && q.length > 0;
+  const showEpisodes = id !== null;
+  const showResults = !showEpisodes && q.length > 0;
+  const showBackToResults = showEpisodes && q.length > 0;
+
+  const handleSelect = (series: SearchResult, language: string) => {
+    setHint({
+      id: series.id,
+      title: series.title,
+      poster: series.poster,
+      firstAirDate: series.firstAirDate,
+    });
+    setUrlState({ id: series.id, lang: language, best: null });
+  };
+
+  const handleSubmit = (query: string) => {
+    setUrlState({ q: query, id: null, lang: '', best: null });
+  };
+
+  const handleBack = () => {
+    setUrlState({ id: null, lang: '', best: null });
+  };
 
   return (
     <div className="flex min-h-dvh flex-col items-center">
@@ -27,27 +52,16 @@ export default function App() {
           <p className="mb-3 text-sm font-medium text-slate-500">
             What series are you looking for?
           </p>
-          <SeriesCombobox
-            onSelect={(series, language) => setSelection({ series, language })}
-            onSubmit={(query) => {
-              setSelection(null);
-              setQ(query);
-            }}
-          />
+          <SeriesCombobox onSelect={handleSelect} onSubmit={handleSubmit} />
         </section>
-        {showResults && (
-          <SearchResultsPage
-            q={q}
-            onSelect={(series, language) => setSelection({ series, language })}
-          />
-        )}
-        {selection && (
+        {showResults && <SearchResultsPage q={q} onSelect={handleSelect} />}
+        {showEpisodes && (
           <>
             {showBackToResults && (
               <div className="mt-5 w-[95%] max-w-3xl sm:w-[80%]">
                 <button
                   type="button"
-                  onClick={() => setSelection(null)}
+                  onClick={handleBack}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded"
                 >
                   <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -56,9 +70,12 @@ export default function App() {
               </div>
             )}
             <EpisodesList
-              key={`${selection.series.id}-${selection.language}`}
-              series={selection.series}
-              language={selection.language}
+              key={`${id}-${lang}`}
+              seriesId={id}
+              language={lang}
+              best={best}
+              hint={activeHint}
+              onBestChange={(next) => setUrlState({ best: next }, { replace: true })}
             />
           </>
         )}

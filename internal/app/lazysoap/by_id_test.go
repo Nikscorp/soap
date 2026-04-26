@@ -18,10 +18,11 @@ import (
 func fixtureSeasons() *tvmeta.AllSeasonsWithDetails {
 	return &tvmeta.AllSeasonsWithDetails{
 		Details: &tvmeta.TvShowDetails{
-			ID:         42,
-			Title:      "Lost",
-			PosterLink: "/img/lost.png",
-			SeasonsCnt: 3,
+			ID:           42,
+			Title:        "Lost",
+			PosterLink:   "/img/lost.png",
+			SeasonsCnt:   3,
+			FirstAirDate: "2004-09-22",
 		},
 		Seasons: []*tvmeta.TVShowSeasonEpisodes{
 			{
@@ -65,6 +66,7 @@ const (
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
+		"firstAirDate": "2004-09-22",
 		"defaultBest": 6,
 		"totalEpisodes": 9
 	}`
@@ -77,6 +79,7 @@ const (
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
+		"firstAirDate": "2004-09-22",
 		"defaultBest": 6,
 		"totalEpisodes": 9
 	}`
@@ -96,6 +99,7 @@ const (
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
+		"firstAirDate": "2004-09-22",
 		"defaultBest": 6,
 		"totalEpisodes": 9
 	}`

@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import { normalizePosterUrl } from '@/lib/api';
 import { yearFromAirDate } from '@/lib/format';
-import type { SearchResult } from '@/lib/types';
+import { CopyLinkButton } from './CopyLinkButton';
 
 interface Props {
-  series: SearchResult;
+  title: string;
+  poster: string;
+  firstAirDate: string;
 }
 
-export function SelectedSeriesCard({ series }: Props) {
+export function SelectedSeriesCard({ title, poster, firstAirDate }: Props) {
   const [posterFailed, setPosterFailed] = useState(false);
-  const posterUrl = normalizePosterUrl(series.poster);
-  const year = yearFromAirDate(series.firstAirDate);
+  const posterUrl = normalizePosterUrl(poster);
+  const year = yearFromAirDate(firstAirDate);
 
   return (
     <div className="flex items-center gap-4 px-5 py-4 sm:px-6">
@@ -31,10 +33,11 @@ export function SelectedSeriesCard({ series }: Props) {
       </div>
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-base font-semibold text-slate-900 sm:text-lg">
-          {series.title}
+          {title || ' '}
         </h2>
         {year && <p className="text-sm text-slate-500">{year}</p>}
       </div>
+      <CopyLinkButton />
     </div>
   );
 }

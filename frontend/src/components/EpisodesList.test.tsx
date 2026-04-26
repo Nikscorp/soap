@@ -1,16 +1,15 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { EpisodesList } from './EpisodesList';
-import type { EpisodesResponse, SearchResult } from '@/lib/types';
+import { EpisodesList, type EpisodesListHint } from './EpisodesList';
+import type { EpisodesResponse } from '@/lib/types';
 
-const series: SearchResult = {
-  id: 42009,
+const seriesId = 42009;
+const language = 'en';
+const hint: EpisodesListHint = {
   title: 'Black Mirror',
-  firstAirDate: '2011-12-04',
   poster: 'https://image.tmdb.org/t/p/w92/abc.jpg',
-  rating: 8.3,
-  description: '',
+  firstAirDate: '2011-12-04',
 };
 
 function renderWithClient(ui: React.ReactElement) {
@@ -21,6 +20,7 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 const fetchMock = vi.fn();
+const noop = () => undefined;
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -38,7 +38,8 @@ describe('<EpisodesList />', () => {
   it('renders selected series header and the default-best slice in chronological order', async () => {
     const data: EpisodesResponse = {
       title: 'Black Mirror',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 2,
       totalEpisodes: 6,
       episodes: [
@@ -60,7 +61,15 @@ describe('<EpisodesList />', () => {
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     await waitFor(() => screen.getByText(/Best of/i));
     expect(screen.getByText('S1E1')).toBeInTheDocument();
     expect(screen.getByText('The National Anthem')).toBeInTheDocument();
@@ -72,14 +81,23 @@ describe('<EpisodesList />', () => {
   it('shows the no-ratings empty state when totalEpisodes is zero', async () => {
     const data: EpisodesResponse = {
       title: 'Black Mirror',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 0,
       totalEpisodes: 0,
       episodes: [],
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     await waitFor(() =>
       expect(
         screen.getByText(/cannot find best episodes because there are no ratings on IMDb/i),
@@ -90,14 +108,23 @@ describe('<EpisodesList />', () => {
   it('renders the service-unavailable error on backend failure', async () => {
     fetchMock.mockResolvedValue(new Response('boom', { status: 500 }));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     await waitFor(() => expect(screen.getByText(/Service unavailable/i)).toBeInTheDocument());
   });
 
   it('renders a slider initialized to defaultBest with the right bounds', async () => {
     const data: EpisodesResponse = {
       title: 'Black Mirror',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 3,
       totalEpisodes: 6,
       episodes: [
@@ -108,17 +135,56 @@ describe('<EpisodesList />', () => {
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     const slider = (await screen.findByRole('slider')) as HTMLInputElement;
     expect(slider).toHaveAttribute('aria-valuenow', '3');
     expect(slider).toHaveAttribute('aria-valuemin', '1');
     expect(slider).toHaveAttribute('aria-valuemax', '6');
   });
 
+  it('initializes the slider from the URL `best` param when provided', async () => {
+    const data: EpisodesResponse = {
+      title: 'Black Mirror',
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
+      defaultBest: 3,
+      totalEpisodes: 6,
+      episodes: [
+        { title: 'A', description: '', rating: 9.0, number: 1, season: 1 },
+        { title: 'B', description: '', rating: 8.0, number: 2, season: 1 },
+        { title: 'C', description: '', rating: 7.0, number: 1, season: 2 },
+        { title: 'D', description: '', rating: 6.0, number: 2, season: 2 },
+        { title: 'E', description: '', rating: 5.0, number: 3, season: 2 },
+      ],
+    };
+    fetchMock.mockResolvedValue(jsonResponse(data));
+
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={5}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
+    const slider = (await screen.findByRole('slider')) as HTMLInputElement;
+    expect(slider).toHaveAttribute('aria-valuenow', '5');
+  });
+
   it('dragging the slider down re-slices locally without refetching', async () => {
     const data: EpisodesResponse = {
       title: 'Black Mirror',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 3,
       totalEpisodes: 6,
       episodes: [
@@ -129,7 +195,15 @@ describe('<EpisodesList />', () => {
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     await screen.findByRole('slider');
     expect(screen.getByText('Lowest')).toBeInTheDocument();
     expect(screen.getByText('Mid')).toBeInTheDocument();
@@ -150,11 +224,11 @@ describe('<EpisodesList />', () => {
   it('only the highest-rated episodes are shown after dragging down, but in chronological order', async () => {
     const data: EpisodesResponse = {
       title: 'Show',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 4,
       totalEpisodes: 8,
       episodes: [
-        // Returned in chronological order; ratings deliberately scrambled.
         { title: 'A', description: '', rating: 5.0, number: 1, season: 1 },
         { title: 'B', description: '', rating: 9.0, number: 2, season: 1 },
         { title: 'C', description: '', rating: 7.0, number: 1, season: 2 },
@@ -163,7 +237,15 @@ describe('<EpisodesList />', () => {
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     const slider = (await screen.findByRole('slider')) as HTMLInputElement;
 
     fireEvent.change(slider, { target: { value: '2' } });
@@ -176,7 +258,6 @@ describe('<EpisodesList />', () => {
     const titles = within(list)
       .getAllByRole('listitem')
       .map((li) => li.textContent ?? '');
-    // Top 2 by rating are B (9.0) and D (8.0); displayed in (season, number) order.
     expect(titles[0]).toMatch(/S1E2.*B/);
     expect(titles[1]).toMatch(/S2E2.*D/);
   });
@@ -184,7 +265,8 @@ describe('<EpisodesList />', () => {
   it('dragging the slider above the fetched count refetches with ?limit=N', async () => {
     const initial: EpisodesResponse = {
       title: 'Show',
-      poster: series.poster,
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
       defaultBest: 2,
       totalEpisodes: 4,
       episodes: [
@@ -207,7 +289,15 @@ describe('<EpisodesList />', () => {
       return Promise.resolve(jsonResponse(initial));
     });
 
-    renderWithClient(<EpisodesList series={series} language="en" />);
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={noop}
+      />,
+    );
     const slider = (await screen.findByRole('slider')) as HTMLInputElement;
     expect(screen.queryByText('C')).not.toBeInTheDocument();
 
@@ -220,5 +310,48 @@ describe('<EpisodesList />', () => {
       return url.includes('limit=4');
     });
     expect(limitCalls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('reports slider changes via onBestChange (debounced) and omits when value equals defaultBest', async () => {
+    vi.useFakeTimers();
+    const data: EpisodesResponse = {
+      title: 'Show',
+      poster: hint.poster,
+      firstAirDate: hint.firstAirDate,
+      defaultBest: 3,
+      totalEpisodes: 4,
+      episodes: [
+        { title: 'A', description: '', rating: 9.0, number: 1, season: 1 },
+        { title: 'B', description: '', rating: 8.0, number: 2, season: 1 },
+        { title: 'C', description: '', rating: 7.0, number: 1, season: 2 },
+      ],
+    };
+    fetchMock.mockResolvedValue(jsonResponse(data));
+    const onBestChange = vi.fn();
+
+    renderWithClient(
+      <EpisodesList
+        seriesId={seriesId}
+        language={language}
+        best={null}
+        hint={hint}
+        onBestChange={onBestChange}
+      />,
+    );
+
+    // Wait for the slider via fake timers + microtasks.
+    await vi.runAllTimersAsync();
+    const slider = screen.getByRole('slider') as HTMLInputElement;
+
+    fireEvent.change(slider, { target: { value: '2' } });
+    expect(onBestChange).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(onBestChange).toHaveBeenLastCalledWith(2);
+
+    fireEvent.change(slider, { target: { value: '3' } });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(onBestChange).toHaveBeenLastCalledWith(null);
+
+    vi.useRealTimers();
   });
 });
