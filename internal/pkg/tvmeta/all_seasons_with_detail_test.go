@@ -31,7 +31,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S1 First One",
 						Overview:      "S1 Greatest episode ever",
-						VoteAverage:   9.19,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.19},
 					},
 				},
 			}, nil
@@ -42,13 +42,13 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S2 First One",
 						Overview:      "S2 Greatest episode ever",
-						VoteAverage:   9.29,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.29},
 					},
 					{
 						EpisodeNumber: 2,
 						Name:          "S2 Second One",
 						Overview:      "S2 Greatest episode ever 2",
-						VoteAverage:   9.229,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.229},
 					},
 				},
 			}, nil
@@ -59,7 +59,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S3 First One",
 						Overview:      "S3 Greatest episode ever",
-						VoteAverage:   9.39,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.39},
 					},
 				},
 			}, nil
@@ -163,7 +163,7 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S1 First One",
 						Overview:      "S1 Greatest episode ever",
-						VoteAverage:   9.19,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.19},
 					},
 				},
 			}, nil
@@ -176,7 +176,7 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S3 First One",
 						Overview:      "S3 Greatest episode ever",
-						VoteAverage:   9.39,
+						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.39},
 					},
 				},
 			}, nil

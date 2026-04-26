@@ -18,19 +18,21 @@ func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
 	ctx = logger.ContextWithAttrs(ctx, "path", path)
 	url := tvmeta.GetURLByPosterPath(path)
 
+	//nolint:gosec // url is built from a TMDB poster path; this handler intentionally proxies that fixed host
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		logger.Error(ctx, "Failed to create img-proxy request", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	//nolint:gosec // see above
 	resp, err := s.imgClient.Do(req)
 	if err != nil {
 		logger.Error(ctx, "Failed to perform img-proxy request", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		w.WriteHeader(resp.StatusCode)

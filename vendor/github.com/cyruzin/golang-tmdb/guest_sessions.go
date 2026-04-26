@@ -4,7 +4,6 @@ import "fmt"
 
 // GuestSessionRatedMovies type is a struct for rated movies JSON response.
 type GuestSessionRatedMovies struct {
-	Page    int64 `json:"page"`
 	Results []struct {
 		Adult            bool    `json:"adult"`
 		BackdropPath     string  `json:"backdrop_path"`
@@ -18,12 +17,10 @@ type GuestSessionRatedMovies struct {
 		Popularity       float32 `json:"popularity"`
 		Title            string  `json:"title"`
 		Video            bool    `json:"video"`
-		VoteAverage      float32 `json:"vote_average"`
-		VoteCount        int64   `json:"vote_count"`
 		Rating           float32 `json:"rating"`
+		VoteMetrics
 	} `json:"results"`
-	TotalPages   int64 `json:"total_pages"`
-	TotalResults int64 `json:"total_results"`
+	PaginatedResultsMeta
 }
 
 // GetGuestSessionRatedMovies get the rated movies for a guest session.
@@ -51,7 +48,6 @@ func (c *Client) GetGuestSessionRatedMovies(
 
 // GuestSessionRatedTVShows type is a struct for rated tv shows JSON response.
 type GuestSessionRatedTVShows struct {
-	Page    int64 `json:"page"`
 	Results []struct {
 		BackdropPath     string   `json:"backdrop_path"`
 		FirstAirDate     string   `json:"first_air_date"`
@@ -64,12 +60,10 @@ type GuestSessionRatedTVShows struct {
 		PosterPath       string   `json:"poster_path"`
 		Popularity       float32  `json:"popularity"`
 		Name             string   `json:"name"`
-		VoteAverage      float32  `json:"vote_average"`
-		VoteCount        int64    `json:"vote_count"`
 		Rating           float32  `json:"rating"`
+		VoteMetrics
 	} `json:"results"`
-	TotalPages   int64 `json:"total_pages"`
-	TotalResults int64 `json:"total_results"`
+	PaginatedResultsMeta
 }
 
 // GetGuestSessionRatedTVShows get the rated TV shows for a guest session.
@@ -97,7 +91,6 @@ func (c *Client) GetGuestSessionRatedTVShows(
 
 // GuestSessionRatedTVEpisodes type is a struct for rated tv episodes JSON response.
 type GuestSessionRatedTVEpisodes struct {
-	Page    int64 `json:"page"`
 	Results []struct {
 		AirDate        string  `json:"air_date"`
 		EpisodeNumber  int     `json:"episode_number"`
@@ -108,12 +101,10 @@ type GuestSessionRatedTVEpisodes struct {
 		SeasonNumber   int     `json:"season_number"`
 		ShowID         int64   `json:"show_id"`
 		StillPath      string  `json:"still_path"`
-		VoteAverage    float32 `json:"vote_average"`
-		VoteCount      int64   `json:"vote_count"`
 		Rating         float32 `json:"rating"`
+		VoteMetrics
 	} `json:"results"`
-	TotalPages   int64 `json:"total_pages"`
-	TotalResults int64 `json:"total_results"`
+	PaginatedResultsMeta
 }
 
 // GetGuestSessionRatedTVEpisodes get the rated TV episodes for a guest session.

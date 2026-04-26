@@ -2,7 +2,7 @@
 
 [![build](https://github.com/cyruzin/golang-tmdb/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/cyruzin/golang-tmdb/actions/workflows/build.yml) [![Coverage Status](https://coveralls.io/repos/github/cyruzin/golang-tmdb/badge.svg?branch=master&service=github)](https://coveralls.io/github/cyruzin/golang-tmdb?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/cyruzin/golang-tmdb)](https://goreportcard.com/report/github.com/cyruzin/golang-tmdb) [![GoDoc](https://godoc.org/github.com/cyruzin/golang-tmdb?status.svg)](https://godoc.org/github.com/cyruzin/golang-tmdb) ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/cyruzin/golang-tmdb) [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
 
-This is a Golang wrapper for working with TMDb API. It aims to support version 3.
+This is a Golang wrapper around the TMDb API.
 
 An API Key is required. To register for one, head over to [themoviedb.org](https://www.themoviedb.org/).
 
@@ -10,7 +10,7 @@ This product uses the TMDb API but is not endorsed or certified by TMDb.
 
 ## Requirements
 
-- Go 1.13.x or higher. We aim to support the latest supported versions of go.
+- Go 1.18.x or higher. We aim to support the latest supported versions of go.
 
 ## Installation
 
@@ -25,18 +25,30 @@ To get started, import the `tmdb` package and initiate the client:
 ```go
 import "github.com/cyruzin/golang-tmdb"
 
-tmdbClient, err := tmdb.Init(os.GetEnv("YOUR_APIKEY"))
+tmdbClient, err := tmdb.Init(os.Getenv("YOUR_APIKEY"))
 if err != nil {
     fmt.Println(err)
 }
 
-// OPTIONAL (Recommended): Enabling auto retry functionality.
+// Using v4
+tmdbClient, err := tmdb.InitV4(os.Getenv("YOUR_BEARER_TOKEN"))
+if err != nil {
+    fmt.Println(err)
+}
+
+// OPTIONAL: Enabling auto retry functionality.
 // This option will retry if the previous request fail (429 TOO MANY REQUESTS).
 tmdbClient.SetClientAutoRetry()
 
 // OPTIONAL: Set an alternate base URL if you have problems with the default one.
 // Use https://api.tmdb.org/3 instead of https://api.themoviedb.org/3.
 tmdbClient.SetAlternateBaseURL()
+
+// OPTIONAL: For tests, set a custom base URL
+tmdbClient.SetCustomBaseURL("http://localhost:3000")
+
+// Get the current base URL
+tmdbClient.GetBaseURL()
 
 // OPTIONAL: Setting a custom config for the http.Client.
 // The default timeout is 10 seconds. Here you can set other
@@ -46,7 +58,7 @@ customClient := http.Client{
     Transport: &http.Transport{
         MaxIdleConns: 10,
         IdleConnTimeout: 15 * time.Second,
-    }
+    },
 }
 
 tmdbClient.SetClientConfig(customClient)
@@ -56,7 +68,7 @@ tmdbClient.SetClientConfig(customClient)
 //
 // You can read more about how this works:
 // https://developers.themoviedb.org/3/authentication/how-do-i-generate-a-session-id
-tmdbClient.SetSessionID(os.GetEnv("YOUR_SESSION_ID"))
+tmdbClient.SetSessionID(os.Getenv("YOUR_SESSION_ID"))
 
 movie, err := tmdbClient.GetMovieDetails(297802, nil)
 if err != nil {
@@ -71,7 +83,13 @@ With optional params:
 ```go
 import "github.com/cyruzin/golang-tmdb"
 
-tmdbClient, err := tmdb.Init(os.GetEnv("YOUR_APIKEY"))
+tmdbClient, err := tmdb.Init(os.Getenv("YOUR_APIKEY"))
+if err != nil {
+    fmt.Println(err)
+}
+
+// Using v4
+tmdbClient, err := tmdb.InitV4(os.Getenv("YOUR_BEARER_TOKEN"))
 if err != nil {
     fmt.Println(err)
 }
@@ -96,7 +114,7 @@ Generate image and video URLs:
 ```go
 import "github.com/cyruzin/golang-tmdb"
 
-tmdbClient, err := tmdb.Init(os.GetEnv("YOUR_APIKEY"))
+tmdbClient, err := tmdb.Init(os.Getenv("YOUR_APIKEY"))
 if err != nil {
     fmt.Println(err)
 }
@@ -115,7 +133,7 @@ fmt.Println(tmdb.GetImageURL(movie.BackdropPath, tmdb.W500))
 fmt.Println(tmdb.GetImageURL(movie.PosterPath, tmdb.Original))
 // Ouput: https://image.tmdb.org/t/p/original/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg
 
-for _, video := range movie.MovieVideosAppend.Videos.MovieVideos.Results {
+for _, video := range movie.MovieVideosAppend.Videos.Results {
    if video.Key != "" {
 	 fmt.Println(tmdb.GetVideoURL(video.Key))
      // Output: https://www.youtube.com/watch?v=6ZfuNTqbHE8

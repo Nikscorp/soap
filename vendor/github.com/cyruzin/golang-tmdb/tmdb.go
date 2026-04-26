@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Cyro Dubeux. License MIT.
 
-// Package tmdb is a wrapper for working with TMDb API.
+// Package tmdb is a Golang wrapper around the TMDb API
 package tmdb
 
 import (
@@ -8,16 +8,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
+	json "github.com/goccy/go-json"
 )
-
-var json = jsoniter.ConfigFastest
 
 // TMDb constants
 const (
@@ -51,6 +49,8 @@ var baseURL = defaultBaseURL
 type Client struct {
 	// TMDb apiKey to use the client.
 	apiKey string
+	// bearerToken will be used for v4 requests.
+	bearerToken string
 	// sessionId to use the client.
 	sessionID string
 	// Auto retry flag to indicates if the client
@@ -72,6 +72,14 @@ func Init(apiKey string) (*Client, error) {
 		return nil, errors.New("api key is empty")
 	}
 	return &Client{apiKey: apiKey}, nil
+}
+
+// InitV4 setups the Client with an bearer token.
+func InitV4(bearerToken string) (*Client, error) {
+	if bearerToken == "" {
+		return nil, errors.New("bearer token is empty")
+	}
+	return &Client{bearerToken: bearerToken}, nil
 }
 
 // SetSessionID will set the session id.
@@ -115,21 +123,23 @@ func shouldRetry(status int) bool {
 	return status == http.StatusAccepted || status == http.StatusTooManyRequests
 }
 
-func (c *Client) get(url string, data interface{}) error {
+func (c *Client) get(url string, data any) error {
 	if url == "" {
 		return errors.New("url field is empty")
 	}
 	if c.http.Timeout == 0 {
 		c.http.Timeout = time.Second * 10
 	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), c.http.Timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch the url: %s", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	req = req.WithContext(ctx)
 	req.Header.Add("content-type", "application/json;charset=utf-8")
+	if c.bearerToken != "" {
+		req.Header.Add("Authorization", "Bearer "+c.bearerToken)
+	}
 	for {
 		res, err := c.http.Do(req)
 		if err != nil {
@@ -156,9 +166,9 @@ func (c *Client) get(url string, data interface{}) error {
 
 func (c *Client) request(
 	url string,
-	body interface{},
+	body any,
 	method string,
-	data interface{},
+	data any,
 ) error {
 	if url == "" {
 		return errors.New("url field is empty")
@@ -166,9 +176,15 @@ func (c *Client) request(
 	if c.http.Timeout == 0 {
 		c.http.Timeout = time.Second * 10
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), c.http.Timeout)
+	defer cancel()
 	bodyBytes := new(bytes.Buffer)
-	json.NewEncoder(bodyBytes).Encode(body)
-	req, err := http.NewRequest(
+	err := json.NewEncoder(bodyBytes).Encode(body)
+	if err != nil {
+		return fmt.Errorf("failed to encode request body to JSON: %s", err)
+	}
+	req, err := http.NewRequestWithContext(
+		ctx,
 		method,
 		url,
 		bytes.NewBuffer(bodyBytes.Bytes()),
@@ -176,10 +192,10 @@ func (c *Client) request(
 	if err != nil {
 		return fmt.Errorf("could not fetch the url: %s", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	req = req.WithContext(ctx)
 	req.Header.Add("content-type", "application/json;charset=utf-8")
+	if c.bearerToken != "" {
+		req.Header.Add("Authorization", "Bearer "+c.bearerToken)
+	}
 	for {
 		res, err := c.http.Do(req)
 		if err != nil {
@@ -226,6 +242,16 @@ func (c *Client) SetAlternateBaseURL() {
 	baseURL = alternateBaseURL
 }
 
+// SetCustomBaseURL sets an custom base url.
+func (c *Client) SetCustomBaseURL(url string) {
+	baseURL = url
+}
+
+// GetBaseURL gets the current base url.
+func (c *Client) GetBaseURL() string {
+	return baseURL
+}
+
 // Error type represents an error returned by the TMDB API.
 type Error struct {
 	StatusMessage string `json:"status_message,omitempty"`
@@ -243,7 +269,7 @@ func (e Error) Error() string {
 }
 
 func (c *Client) decodeError(r *http.Response) error {
-	resBody, err := ioutil.ReadAll(r.Body)
+	resBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("could not read body response: %s", err)
 	}

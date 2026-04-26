@@ -1,8 +1,6 @@
 package tvmeta
 
 import (
-	"fmt"
-
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
 
@@ -11,5 +9,5 @@ func GetURLByPosterPath(posterPath string) string {
 }
 
 func posterToInternalPath(poster string) string {
-	return fmt.Sprintf("/img%s", poster)
+	return "/img" + poster
 }

@@ -57,7 +57,7 @@ func main() {
 		cancel()
 	}()
 
-	tp, err := trace.SetupTracing(cfg.Trace)
+	tp, err := trace.SetupTracing(ctx, cfg.Trace)
 	if err != nil {
 		logger.Error(ctx, "Failed to setup tracing", "err", err)
 		os.Exit(1)

@@ -43,9 +43,9 @@ func Logger() *slog.Logger {
 	return global
 }
 
-type LogPrinter func(v ...interface{})
+type LogPrinter func(v ...any)
 
-func (p LogPrinter) Print(v ...interface{}) {
+func (p LogPrinter) Print(v ...any) {
 	p(v...)
 }
 

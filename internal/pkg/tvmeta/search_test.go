@@ -34,26 +34,11 @@ func TestSearchTVShows(t *testing.T) {
 
 		return &tmdb.SearchTVShows{
 			SearchTVShowsResults: &tmdb.SearchTVShowsResults{
-				// ugly
-				Results: []struct {
-					OriginalName     string   `json:"original_name"`
-					ID               int64    `json:"id"`
-					Name             string   `json:"name"`
-					VoteCount        int64    `json:"vote_count"`
-					VoteAverage      float32  `json:"vote_average"`
-					PosterPath       string   `json:"poster_path"`
-					FirstAirDate     string   `json:"first_air_date"`
-					Popularity       float32  `json:"popularity"`
-					GenreIDs         []int64  `json:"genre_ids"`
-					OriginalLanguage string   `json:"original_language"`
-					BackdropPath     string   `json:"backdrop_path"`
-					Overview         string   `json:"overview"`
-					OriginCountry    []string `json:"origin_country"`
-				}{
+				Results: []tmdb.TVShowResult{
 					{
 						ID:           4815162343,
 						Name:         "Lost2",
-						VoteAverage:  9.9,
+						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
@@ -62,7 +47,7 @@ func TestSearchTVShows(t *testing.T) {
 					{
 						ID:           4815162342,
 						Name:         "Lost",
-						VoteAverage:  9.9,
+						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
@@ -113,26 +98,11 @@ func TestSearchTVShowsUnicode(t *testing.T) {
 
 		return &tmdb.SearchTVShows{
 			SearchTVShowsResults: &tmdb.SearchTVShowsResults{
-				// ugly
-				Results: []struct {
-					OriginalName     string   `json:"original_name"`
-					ID               int64    `json:"id"`
-					Name             string   `json:"name"`
-					VoteCount        int64    `json:"vote_count"`
-					VoteAverage      float32  `json:"vote_average"`
-					PosterPath       string   `json:"poster_path"`
-					FirstAirDate     string   `json:"first_air_date"`
-					Popularity       float32  `json:"popularity"`
-					GenreIDs         []int64  `json:"genre_ids"`
-					OriginalLanguage string   `json:"original_language"`
-					BackdropPath     string   `json:"backdrop_path"`
-					Overview         string   `json:"overview"`
-					OriginCountry    []string `json:"origin_country"`
-				}{
+				Results: []tmdb.TVShowResult{
 					{
 						ID:           4815162342,
 						Name:         "Лост",
-						VoteAverage:  9.9,
+						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",

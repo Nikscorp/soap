@@ -10,18 +10,18 @@ import (
 )
 
 type tmdbEpisode = struct {
-	AirDate        string  `json:"air_date"`
-	EpisodeNumber  int     `json:"episode_number"`
-	ID             int64   `json:"id"`
-	Name           string  `json:"name"`
-	Overview       string  `json:"overview"`
-	ProductionCode string  `json:"production_code"`
-	SeasonNumber   int     `json:"season_number"`
-	ShowID         int64   `json:"show_id"`
-	StillPath      string  `json:"still_path"`
-	VoteAverage    float32 `json:"vote_average"`
-	VoteCount      int64   `json:"vote_count"`
-	Crew           []struct {
+	AirDate        string `json:"air_date"`
+	EpisodeNumber  int    `json:"episode_number"`
+	ID             int64  `json:"id"`
+	Name           string `json:"name"`
+	Overview       string `json:"overview"`
+	ProductionCode string `json:"production_code"`
+	Runtime        int    `json:"runtime"`
+	SeasonNumber   int    `json:"season_number"`
+	ShowID         int64  `json:"show_id"`
+	StillPath      string `json:"still_path"`
+	tmdb.VoteMetrics
+	Crew []struct {
 		ID          int64  `json:"id"`
 		CreditID    string `json:"credit_id"`
 		Name        string `json:"name"`
@@ -80,7 +80,7 @@ func TestTVShowEpisodesBySeason(t *testing.T) {
 							EpisodeNumber: 1,
 							Name:          "First One",
 							Overview:      "Greatest episode ever",
-							VoteAverage:   9.99,
+							VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.99},
 						},
 					},
 				}, nil

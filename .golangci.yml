@@ -1,32 +1,32 @@
+version: "2"
+
 run:
-  tests: false
   timeout: 5m
-  output:
-    format: tab
-  skip-dirs:
-    - vendor
+  tests: false
+
 linters:
-  enable-all: true
+  default: all
   disable:
-  # need to try on
+    # need to try on
     - promlinter
     - wrapcheck
-  # too much false positive
+    # too much false positive / opinionated
     - depguard
     - lll
     - wsl
+    - wsl_v5
     - tagliatelle
     - exhaustruct
     - nlreturn
     - varnamelen
-  # deprecated warns
-    - ifshort
-    - golint
-    - interfacer
-    - deadcode
-    - exhaustivestruct
-    - maligned
-    - nosnakecase
-    - scopelint
-    - structcheck
-    - varcheck
+    - noinlineerr
+    # v2 default rule set is too strict for the existing API-doc style;
+    # tracked separately
+    - revive
+    # swagger-style godoc comments don't start with the symbol name
+    - godoclint
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - .*/mocks/.*

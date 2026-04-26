@@ -3,7 +3,7 @@ package tmdb
 import (
 	"fmt"
 
-	jsoniter "github.com/json-iterator/go"
+	json "github.com/goccy/go-json"
 )
 
 // TVEpisodeDetails type is a struct for details JSON response.
@@ -28,14 +28,14 @@ type TVEpisodeDetails struct {
 		Gender      int    `json:"gender"`
 		ProfilePath string `json:"profile_path"`
 	} `json:"guest_stars"`
-	Name           string  `json:"name"`
-	Overview       string  `json:"overview"`
-	ID             int64   `json:"id"`
-	ProductionCode string  `json:"production_code"`
-	SeasonNumber   int     `json:"season_number"`
-	StillPath      string  `json:"still_path"`
-	VoteAverage    float32 `json:"vote_average"`
-	VoteCount      int64   `json:"vote_count"`
+	Name           string `json:"name"`
+	Overview       string `json:"overview"`
+	ID             int64  `json:"id"`
+	ProductionCode string `json:"production_code"`
+	Runtime        int    `json:"runtime"`
+	SeasonNumber   int    `json:"season_number"`
+	StillPath      string `json:"still_path"`
+	VoteMetrics
 	*TVEpisodeCreditsAppend
 	*TVEpisodeExternalIDsAppend
 	*TVEpisodeImagesAppend
@@ -70,7 +70,7 @@ type TVEpisodeTranslationsAppend struct {
 // TVEpisodeVideosAppend type is a struct
 // for videos in append to response.
 type TVEpisodeVideosAppend struct {
-	Videos *TVEpisodeVideos `json:"videos,omitempty"`
+	Videos *VideoResults `json:"videos"`
 }
 
 // GetTVEpisodeDetails get the TV episode details by id.
@@ -120,7 +120,7 @@ type TVEpisodeChanges struct {
 				Order     int64  `json:"order"`
 				CreditID  string `json:"credit_id"`
 			} `json:"original_values,omitempty"`
-			Value jsoniter.RawMessage `json:"value,omitempty"`
+			Value json.RawMessage `json:"value,omitempty"`
 		} `json:"items"`
 	} `json:"changes"`
 }
@@ -251,18 +251,16 @@ func (c *Client) GetTVEpisodeExternalIDs(
 	return &tvEpisodeExternalIDs, nil
 }
 
+// TVEpisodeImage type is a struct for a single image.
+type TVEpisodeImage struct {
+	ImageBase
+	Iso6391 any `json:"iso_639_1"`
+}
+
 // TVEpisodeImages type is a struct for images JSON response.
 type TVEpisodeImages struct {
-	ID     int64 `json:"id,omitempty"`
-	Stills []struct {
-		AspectRatio float32     `json:"aspect_ratio"`
-		FilePath    string      `json:"file_path"`
-		Height      int         `json:"height"`
-		Iso6391     interface{} `json:"iso_639_1"`
-		VoteAverage float32     `json:"vote_average"`
-		VoteCount   int64       `json:"vote_count"`
-		Width       int         `json:"width"`
-	} `json:"stills"`
+	ID     int64            `json:"id,omitempty"`
+	Stills []TVEpisodeImage `json:"stills"`
 }
 
 // GetTVEpisodeImages get the images that belong to a TV episode.
@@ -298,17 +296,8 @@ func (c *Client) GetTVEpisodeImages(
 
 // TVEpisodeTranslations type is a struct for translations JSON response.
 type TVEpisodeTranslations struct {
-	ID           int64 `json:"id,omitempty"`
-	Translations []struct {
-		Iso3166_1   string `json:"iso_3166_1"`
-		Iso639_1    string `json:"iso_639_1"`
-		Name        string `json:"name"`
-		EnglishName string `json:"english_name"`
-		Data        struct {
-			Name     string `json:"name"`
-			Overview string `json:"overview"`
-		} `json:"data"`
-	} `json:"translations"`
+	ID           int64         `json:"id,omitempty"`
+	Translations []Translation `json:"translations"`
 }
 
 // GetTVEpisodeTranslations get the translation data for an episode.
@@ -343,21 +332,6 @@ type TVEpisodeRate struct {
 	StatusMessage string `json:"status_message"`
 }
 
-// TVEpisodeVideos type is a struct for videos JSON response.
-type TVEpisodeVideos struct {
-	ID      int64 `json:"id,omitempty"`
-	Results []struct {
-		ID        string `json:"id"`
-		Iso639_1  string `json:"iso_639_1"`
-		Iso3166_1 string `json:"iso_3166_1"`
-		Key       string `json:"key"`
-		Name      string `json:"name"`
-		Site      string `json:"site"`
-		Size      int    `json:"size"`
-		Type      string `json:"type"`
-	} `json:"results"`
-}
-
 // GetTVEpisodeVideos get the videos that have been added to a TV episode.
 //
 // https://developers.themoviedb.org/3/tv-episodes/get-tv-episode-videos
@@ -366,7 +340,7 @@ func (c *Client) GetTVEpisodeVideos(
 	seasonNumber int,
 	episodeNumber int,
 	urlOptions map[string]string,
-) (*TVEpisodeVideos, error) {
+) (*VideoResults, error) {
 	options := c.fmtOptions(urlOptions)
 	tmdbURL := fmt.Sprintf(
 		"%s%s%d%s%d%s%d/videos?api_key=%s%s",
@@ -380,7 +354,7 @@ func (c *Client) GetTVEpisodeVideos(
 		c.apiKey,
 		options,
 	)
-	tvEpisodeVideos := TVEpisodeVideos{}
+	tvEpisodeVideos := VideoResults{}
 	if err := c.get(tmdbURL, &tvEpisodeVideos); err != nil {
 		return nil, err
 	}

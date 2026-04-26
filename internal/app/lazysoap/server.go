@@ -89,6 +89,7 @@ func (s *Server) Run(ctx context.Context) error {
 		Handler:           s.newRouter(),
 	}
 
+	//nolint:gosec // request-scoped ctx is already cancelled here; we deliberately use a fresh one for graceful shutdown
 	go func() {
 		<-ctx.Done()
 		logger.Info(ctx, "Closing server (context done)")

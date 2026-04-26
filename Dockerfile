@@ -1,4 +1,4 @@
-FROM ghcr.io/nikscorp/go-builder:0.1.9 as build-backend
+FROM ghcr.io/nikscorp/go-builder:0.2.0 as build-backend
 
 ENV \
     CGO_ENABLED=0 \
@@ -10,7 +10,7 @@ ADD . /go/src/soap/
 WORKDIR /go/src/soap
 RUN VERSION=$(git rev-parse --abbrev-ref HEAD)-$(git log -1 --format=%h) && \
     echo version=$VERSION && \
-    go build -pgo=auto -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap && \
+    go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap && \
     sed -i "s/OVERRIDE_VERSION/${VERSION//\//\\/}/g" swagger/swagger.yaml
 
 RUN golangci-lint run ./...
