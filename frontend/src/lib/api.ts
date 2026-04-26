@@ -37,10 +37,15 @@ export function searchSeries(query: string, signal?: AbortSignal): Promise<Searc
 export function getEpisodesById(
   id: number,
   language: string,
+  limit?: number,
   signal?: AbortSignal,
 ): Promise<EpisodesResponse> {
   const lang = encodeURIComponent(language || 'en');
-  return request<EpisodesResponse>(`/id/${encodeURIComponent(String(id))}?language=${lang}`, signal);
+  const limitQs = limit && limit > 0 ? `&limit=${encodeURIComponent(String(limit))}` : '';
+  return request<EpisodesResponse>(
+    `/id/${encodeURIComponent(String(id))}?language=${lang}${limitQs}`,
+    signal,
+  );
 }
 
 // Poster path normalization. The backend currently returns relative paths

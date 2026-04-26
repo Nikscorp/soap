@@ -24,7 +24,13 @@ export default function App() {
             onSelect={(series, language) => setSelection({ series, language })}
           />
         </section>
-        {selection && <EpisodesList series={selection.series} language={selection.language} />}
+        {selection && (
+          <EpisodesList
+            key={`${selection.series.id}-${selection.language}`}
+            series={selection.series}
+            language={selection.language}
+          />
+        )}
       </main>
     </div>
   );

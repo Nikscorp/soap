@@ -63,9 +63,13 @@ paths:
       operationId: getBestEpisodesByID
       summary: Get the best episodes of a series by id.
       description: |
-        Returns the episodes of a series whose rating is at or above the average
-        rating across all of the series' episodes. Results are grouped by season
-        and episode number, alongside the series title and poster URL.
+        Returns the top-rated episodes of a series. The set is selected by
+        rating descending (top-N) but the returned slice is sorted
+        chronologically by `(season, number)` ascending for display. When
+        `limit` is omitted, the response contains `defaultBest` episodes — the
+        count of episodes whose rating is at or above the series average. The
+        full episode count is reported as `totalEpisodes` so clients can
+        render a slider over the entire episode space.
       parameters:
         - name: id
           in: path
@@ -82,6 +86,19 @@ paths:
           schema:
             type: string
           example: en
+        - name: limit
+          in: query
+          required: false
+          description: |
+            Optional positive integer capping the number of returned episodes
+            to the top `limit` by rating. When omitted, zero, negative, or not
+            a number, the server falls back to `defaultBest`. Values larger
+            than `totalEpisodes` are clamped.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 10
       responses:
         "200":
           description: Best episodes for the series.
@@ -95,6 +112,8 @@ paths:
                   value:
                     title: Black Mirror
                     poster: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                    defaultBest: 3
+                    totalEpisodes: 27
                     episodes:
                       - title: The National Anthem
                         rating: 7.504
@@ -180,11 +199,16 @@ components:
           example: 8.3
     EpisodesResp:
       type: object
-      required: [episodes, title, poster]
+      required: [episodes, title, poster, defaultBest, totalEpisodes]
       properties:
         episodes:
           type: array
-          description: Episodes whose rating is at or above the series average.
+          description: |
+            Top-rated episodes of the series. The set is selected by rating
+            descending (top-N) and the slice is then ordered chronologically
+            by `(season, number)` ascending. The slice length equals
+            `min(limit, totalEpisodes)` when `limit` is provided, otherwise
+            `defaultBest`.
           items:
             $ref: "#/components/schemas/Episode"
         title:
@@ -194,6 +218,21 @@ components:
           type: string
           description: Absolute URL to the series poster image.
           example: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+        defaultBest:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            Number of episodes whose rating is at or above the series
+            average; the size of the response when `limit` is omitted, and
+            the recommended initial value for a "top N" slider on the client.
+          example: 3
+        totalEpisodes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Total number of episodes across all seasons.
+          example: 27
     Episode:
       type: object
       required: [title, rating, number, season]
