@@ -21,10 +21,10 @@ up:
 	./bin/lazysoap
 
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-up:
-	docker-compose up
+	docker compose up
 
 generate-mocks:
 	go generate ./...

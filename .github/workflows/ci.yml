@@ -8,21 +8,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the Docker images
-        run: docker-compose build
+        run: docker compose build
       - name: Create config
         run: cp config/config.yaml.dist config/config.yaml
       - name: Launch backend
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-        run: docker-compose up -d
+        run: docker compose up -d
       - name: Run simple test
         run: curl http://127.0.0.1:8202/search/lost
       - name: Run simple test2
         run: curl http://127.0.0.1:8202/id/4607
       - name: Show logs
-        run: docker-compose logs
+        run: docker compose logs
       - name: Stop backend
-        run: docker-compose stop
+        run: docker compose stop
   test:
     name: Test with Coverage
     runs-on: ubuntu-latest
