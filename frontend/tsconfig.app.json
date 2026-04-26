@@ -23,9 +23,8 @@
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": false,
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "vitest.setup.ts"]
