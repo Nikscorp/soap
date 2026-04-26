@@ -179,7 +179,7 @@ components:
           example: en
     SearchResult:
       type: object
-      required: [id, title, firstAirDate, poster, rating]
+      required: [id, title, firstAirDate, poster, rating, description]
       properties:
         id:
           type: integer
@@ -200,6 +200,13 @@ components:
           type: number
           format: float
           example: 8.3
+        description:
+          type: string
+          description: |
+            Series synopsis sourced from TMDB. May be an empty string when
+            the metadata provider has no overview for this series (or in the
+            requested language).
+          example: A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.
     EpisodesResp:
       type: object
       required: [episodes, title, poster, defaultBest, totalEpisodes]

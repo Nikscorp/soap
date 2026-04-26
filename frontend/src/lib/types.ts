@@ -6,6 +6,7 @@ export interface SearchResult {
   firstAirDate: string;
   poster: string;
   rating: number;
+  description: string;
 }
 
 export interface SearchResponse {

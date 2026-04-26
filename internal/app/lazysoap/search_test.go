@@ -67,7 +67,8 @@ func TestSearchHandler(t *testing.T) {
 					"title": "Lost",
 					"firstAirDate": "2022",
 					"poster": "/img/lost.jpg",
-					"rating": 9.9
+					"rating": 9.9,
+					"description": "Greatest tv show ever"
 				}
 			],
 			"language": "en"
@@ -115,7 +116,8 @@ func TestSearchHandlerUnicode(t *testing.T) {
 					"title": "Лост",
 					"firstAirDate": "2022",
 					"poster": "/img/lost.jpg",
-					"rating": 9.9
+					"rating": 9.9,
+					"description": "Greatest tv show ever"
 				}
 			],
 			"language": "ru"

@@ -10,6 +10,7 @@ const series: SearchResult = {
   firstAirDate: '2011-12-04',
   poster: 'https://image.tmdb.org/t/p/w92/abc.jpg',
   rating: 8.3,
+  description: '',
 };
 
 function renderWithClient(ui: React.ReactElement) {

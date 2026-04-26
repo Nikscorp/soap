@@ -15,9 +15,10 @@ const DEBOUNCE_MS = 200;
 
 interface Props {
   onSelect: (result: SearchResult, language: string) => void;
+  onSubmit?: (query: string) => void;
 }
 
-export function SeriesCombobox({ onSelect }: Props) {
+export function SeriesCombobox({ onSelect, onSubmit }: Props) {
   const [input, setInput] = useState('');
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,9 +82,20 @@ export function SeriesCombobox({ onSelect }: Props) {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      const target =
-        activeIndex >= 0 && activeIndex < results.length ? results[activeIndex] : results[0];
-      if (target) commit(target);
+      // Arrow-then-Enter still commits the highlighted row directly to
+      // episodes (fast path). A bare Enter submits the typed query and
+      // hands off to the dedicated results page.
+      if (activeIndex >= 0 && activeIndex < results.length) {
+        const target = results[activeIndex];
+        if (target) commit(target);
+        return;
+      }
+      const query = input.trim();
+      if (!query) return;
+      setOpen(false);
+      clear();
+      inputRef.current?.blur();
+      onSubmit?.(query);
     }
   };
 

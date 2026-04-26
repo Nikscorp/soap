@@ -22,6 +22,7 @@ const sampleResponse: SearchResponse = {
       firstAirDate: '2011-12-04',
       poster: 'https://image.tmdb.org/abc.jpg',
       rating: 8.3,
+      description: 'A British anthology series.',
     },
     {
       id: 1,
@@ -29,6 +30,7 @@ const sampleResponse: SearchResponse = {
       firstAirDate: '2014-01-25',
       poster: 'https://image.tmdb.org/def.jpg',
       rating: 8.0,
+      description: 'A pirate prequel to Treasure Island.',
     },
   ],
 };
@@ -73,8 +75,9 @@ describe('<SeriesCombobox />', () => {
       }),
     );
     const onSelect = vi.fn();
+    const onSubmit = vi.fn();
 
-    renderWithClient(<SeriesCombobox onSelect={onSelect} />);
+    renderWithClient(<SeriesCombobox onSelect={onSelect} onSubmit={onSubmit} />);
 
     const input = screen.getByRole('combobox');
     await user.type(input, 'bla');
@@ -85,6 +88,29 @@ describe('<SeriesCombobox />', () => {
       expect.objectContaining({ id: 1, title: 'Black Sails' }),
       'en',
     );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('bare Enter (no arrow nav) calls onSubmit with the trimmed query', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(sampleResponse), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const onSelect = vi.fn();
+    const onSubmit = vi.fn();
+
+    renderWithClient(<SeriesCombobox onSelect={onSelect} onSubmit={onSubmit} />);
+
+    const input = screen.getByRole('combobox');
+    await user.type(input, '  black  ');
+    await waitFor(() => screen.getByText('Black Mirror'));
+
+    await user.keyboard('{Enter}');
+    expect(onSubmit).toHaveBeenCalledWith('black');
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('does not search for queries shorter than 2 chars', async () => {

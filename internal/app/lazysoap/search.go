@@ -19,6 +19,7 @@ type searchResult struct {
 	FirstAirDate string  `json:"firstAirDate"`
 	Poster       string  `json:"poster"`
 	Rating       float32 `json:"rating"`
+	Description  string  `json:"description"`
 }
 
 // searchHandler serves GET /search/{query}: searches series by free-text query
@@ -42,6 +43,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 			FirstAirDate: tvShow.FirstAirDate,
 			Poster:       tvShow.PosterLink,
 			Rating:       tvShow.Rating,
+			Description:  tvShow.Description,
 		})
 	}
 
