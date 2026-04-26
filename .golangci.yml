@@ -23,8 +23,6 @@ linters:
     # v2 default rule set is too strict for the existing API-doc style;
     # tracked separately
     - revive
-    # swagger-style godoc comments don't start with the symbol name
-    - godoclint
   exclusions:
     generated: lax
     paths:

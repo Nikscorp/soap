@@ -10,8 +10,7 @@ ADD . /go/src/soap/
 WORKDIR /go/src/soap
 RUN VERSION=$(git rev-parse --abbrev-ref HEAD)-$(git log -1 --format=%h) && \
     echo version=$VERSION && \
-    go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap && \
-    sed -i "s/OVERRIDE_VERSION/${VERSION//\//\\/}/g" swagger/swagger.yaml
+    go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap
 
 RUN golangci-lint run ./...
 RUN go test -count=1 -v ./...
@@ -38,7 +37,6 @@ LABEL maintainer="Nikscorp <voynov@nikscorp.com>"
 
 COPY --from=build-backend /go/src/soap/soap /srv/soap
 COPY --from=build-frontend /srv/frontend/build /static/
-COPY --from=build-backend /go/src/soap/swagger /swagger
 
 CMD ["/srv/soap"]
 EXPOSE 8080

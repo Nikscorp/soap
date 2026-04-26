@@ -33,7 +33,7 @@ export default defineConfig({
       },
       workbox: {
         // Avoid caching API responses; React Query owns runtime caching.
-        navigateFallbackDenylist: [/^\/(search|id|img|metrics|debug|swagger|ping|version)/],
+        navigateFallbackDenylist: [/^\/(search|id|img|metrics|debug|ping|version)/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       },
     }),

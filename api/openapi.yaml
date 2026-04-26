@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: LazySoap
+  description: |
+    LazySoap surfaces the highest-rated episodes of a TV series, backed by TMDB
+    metadata. The API exposes a small JSON surface plus a TMDB poster proxy.
+  version: 1.0.0
+  contact:
+    name: Nikita Voynov
+    email: voynov@nikscorp.com
+    url: https://www.nikscorp.com
+  license:
+    name: MIT
+    url: http://opensource.org/licenses/MIT
+servers:
+  - url: https://soap.nivoynov.dev
+    description: Public production instance
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: series
+    description: TV series search and best-episodes endpoints.
+  - name: media
+    description: TMDB poster image proxy.
+paths:
+  /search/{query}:
+    get:
+      tags: [series]
+      operationId: searchSeries
+      summary: Search series by query.
+      description: Searches TV series by free-text query and returns matches with the derived response language.
+      parameters:
+        - name: query
+          in: path
+          required: true
+          description: Free-text query used to search for a series.
+          schema:
+            type: string
+          example: Lost
+      responses:
+        "200":
+          description: Search results matching the query.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResultsResp"
+              examples:
+                blackMirror:
+                  summary: Black Mirror match
+                  value:
+                    searchResults:
+                      - id: 42009
+                        title: Black Mirror
+                        firstAirDate: "2011-12-04"
+                        poster: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                        rating: 8.3
+                    language: en
+        "500":
+          description: Upstream metadata lookup failed.
+  /id/{id}:
+    get:
+      tags: [series]
+      operationId: getBestEpisodesByID
+      summary: Get the best episodes of a series by id.
+      description: |
+        Returns the episodes of a series whose rating is at or above the average
+        rating across all of the series' episodes. Results are grouped by season
+        and episode number, alongside the series title and poster URL.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: TMDB series id.
+          schema:
+            type: integer
+            format: int64
+          example: 4607
+        - name: language
+          in: query
+          required: false
+          description: Optional ISO 639-1 language code forwarded to the metadata provider.
+          schema:
+            type: string
+          example: en
+      responses:
+        "200":
+          description: Best episodes for the series.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodesResp"
+              examples:
+                blackMirror:
+                  summary: Black Mirror best episodes
+                  value:
+                    title: Black Mirror
+                    poster: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                    episodes:
+                      - title: The National Anthem
+                        rating: 7.504
+                        number: 1
+                        season: 1
+                      - title: Fifteen Million Merits
+                        rating: 7.696
+                        number: 2
+                        season: 1
+                      - title: Black Museum
+                        rating: 7.858
+                        number: 6
+                        season: 4
+        "500":
+          description: Failed to load episodes (invalid id, upstream error, or no episodes).
+  /img/{path}:
+    get:
+      tags: [media]
+      operationId: proxyPoster
+      summary: Proxy a TMDB poster image.
+      description: Streams the TMDB poster identified by the given path through the server.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: TMDB poster path (the trailing filename of a TMDB image URL).
+          schema:
+            type: string
+          example: 7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+      responses:
+        "200":
+          description: Raw image bytes proxied from TMDB.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Upstream returned a non-200 status; the same status is propagated.
+        "500":
+          description: Failed to build, perform, or stream the upstream request.
+components:
+  schemas:
+    SearchResultsResp:
+      type: object
+      required: [searchResults, language]
+      properties:
+        searchResults:
+          type: array
+          description: Actual search results.
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        language:
+          type: string
+          description: Language of the results.
+          example: en
+    SearchResult:
+      type: object
+      required: [id, title, firstAirDate, poster, rating]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42009
+        title:
+          type: string
+          example: Black Mirror
+        firstAirDate:
+          type: string
+          description: First air date in YYYY-MM-DD form.
+          example: "2011-12-04"
+        poster:
+          type: string
+          description: Absolute URL to the poster image.
+          example: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+        rating:
+          type: number
+          format: float
+          example: 8.3
+    EpisodesResp:
+      type: object
+      required: [episodes, title, poster]
+      properties:
+        episodes:
+          type: array
+          description: Episodes whose rating is at or above the series average.
+          items:
+            $ref: "#/components/schemas/Episode"
+        title:
+          type: string
+          example: Black Mirror
+        poster:
+          type: string
+          description: Absolute URL to the series poster image.
+          example: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+    Episode:
+      type: object
+      required: [title, rating, number, season]
+      properties:
+        title:
+          type: string
+          example: The National Anthem
+        rating:
+          type: number
+          format: float
+          example: 7.504
+        number:
+          type: integer
+          format: int64
+          description: Episode number within the season.
+          example: 1
+        season:
+          type: integer
+          format: int64
+          description: Season number.
+          example: 1

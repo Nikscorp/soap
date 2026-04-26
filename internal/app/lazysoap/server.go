@@ -1,17 +1,6 @@
-// Package classification LazySoap.
-//
-// Schemes: https
-// Version: OVERRIDE_VERSION
-// License: MIT http://opensource.org/licenses/MIT
-// Contact: Nikita Voynov<voynov@nikscorp.com> https://www.nikscorp.com
-//
-// Consumes:
-// - application/json
-//
-// Produces:
-// - application/json
-//
-// swagger:meta
+// Package lazysoap implements the LazySoap HTTP server: it exposes the
+// JSON API for searching TV series and surfacing their best episodes,
+// proxies TMDB poster images, and serves the SPA bundle.
 package lazysoap
 
 import (

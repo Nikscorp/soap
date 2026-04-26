@@ -10,24 +10,11 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-// swagger:parameters search-series
-type SearchParams struct {
-	// Query for search.
-	// in:path
-	// example: Lost
-	Query string `json:"query"`
-}
-
-// swagger:model
 type searchResultsResp struct {
-	// Actual search results
 	SearchResults []*searchResult `json:"searchResults"`
-	// Language of the result
-	// example: en
-	Language string `json:"language"`
+	Language      string          `json:"language"`
 }
 
-// swagger:model
 type searchResult struct {
 	ID           int     `json:"id"`
 	Title        string  `json:"title"`
@@ -36,15 +23,8 @@ type searchResult struct {
 	Rating       float32 `json:"rating"`
 }
 
-// swagger:route GET /search/{query} series search-series
-//
-// # Search series by query.
-//
-// This handler searches series by query and return results with derived language.
-//
-// responses:
-//
-// 200: searchResultsResp
+// searchHandler serves GET /search/{query}: searches series by free-text query
+// and returns results with the derived response language.
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.searchHandler")
 	defer span.End()

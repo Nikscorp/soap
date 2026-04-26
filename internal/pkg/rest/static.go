@@ -13,11 +13,10 @@ const (
 	staticCompressLevel = 5
 )
 
-// AddFileServer mounts the SPA bundle at "/" and the OpenAPI docs at
-// "/swagger/". It also gzips text-y assets (HTML/CSS/JS/JSON/SVG) on the fly
-// using chi's stdlib-backed compress middleware, and emits long-lived
-// Cache-Control headers for fingerprinted assets while keeping index.html /
-// service worker uncached.
+// AddFileServer mounts the SPA bundle at "/". It also gzips text-y assets
+// (HTML/CSS/JS/JSON/SVG) on the fly using chi's stdlib-backed compress
+// middleware, and emits long-lived Cache-Control headers for fingerprinted
+// assets while keeping index.html / service worker uncached.
 func AddFileServer(r *chi.Mux) {
 	compress := middleware.Compress(staticCompressLevel,
 		"text/html",
@@ -33,13 +32,9 @@ func AddFileServer(r *chi.Mux) {
 	fileSystem := customFileSystem{http.Dir(staticPath)}
 	fileServer := http.FileServer(fileSystem)
 
-	swagger := customFileSystem{http.Dir("/swagger")}
-	swaggerServer := http.FileServer(swagger)
-
 	r.Group(func(r chi.Router) {
 		r.Use(compress)
 		r.Use(staticCacheControl)
-		r.Handle("/swagger/*", http.StripPrefix("/swagger/", swaggerServer))
 		r.Handle("/*", fileServer)
 	})
 }

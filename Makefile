@@ -33,11 +33,5 @@ tidy:
 	go mod tidy
 	go mod vendor
 
-install-go-swagger:
-	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
-
-generate-swagger:
-	swagger generate spec -o ./swagger/swagger.yaml --scan-models
-
 clean:
 	@rm -f bin/*
