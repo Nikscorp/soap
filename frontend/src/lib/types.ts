@@ -1,0 +1,27 @@
+// Wire types matching internal/app/lazysoap/{search,by_id}.go.
+
+export interface SearchResult {
+  id: number;
+  title: string;
+  firstAirDate: string;
+  poster: string;
+  rating: number;
+}
+
+export interface SearchResponse {
+  searchResults: SearchResult[] | null;
+  language: string;
+}
+
+export interface Episode {
+  title: string;
+  rating: number;
+  number: number;
+  season: number;
+}
+
+export interface EpisodesResponse {
+  episodes: Episode[] | null;
+  title: string;
+  poster: string;
+}
