@@ -2,7 +2,7 @@ VERSION=$(shell git rev-parse --abbrev-ref HEAD)-$(shell git log -1 --format=%h)
 
 build:
 	@mkdir -p bin
-	go build -pgo=auto -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$(VERSION)" -o bin/ ./cmd/...
+	go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$(VERSION)" -o bin/ ./cmd/...
 
 lint:
 	golangci-lint run ./...
@@ -21,10 +21,10 @@ up:
 	./bin/lazysoap
 
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-up:
-	docker-compose up
+	docker compose up
 
 generate-mocks:
 	go generate ./...

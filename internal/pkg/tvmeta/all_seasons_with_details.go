@@ -30,7 +30,6 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 	eg := errgroup.Group{}
 	seasons := make([]*TVShowSeasonEpisodes, tvShowDetails.SeasonsCnt)
 	for i := 1; i <= tvShowDetails.SeasonsCnt; i++ {
-		i := i
 		eg.Go(func() error {
 			episodes, err := c.TVShowEpisodesBySeason(ctx, id, i, language)
 			if err != nil {

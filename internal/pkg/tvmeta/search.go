@@ -46,7 +46,7 @@ func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, err
 		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
-	if resp == nil || resp.SearchTVShowsResults == nil || resp.SearchTVShowsResults.Results == nil {
+	if resp == nil || resp.SearchTVShowsResults == nil || resp.Results == nil {
 		err = fmt.Errorf("search TV Shows: %w", ErrNilResp)
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

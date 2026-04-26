@@ -72,16 +72,16 @@ To use any option you need to obtain TMDB API Key (free).
 1. Download `docker-compose.yml` and `etc/redis.conf.sample`
 2. Consider changing settings in `docker-compose.yml` like listen IP/port and logging.
 3. Pull the pre build image.
-   - `docker-compose pull`
+   - `docker compose pull`
 4. Set environment variables:
    - `API_KEY` to your TMDB API KEY
 5. Start services.
-   - `docker-compose up -d`
+   - `docker compose up -d`
 6. Consider setting up some https reverse proxy if you want to use it in public networks.
 
 ### Build a custom image
 
-The same steps, but instead of step 4 run `docker-compose build`
+The same steps, but instead of step 4 run `docker compose build`
 
 ### Build from sources
 

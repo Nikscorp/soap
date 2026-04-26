@@ -1,5 +1,4 @@
 .vscode
-frontend/
 bin/
 test.http
 config/config.yaml

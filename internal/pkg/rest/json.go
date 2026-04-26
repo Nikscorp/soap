@@ -9,7 +9,7 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 )
 
-func WriteJSON(ctx context.Context, data interface{}, w http.ResponseWriter) {
+func WriteJSON(ctx context.Context, data any, w http.ResponseWriter) {
 	marshalledResp, err := json.Marshal(data)
 	if err != nil {
 		logger.Error(ctx, "Failed to marshal response", "err", err, "data", fmt.Sprintf("%+v", data))

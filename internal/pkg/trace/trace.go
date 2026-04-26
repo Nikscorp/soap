@@ -6,11 +6,11 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 const (
@@ -21,41 +21,40 @@ const (
 var Version = "local"
 
 type Config struct {
-	Endpoint        string        `env:"TRACE_ENDPOINT"         env-default:"http://jaeger:14268/api/traces" yaml:"endpoint"`
-	Ratio           float64       `env:"TRACE_RATIO"            env-default:"1.0"                            yaml:"ratio"`
-	GracefulTimeout time.Duration `env:"TRACE_GRACEFUL_TIMEOUT" env-default:"10s"                            yaml:"graceful_timeout"`
+	Endpoint        string        `env:"TRACE_ENDPOINT"         env-default:"jaeger:4317" yaml:"endpoint"`
+	Ratio           float64       `env:"TRACE_RATIO"            env-default:"1.0"         yaml:"ratio"`
+	GracefulTimeout time.Duration `env:"TRACE_GRACEFUL_TIMEOUT" env-default:"10s"         yaml:"graceful_timeout"`
 }
 
 // SetupTracing returns an OpenTelemetry TracerProvider configured to use
-// the Jaeger exporter that will send spans to the provided url. The returned
-// TracerProvider will also use a Resource configured with all the information
+// the OTLP/gRPC exporter that will send spans to the provided endpoint
+// (host:port). Modern Jaeger accepts OTLP natively on port 4317. The
+// returned TracerProvider also uses a Resource configured with information
 // about the application.
-func SetupTracing(cfg Config) (*tracesdk.TracerProvider, error) {
-	// Create the Jaeger exporter
-	exp, err := jaeger.New(
-		jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(cfg.Endpoint)),
+func SetupTracing(ctx context.Context, cfg Config) (*tracesdk.TracerProvider, error) {
+	exp, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(cfg.Endpoint),
+		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	resources, err := resource.New(context.Background(),
-		resource.WithProcessRuntimeDescription(), // This option configures a set of Detectors that discover process information
-		resource.WithOS(),                        // This option configures a set of Detectors that discover OS information
-		resource.WithContainer(),                 // This option configures a set of Detectors that discover container information
-		resource.WithHost(),                      // This option configures a set of Detectors that discover host information
+	resources, err := resource.New(ctx,
+		resource.WithProcessRuntimeDescription(),
+		resource.WithOS(),
+		resource.WithContainer(),
+		resource.WithHost(),
 		resource.WithAttributes(
 			semconv.ServiceName(service),
 			semconv.ServiceVersion(Version),
-		), // Or specify resource attributes directly
+		),
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	tp := tracesdk.NewTracerProvider(
-		// Always be sure to batch in production.
 		tracesdk.WithBatcher(exp),
-		// Record information about this application in a Resource.
 		tracesdk.WithResource(resources),
 		tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.TraceIDRatioBased(cfg.Ratio))),
 	)
