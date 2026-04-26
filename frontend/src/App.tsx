@@ -21,6 +21,9 @@ export default function App() {
   // hint (after back/forward or a direct URL hit) is filtered out at render.
   const [hint, setHint] = useState<SeriesHint | null>(null);
   const activeHint = hint && hint.id === id ? hint : null;
+  // Bumped on home-click to remount SeriesCombobox so its internal input
+  // state (intentionally preserved across URL changes) is reset to empty.
+  const [comboboxResetKey, setComboboxResetKey] = useState(0);
 
   const showEpisodes = id !== null;
   const showResults = !showEpisodes && q.length > 0;
@@ -44,15 +47,25 @@ export default function App() {
     setUrlState({ id: null, lang: '', best: null });
   };
 
+  const handleHome = () => {
+    setHint(null);
+    setComboboxResetKey((k) => k + 1);
+    setUrlState({ q: '', id: null, lang: '', best: null });
+  };
+
   return (
     <div className="flex min-h-dvh flex-col items-center">
       <main className="flex w-full max-w-5xl flex-col items-center px-4 sm:px-6">
-        <Header />
+        <Header onHomeClick={handleHome} />
         <section className="w-[95%] max-w-3xl rounded-md bg-white px-4 py-5 shadow-card sm:w-[80%] sm:px-7 sm:py-7">
           <p className="mb-3 text-sm font-medium text-slate-500">
             What series are you looking for?
           </p>
-          <SeriesCombobox onSelect={handleSelect} onSubmit={handleSubmit} />
+          <SeriesCombobox
+            key={comboboxResetKey}
+            onSelect={handleSelect}
+            onSubmit={handleSubmit}
+          />
         </section>
         {showResults && <SearchResultsPage q={q} onSelect={handleSelect} />}
         {showEpisodes && (
