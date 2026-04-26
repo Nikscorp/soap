@@ -15,6 +15,7 @@ type TVShowEpisode struct {
 	Name        string
 	Description string
 	Rating      float32
+	StillLink   string
 }
 
 func (c *Client) TVShowEpisodesBySeason(_ context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
@@ -41,6 +42,9 @@ func (c *Client) TVShowEpisodesBySeason(_ context.Context, id int, seasonNumber 
 			Name:        episode.Name,
 			Description: episode.Overview,
 			Rating:      episode.VoteAverage,
+		}
+		if episode.StillPath != "" {
+			parsedEpisode.StillLink = posterToInternalPath(episode.StillPath)
 		}
 		parsedEpisodes = append(parsedEpisodes, parsedEpisode)
 	}

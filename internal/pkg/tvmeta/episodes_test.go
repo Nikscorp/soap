@@ -81,6 +81,13 @@ func TestTVShowEpisodesBySeason(t *testing.T) {
 							Name:          "First One",
 							Overview:      "Greatest episode ever",
 							VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.99},
+							StillPath:     "/abc.jpg",
+						},
+						{
+							EpisodeNumber: 2,
+							Name:          "Second One",
+							Overview:      "No still here",
+							VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 8.0},
 						},
 					},
 				}, nil
@@ -97,6 +104,13 @@ func TestTVShowEpisodesBySeason(t *testing.T) {
 						Name:        "First One",
 						Description: "Greatest episode ever",
 						Rating:      9.99,
+						StillLink:   "/img/abc.jpg",
+					},
+					{
+						Number:      2,
+						Name:        "Second One",
+						Description: "No still here",
+						Rating:      8.0,
 					},
 				},
 			}, resp)

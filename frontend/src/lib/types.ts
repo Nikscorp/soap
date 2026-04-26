@@ -20,6 +20,7 @@ export interface Episode {
   rating: number;
   number: number;
   season: number;
+  still?: string;
 }
 
 export interface EpisodesResponse {

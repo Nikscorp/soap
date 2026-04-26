@@ -30,6 +30,7 @@ type episode struct {
 	Rating      float32 `json:"rating"`
 	Number      int     `json:"number"`
 	Season      int     `json:"season"`
+	Still       string  `json:"still,omitempty"`
 }
 
 // idHandler serves GET /id/{id}: returns the top-rated episodes of a series.
@@ -177,6 +178,7 @@ func (s *Server) flattenSortedByRating(seasons *tvmeta.AllSeasonsWithDetails) []
 				Rating:      rating,
 				Number:      e.Number,
 				Season:      season.SeasonNumber,
+				Still:       e.StillLink,
 			})
 		}
 	}
