@@ -1,336 +1,37 @@
-:root {
-  --main-bg-color: #414141;
-  /* --main-bg-color: cornflowerblue; */
-  /* --main-bg-color: hsl(54, 100%, 77%); */
-  --content-bg-color: #ffffff;
+@import 'tailwindcss';
 
-  /* --title-color: hsl(14, 100%, 55%); */
-  /* --title-color: hsl(350, 99%, 46%); */
-  /* --title-color: hsl(355, 86%, 49%); */
-  --title-color: #ffffff;
-
-  /* --main-accent-color: hsl(6, 99%, 60%); */
-  /* --main-accent-color: hsl(350, 99%, 46%); */
-  --main-accent-color: hsl(355, 80%, 49%);
-
-  /* --secondary-accent-color: hsl(6, 56%, 50%); */
-  /* --secondary-accent-color: hsl(3, 53%, 35%); */
-  /* --secondary-accent-color: hsla(349, 100%, 27%, 0.5); */
-  --secondary-accent-color: hsla(355, 80%, 49%, 0.7);
-  /* --secondary-accent-color: rgba(66, 133, 244, 0.6); */
-
-  --lighter-text-color: #636363;
-  --lighter-text-color-light: #dcdcdc;
-
-  --max-mobile-screen-width: 500px;
+/* Design tokens — keep close to the original LazySoap look. */
+@theme {
+  --color-bg: #414141;
+  --color-bg-soft: #4d4d4d;
+  --color-card: #ffffff;
+  --color-accent: hsl(355 80% 49%);
+  --color-accent-soft: hsl(355 80% 49% / 0.7);
+  --shadow-card: 0 8px 16px 0 rgb(0 0 0 / 0.2);
+  --font-title: 'Arial Black', Gadget, sans-serif;
 }
-html {
-  font-size: 16px;
-}
-@media screen and (min-width: 1400px) {
+
+@layer base {
   html {
-    font-size: 20px;
+    background-color: var(--color-bg);
+    color-scheme: dark;
   }
-}
-body {
-    background-color: var(--main-bg-color);
-    font-family: 'arial';
-}
-
-.content {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow: auto;
-    justify-content: space-evenly;
-}
-
-.header {
-    height: 30%;
-    min-height: 120px;
-    font-weight: 100;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.header h1 {
-  font-size: 4rem;
-  color: var(--title-color);
-}
-@media screen and (max-width: 500px) {
-  .header h1 {
-    font-size: 2.6rem;
+  body {
+    @apply min-h-dvh bg-bg font-sans text-slate-100 antialiased;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
   }
-}
-.header .description {
-  font-size: 1.5rem; 
-}
-@media screen and (max-width: 500px) {
-  .header .description {
-    font-size: 1rem;
+  .text-title {
+    font-family: var(--font-title);
   }
-}
-
-.work-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.search-series-area {
-    background-color: white;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    padding: 30px;
-    width: 80%;
-    max-width: 800px;
-}
-@media screen and (max-width: 500px) {
-  .search-series-area {
-    width: 98%;
-    padding: 5px;
+  /* Visible focus rings for keyboard nav. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
-}
-
-.search-form {
-  width: 80%;
-  margin: 2% 10%;
-}
-@media screen and (max-width: 500px) {
-  .search-form {
-    width: 100%;
-    margin: 2% 0;
-  }
-  .search-form p.h5 {
-    font-size: 1em;
-  }
-}
-
-.md-form .prefix {
-  color: var(--secondary-accent-color);
-}
-.md-form .prefix.active {
-  color: var(--main-accent-color);
-}
-.search-form form input {
-  border-bottom: 1px solid var(--secondary-accent-color) !important;
-  box-shadow: 0 1px 0 0 var(--secondary-accent-color) !important;
-}
-.search-form form input:focus {
-  border-bottom: 1px solid var(--main-accent-color) !important;
-  box-shadow: 0 1px 0 0 var(--main-accent-color) !important;
-}
-
-.dropdown {
-  position: relative;
-  display: inline-block;
-
-  transition: all 0.5s;
-}
-
-.dropdown-content {
-  /* display: none; */
-  visibility: hidden;
-  position: absolute;
-  background-color: var(--content-bg-color);
-  width: 93%;
-  max-width: 700px;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  z-index: 1;
-  margin-left: 7%;
-
-  transform: translateY(-2em);
-  transition: all 0.3s ease-in-out 0s, visibility 0s linear 0.3s;
-}
-
-.dropdown-content.show {
-  /* display: block; */
-  visibility: visible;
-  transform: translateY(0%);
-  transition-delay: 0s, 0s, 0.3s; /* this removes the transition delay so the menu will be visible while the other styles transition */
-}
-
-.search-res-on-the-flow .series-item {
-  padding: 10px 20px;
-}
-
-
-.search-res-on-the-flow .series-item.selected {
-  background-color: var(--secondary-accent-color);
-  color: white;
-  cursor: pointer;
-}
-
-.search-res-on-the-flow .series-item .info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9em;
-}
-
-.search-res-on-the-flow .series-item .info .title{
-  font-weight: 400;
-}
-.search-res-on-the-flow .series-item .info .year{
-  color: var(--lighter-text-color);
-}
-.search-res-on-the-flow .series-item.selected .info .year{
-  color: var(--lighter-text-color-light);
-}
-
-.search-res {
-  display: flex;
-  flex-direction: column;
-}
-
-.search-res .series-item {
-  padding: 15px 20px;
-}
-
-.search-res .series-item:hover:not(.not-selectable) {
-  background-color: var(--secondary-accent-color);
-  color: white;
-  cursor: pointer;
-}
-
-.search-res .series-item {
-  display: flex;
-  /* justify-content: space-evenly; */
-}
-
-.search-res .series-item .info {
-  display: flex;
-  flex-direction: column;
-  /* justify-content: center; */
-  width: 80%;
-}
-@media screen and (max-width: 500px) {
-  .search-res .series-item .info {
-    width: 60%;
-  }
-}
-
-.search-res .series-item .info .year {
-  font-size: 0.9em;
-  color: var(--lighter-text-color);
-}
-.search-res .series-item:hover:not(.not-selectable) .info .year {
-  color: var(--lighter-text-color-light);
-}
-
-
-.search-res .series-item .poster {
-  width: 20%;
-  min-width: 80px;
-  max-width: 120px;
-  margin-right: 10px;
-}
-
-.search-res .series-item .title {
-  /* width: 60%; */
-}
-
-.best-episodes-area {
-  background-color: white;
-  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-  /* padding: 30px; */
-  margin-top: 20px;
-  margin-bottom: 40px;
-  width: 80%;
-  max-width: 800px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-@media screen and (max-width: 500px) {
-  .best-episodes-area {
-    width: 98%;
-  }
-}
-
-.spinner {
-  width: 100%;
-  margin: 30px;
-  display: flex;
-  justify-content: center;
-}
-
-.best-episodes-title {
-  padding: 30px 30px 30px 50px;
-  /* font-style: italic; */
-}
-
-.episode-item {
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-  width: 100%;
-  padding-left: 5%;
-  padding-right: 5%;
-}
-@media screen and (max-width: 500px) {
-  .episode-item {
-    padding: 20px 10px;
-  }
-}
-
-.episode-item .episode-idx {
-  width: 5%;
-  min-width: 30px;
-}
-
-.episode-item .episode-title {
-  font-weight: 600;
-  font-size: 0.9em;
-}
-@media screen and (max-width: 500px) {
-  .episode-item .episode-title {
-    font-weight: 600;
-  }
-}
-
-.episode-item .episode-number {
-  width: 43px;
-  margin-right: 20px;
-  color: var(--lighter-text-color);
-  font-size: 0.9em;
-}
-@media screen and (max-width: 500px) {
-  .episode-item .episode-number {
-    margin-right: 10px;
-  }
-}
-
-.episode-item .episode-title {
-  width: 80%;
-}
-
-.episode-item .episode-rating {
-  min-width: 50px;
-  font-weight: 600;
-  font-size: 0.9em;
-  color: var(--lighter-text-color);
-}
-
-.episode-item .episode-info {
-  width: 95%;
-  padding-right: 20px;
-  display: flex;
-  justify-content: space-between;
-}
-@media screen and (max-width: 500px) {
-  .episode-item .episode-info {
-    width: 100%;
-    padding-right: 0;
-  }
-}
-
-.episodes-err {
-  padding: 10%;
-}
-
-.larger-text {
-    font-size: 2rem;
 }

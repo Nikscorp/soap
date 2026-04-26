@@ -1,0 +1,11 @@
+node_modules
+build
+dist
+dev-dist
+.vite
+coverage
+playwright-report
+test-results
+.playwright
+.env.local
+.env.*.local

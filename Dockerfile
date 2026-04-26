@@ -1,4 +1,4 @@
-FROM ghcr.io/nikscorp/go-builder:0.2.0 as build-backend
+FROM ghcr.io/nikscorp/go-builder:0.2.0 AS build-backend
 
 ENV \
     CGO_ENABLED=0 \
@@ -17,15 +17,15 @@ RUN golangci-lint run ./...
 RUN go test -count=1 -v ./...
 
 
-FROM node:13.10.1-alpine3.11 as frontend-deps
+FROM node:22-alpine AS frontend-deps
 
 ADD frontend/package-lock.json /srv/frontend/package-lock.json
 ADD frontend/package.json /srv/frontend/package.json
 WORKDIR /srv/frontend
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 
-FROM node:13.10.1-alpine3.11 as build-frontend
+FROM node:22-alpine AS build-frontend
 
 ADD frontend /srv/frontend
 COPY --from=frontend-deps /srv/frontend/node_modules /srv/frontend/node_modules
