@@ -7,22 +7,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/pprof"
-	"strings"
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
-	"github.com/Nikscorp/soap/internal/pkg/trace"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-)
-
-const (
-	tracerName = "github.com/Nikscorp/internal/app/lazysoap"
 )
 
 type Config struct {
@@ -46,6 +39,7 @@ type Server struct {
 	tvMeta    tvMetaClient
 	metrics   *rest.Metrics
 	imgClient *http.Client
+	version   string
 }
 
 type tvMetaClient interface {
@@ -53,18 +47,25 @@ type tvMetaClient interface {
 	TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*tvmeta.AllSeasonsWithDetails, error)
 }
 
-func New(config Config, tvMetaClient tvMetaClient) *Server {
+func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
 	return &Server{
 		config:  config,
 		tvMeta:  tvMetaClient,
 		metrics: rest.NewMetrics(),
 		imgClient: &http.Client{
 			Timeout: config.ImgClient.Timeout,
-			Transport: otelhttp.NewTransport(&http.Transport{
-				MaxIdleConns:    config.ImgClient.MaxIdleConns,
-				IdleConnTimeout: config.ImgClient.IdleConnTimeout,
-			}),
+			Transport: func() http.RoundTripper {
+				baseTransport, ok := http.DefaultTransport.(*http.Transport)
+				if !ok {
+					panic("http.DefaultTransport is not *http.Transport")
+				}
+				clone := baseTransport.Clone()
+				clone.MaxIdleConns = config.ImgClient.MaxIdleConns
+				clone.IdleConnTimeout = config.ImgClient.IdleConnTimeout
+				return clone
+			}(),
 		},
+		version: version,
 	}
 }
 
@@ -98,14 +99,16 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) newRouter() http.Handler {
 	r := chi.NewRouter()
-	r.Use(rest.LogRequest)
-
-	r.Use(middleware.Recoverer)
-	r.Use(cors.AllowAll().Handler)
-	r.Use(s.metrics.Middleware)
-	r.Use(rest.Ping)
-	r.Use(rest.Version(trace.Version))
-	r.Use(rest.TraceIDToOutHeader)
+	r.Use(
+		middleware.RequestID,
+		rest.RequestIDHeader,
+		rest.LogRequest,
+		middleware.Recoverer,
+		cors.AllowAll().Handler,
+		s.metrics.Middleware,
+		rest.Ping,
+		rest.Version(s.version),
+	)
 
 	r.HandleFunc("/id/{id}", s.idHandler)
 	r.HandleFunc("/search/{query}", s.searchHandler)
@@ -117,9 +120,5 @@ func (s *Server) newRouter() http.Handler {
 
 	rest.AddFileServer(r)
 
-	return otelhttp.NewHandler(r, "lazysoap.http.server", otelhttp.WithFilter(func(r *http.Request) bool {
-		return strings.HasPrefix(r.URL.Path, "/id/") ||
-			strings.HasPrefix(r.URL.Path, "/search/") ||
-			strings.HasPrefix(r.URL.Path, "/img/")
-	}))
+	return r
 }

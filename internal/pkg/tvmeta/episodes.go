@@ -3,11 +3,6 @@ package tvmeta
 import (
 	"context"
 	"fmt"
-
-	"github.com/Nikscorp/soap/internal/pkg/logger"
-	tmdb "github.com/cyruzin/golang-tmdb"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type TVShowSeasonEpisodes struct {
@@ -22,37 +17,20 @@ type TVShowEpisode struct {
 	Rating      float32
 }
 
-func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
-	ctx, span := otel.GetTracerProvider().Tracer(tracerName).Start(ctx, "tvmeta.TVShowEpisodesBySeason")
-	defer span.End()
-
-	ctx = logger.ContextWithAttrs(ctx, "seasonNumber", seasonNumber)
-
+func (c *Client) TVShowEpisodesBySeason(_ context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
 	if language == "" {
 		language = defaultLangTag
 	}
 
-	resp, err := func() (*tmdb.TVSeasonDetails, error) {
-		_, span := otel.GetTracerProvider().Tracer(tracerName).Start(ctx, "tmdb.GetTVSeasonDetails")
-		defer span.End()
-
-		urlOptions := map[string]string{
-			"language": language,
-		}
-		return c.client.GetTVSeasonDetails(id, seasonNumber, urlOptions)
-	}()
+	resp, err := c.client.GetTVSeasonDetails(id, seasonNumber, map[string]string{
+		"language": language,
+	})
 	if err != nil {
-		err = fmt.Errorf("get TV Season Details: %w", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("get TV Season Details: %w", err)
 	}
 
 	if resp == nil || resp.Episodes == nil {
-		err = fmt.Errorf("get TV Season Details: %w", ErrNilResp)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("get TV Season Details: %w", ErrNilResp)
 	}
 
 	parsedEpisodes := make([]*TVShowEpisode, 0, len(resp.Episodes))

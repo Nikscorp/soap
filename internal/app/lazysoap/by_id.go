@@ -11,8 +11,6 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 var errZeroEpisodes = errors.New("0 episodes")
@@ -33,13 +31,10 @@ type episode struct {
 // idHandler serves GET /id/{id}: returns the episodes whose rating is at or
 // above the series average, alongside the series title and poster URL.
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.idHandler")
-	defer span.End()
-
 	id := chi.URLParam(r, "id")
 	language := r.URL.Query().Get("language")
 
-	ctx = logger.ContextWithAttrs(ctx,
+	ctx := logger.WithAttrs(r.Context(),
 		"id", id,
 		"language", language,
 	)
@@ -48,8 +43,6 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(ctx, "Failed to parse id", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
@@ -57,8 +50,6 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(ctx, "Failed to get episodes", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
@@ -66,8 +57,6 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(ctx, "Failed to count avg rating", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 	logger.Info(ctx, fmt.Sprintf("Avg Rating for id %d is %v", intID, avgRating))
@@ -79,7 +68,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		Poster:   seasons.Details.PosterLink,
 	}
 
-	rest.WriteJSON(r.Context(), fullRespEpisodes, w)
+	rest.WriteJSON(ctx, fullRespEpisodes, w)
 }
 
 func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, error) {

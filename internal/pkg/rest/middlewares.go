@@ -9,7 +9,6 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func Ping(next http.Handler) http.Handler {
@@ -40,12 +39,16 @@ func Version(version string) func(http.Handler) http.Handler {
 	}
 }
 
-// TraceIDToOutHeader is a middleware that appends trace id to the response header.
-func TraceIDToOutHeader(next http.Handler) http.Handler {
+// RequestIDHeader pulls the request id added by chi's middleware.RequestID
+// from the request context, mirrors it onto the response header, and
+// stashes it on the logger's context key so every log record produced for
+// this request will carry a request_id attr.
+func RequestIDHeader(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		span := trace.SpanFromContext(r.Context())
-		if span != nil {
-			w.Header().Set("x-trace-id", span.SpanContext().TraceID().String())
+		id := middleware.GetReqID(r.Context())
+		if id != "" {
+			w.Header().Set("X-Request-Id", id)
+			r = r.WithContext(logger.WithRequestID(r.Context(), id))
 		}
 		next.ServeHTTP(w, r)
 	}
@@ -60,7 +63,7 @@ func LogRequest(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := logger.ContextWithAttrs(r.Context(), "route", route)
+		ctx := logger.WithAttrs(r.Context(), "route", route)
 		r = r.WithContext(ctx)
 
 		logger.Info(ctx, "New incoming request",

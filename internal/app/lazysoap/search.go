@@ -6,8 +6,6 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
 
 type searchResultsResp struct {
@@ -26,18 +24,13 @@ type searchResult struct {
 // searchHandler serves GET /search/{query}: searches series by free-text query
 // and returns results with the derived response language.
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.searchHandler")
-	defer span.End()
-
 	query := chi.URLParam(r, "query")
-	ctx = logger.ContextWithAttrs(ctx, "query", query)
+	ctx := logger.WithAttrs(r.Context(), "query", query)
 
 	tvShows, err := s.tvMeta.SearchTVShows(ctx, query)
 	if err != nil {
 		logger.Error(ctx, "Failed search tv shows", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return
 	}
 
@@ -57,5 +50,5 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		Language:      tvShows.Language,
 	}
 
-	rest.WriteJSON(r.Context(), resp, w)
+	rest.WriteJSON(ctx, resp, w)
 }

@@ -10,7 +10,7 @@ ADD . /go/src/soap/
 WORKDIR /go/src/soap
 RUN VERSION=$(git rev-parse --abbrev-ref HEAD)-$(git log -1 --format=%h) && \
     echo version=$VERSION && \
-    go build -ldflags "-X github.com/Nikscorp/soap/internal/pkg/trace.Version=$VERSION" -o soap ./cmd/lazysoap
+    go build -ldflags "-X main.version=$VERSION" -o soap ./cmd/lazysoap
 
 RUN golangci-lint run ./...
 RUN go test -count=1 -v ./...

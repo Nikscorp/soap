@@ -7,15 +7,11 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/go-chi/chi/v5"
-	"go.opentelemetry.io/otel"
 )
 
 func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, span := otel.Tracer(tracerName).Start(r.Context(), "server.imgProxyHandler")
-	defer span.End()
-
 	path := chi.URLParam(r, "path")
-	ctx = logger.ContextWithAttrs(ctx, "path", path)
+	ctx := logger.WithAttrs(r.Context(), "path", path)
 	url := tvmeta.GetURLByPosterPath(path)
 
 	//nolint:gosec // url is built from a TMDB poster path; this handler intentionally proxies that fixed host

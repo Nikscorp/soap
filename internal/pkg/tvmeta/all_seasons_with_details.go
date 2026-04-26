@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -15,17 +13,10 @@ type AllSeasonsWithDetails struct {
 }
 
 func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
-	ctx, span := otel.Tracer(tracerName).Start(ctx, "tvmeta.TVShowAllSeasonsWithDetails")
-	defer span.End()
-
 	tvShowDetails, err := c.TVShowDetails(ctx, id)
 	if err != nil {
-		err = fmt.Errorf("get all episodes: %w", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("get all episodes: %w", err)
 	}
-	span.AddEvent(fmt.Sprintf("got seasons count=%d", tvShowDetails.SeasonsCnt))
 
 	eg := errgroup.Group{}
 	seasons := make([]*TVShowSeasonEpisodes, tvShowDetails.SeasonsCnt)
@@ -41,8 +32,6 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 	}
 
 	if err := eg.Wait(); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
