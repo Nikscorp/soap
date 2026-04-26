@@ -25,10 +25,11 @@ type episodesResp struct {
 }
 
 type episode struct {
-	Title  string  `json:"title"`
-	Rating float32 `json:"rating"`
-	Number int     `json:"number"`
-	Season int     `json:"season"`
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Rating      float32 `json:"rating"`
+	Number      int     `json:"number"`
+	Season      int     `json:"season"`
 }
 
 // idHandler serves GET /id/{id}: returns the top-rated episodes of a series.
@@ -143,10 +144,11 @@ func (s *Server) flattenSortedByRating(seasons *tvmeta.AllSeasonsWithDetails) []
 	for _, season := range seasons.Seasons {
 		for _, e := range season.Episodes {
 			episodes = append(episodes, episode{
-				Title:  e.Name,
-				Rating: e.Rating,
-				Number: e.Number,
-				Season: season.SeasonNumber,
+				Title:       e.Name,
+				Description: e.Description,
+				Rating:      e.Rating,
+				Number:      e.Number,
+				Season:      season.SeasonNumber,
 			})
 		}
 	}

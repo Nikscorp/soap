@@ -41,8 +41,20 @@ describe('<EpisodesList />', () => {
       defaultBest: 2,
       totalEpisodes: 6,
       episodes: [
-        { title: 'The National Anthem', rating: 7.504, number: 1, season: 1 },
-        { title: 'Black Museum', rating: 7.858, number: 6, season: 4 },
+        {
+          title: 'The National Anthem',
+          description: 'A shocking demand from a kidnapper.',
+          rating: 7.504,
+          number: 1,
+          season: 1,
+        },
+        {
+          title: 'Black Museum',
+          description: 'A museum of criminological artifacts.',
+          rating: 7.858,
+          number: 6,
+          season: 4,
+        },
       ],
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
@@ -51,7 +63,9 @@ describe('<EpisodesList />', () => {
     await waitFor(() => screen.getByText(/Best of/i));
     expect(screen.getByText('S1E1')).toBeInTheDocument();
     expect(screen.getByText('The National Anthem')).toBeInTheDocument();
+    expect(screen.getByText('A shocking demand from a kidnapper.')).toBeInTheDocument();
     expect(screen.getByText('S4E6')).toBeInTheDocument();
+    expect(screen.getByText('A museum of criminological artifacts.')).toBeInTheDocument();
   });
 
   it('shows the no-ratings empty state when totalEpisodes is zero', async () => {
@@ -86,9 +100,9 @@ describe('<EpisodesList />', () => {
       defaultBest: 3,
       totalEpisodes: 6,
       episodes: [
-        { title: 'The National Anthem', rating: 7.504, number: 1, season: 1 },
-        { title: 'Fifteen Million Merits', rating: 7.696, number: 2, season: 1 },
-        { title: 'Black Museum', rating: 7.858, number: 6, season: 4 },
+        { title: 'The National Anthem', description: '', rating: 7.504, number: 1, season: 1 },
+        { title: 'Fifteen Million Merits', description: '', rating: 7.696, number: 2, season: 1 },
+        { title: 'Black Museum', description: '', rating: 7.858, number: 6, season: 4 },
       ],
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
@@ -107,9 +121,9 @@ describe('<EpisodesList />', () => {
       defaultBest: 3,
       totalEpisodes: 6,
       episodes: [
-        { title: 'Lowest', rating: 6.0, number: 1, season: 1 },
-        { title: 'Mid', rating: 7.5, number: 2, season: 1 },
-        { title: 'Best', rating: 9.5, number: 1, season: 2 },
+        { title: 'Lowest', description: '', rating: 6.0, number: 1, season: 1 },
+        { title: 'Mid', description: '', rating: 7.5, number: 2, season: 1 },
+        { title: 'Best', description: '', rating: 9.5, number: 1, season: 2 },
       ],
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
@@ -140,10 +154,10 @@ describe('<EpisodesList />', () => {
       totalEpisodes: 8,
       episodes: [
         // Returned in chronological order; ratings deliberately scrambled.
-        { title: 'A', rating: 5.0, number: 1, season: 1 },
-        { title: 'B', rating: 9.0, number: 2, season: 1 },
-        { title: 'C', rating: 7.0, number: 1, season: 2 },
-        { title: 'D', rating: 8.0, number: 2, season: 2 },
+        { title: 'A', description: '', rating: 5.0, number: 1, season: 1 },
+        { title: 'B', description: '', rating: 9.0, number: 2, season: 1 },
+        { title: 'C', description: '', rating: 7.0, number: 1, season: 2 },
+        { title: 'D', description: '', rating: 8.0, number: 2, season: 2 },
       ],
     };
     fetchMock.mockResolvedValue(jsonResponse(data));
@@ -173,17 +187,17 @@ describe('<EpisodesList />', () => {
       defaultBest: 2,
       totalEpisodes: 4,
       episodes: [
-        { title: 'A', rating: 9.0, number: 1, season: 1 },
-        { title: 'B', rating: 8.0, number: 2, season: 1 },
+        { title: 'A', description: '', rating: 9.0, number: 1, season: 1 },
+        { title: 'B', description: '', rating: 8.0, number: 2, season: 1 },
       ],
     };
     const expanded: EpisodesResponse = {
       ...initial,
       episodes: [
-        { title: 'A', rating: 9.0, number: 1, season: 1 },
-        { title: 'B', rating: 8.0, number: 2, season: 1 },
-        { title: 'C', rating: 7.0, number: 1, season: 2 },
-        { title: 'D', rating: 6.0, number: 2, season: 2 },
+        { title: 'A', description: '', rating: 9.0, number: 1, season: 1 },
+        { title: 'B', description: '', rating: 8.0, number: 2, season: 1 },
+        { title: 'C', description: '', rating: 7.0, number: 1, season: 2 },
+        { title: 'D', description: '', rating: 6.0, number: 2, season: 2 },
       ],
     };
     fetchMock.mockImplementation((input: string | URL) => {

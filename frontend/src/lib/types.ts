@@ -15,6 +15,7 @@ export interface SearchResponse {
 
 export interface Episode {
   title: string;
+  description: string;
   rating: number;
   number: number;
   season: number;

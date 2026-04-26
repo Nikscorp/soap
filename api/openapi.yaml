@@ -116,14 +116,17 @@ paths:
                     totalEpisodes: 27
                     episodes:
                       - title: The National Anthem
+                        description: The British prime minister faces a shocking dilemma when Princess Susannah is kidnapped.
                         rating: 7.504
                         number: 1
                         season: 1
                       - title: Fifteen Million Merits
+                        description: In a future where most of the population must cycle on exercise bikes to power their surroundings, Bing tries to escape his routine.
                         rating: 7.696
                         number: 2
                         season: 1
                       - title: Black Museum
+                        description: A traveler stumbles upon a museum whose proprietor trades in criminological artifacts with disturbing histories.
                         rating: 7.858
                         number: 6
                         season: 4
@@ -235,11 +238,18 @@ components:
           example: 27
     Episode:
       type: object
-      required: [title, rating, number, season]
+      required: [title, description, rating, number, season]
       properties:
         title:
           type: string
           example: The National Anthem
+        description:
+          type: string
+          description: |
+            Episode synopsis sourced from TMDB. May be an empty string when the
+            metadata provider has no overview for this episode (or in the
+            requested language).
+          example: The British prime minister faces a shocking dilemma when Princess Susannah is kidnapped.
         rating:
           type: number
           format: float

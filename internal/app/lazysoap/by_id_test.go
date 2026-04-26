@@ -56,12 +56,12 @@ const (
 	defaultBestBody = `
 	{
 		"episodes": [
-			{"title": "First One",     "rating": 9.99, "number": 1, "season": 1},
-			{"title": "Second One",    "rating": 9.8,  "number": 2, "season": 1},
-			{"title": "S2 First One",  "rating": 9,    "number": 1, "season": 2},
-			{"title": "S2 Second One", "rating": 9,    "number": 2, "season": 2},
-			{"title": "S3 First One",  "rating": 9,    "number": 1, "season": 3},
-			{"title": "S3 Second One", "rating": 9,    "number": 2, "season": 3}
+			{"title": "First One",     "description": "Greatest episode ever",  "rating": 9.99, "number": 1, "season": 1},
+			{"title": "Second One",    "description": "Greatest episode ever2", "rating": 9.8,  "number": 2, "season": 1},
+			{"title": "S2 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 2},
+			{"title": "S2 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 2},
+			{"title": "S3 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 3},
+			{"title": "S3 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 3}
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
@@ -72,8 +72,8 @@ const (
 	limitTwoBody = `
 	{
 		"episodes": [
-			{"title": "First One",  "rating": 9.99, "number": 1, "season": 1},
-			{"title": "Second One", "rating": 9.8,  "number": 2, "season": 1}
+			{"title": "First One",  "description": "Greatest episode ever",  "rating": 9.99, "number": 1, "season": 1},
+			{"title": "Second One", "description": "Greatest episode ever2", "rating": 9.8,  "number": 2, "season": 1}
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
@@ -84,15 +84,15 @@ const (
 	allEpisodesBody = `
 	{
 		"episodes": [
-			{"title": "First One",     "rating": 9.99, "number": 1, "season": 1},
-			{"title": "Second One",    "rating": 9.8,  "number": 2, "season": 1},
-			{"title": "Third One",     "rating": 1.1,  "number": 3, "season": 1},
-			{"title": "S2 First One",  "rating": 9,    "number": 1, "season": 2},
-			{"title": "S2 Second One", "rating": 9,    "number": 2, "season": 2},
-			{"title": "S2 Third One",  "rating": 1,    "number": 3, "season": 2},
-			{"title": "S3 First One",  "rating": 9,    "number": 1, "season": 3},
-			{"title": "S3 Second One", "rating": 9,    "number": 2, "season": 3},
-			{"title": "S3 Third One",  "rating": 1,    "number": 3, "season": 3}
+			{"title": "First One",     "description": "Greatest episode ever",  "rating": 9.99, "number": 1, "season": 1},
+			{"title": "Second One",    "description": "Greatest episode ever2", "rating": 9.8,  "number": 2, "season": 1},
+			{"title": "Third One",     "description": "Not so great episode",   "rating": 1.1,  "number": 3, "season": 1},
+			{"title": "S2 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 2},
+			{"title": "S2 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 2},
+			{"title": "S2 Third One",  "description": "Not so great episode",   "rating": 1,    "number": 3, "season": 2},
+			{"title": "S3 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 3},
+			{"title": "S3 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 3},
+			{"title": "S3 Third One",  "description": "Not so great episode",   "rating": 1,    "number": 3, "season": 3}
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
