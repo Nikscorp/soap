@@ -19,13 +19,15 @@ import (
 )
 
 type Config struct {
-	Address           string          `env:"LAZYSOAP_LISTEN_ADDR"         env-default:"0.0.0.0:8080" yaml:"listen_addr"`
-	ReadTimeout       time.Duration   `env:"LAZYSOAP_READ_TIMEOUT"        env-default:"10s"          yaml:"read_timeout"`
-	ReadHeaderTimeout time.Duration   `env:"LAZYSOAP_READ_HEADER_TIMEOUT" env-default:"10s"          yaml:"read_header_timeout"`
-	WriteTimeout      time.Duration   `env:"LAZYSOAP_WRITE_TIMEOUT"       env-default:"10s"          yaml:"write_timeout"`
-	IdleTimeout       time.Duration   `env:"LAZYSOAP_IDLE_TIMEOUT"        env-default:"10s"          yaml:"idle_timeout"`
-	GracefulTimeout   time.Duration   `env:"LAZYSOAP_GRACEFUL_TIMEOUT"    env-default:"10s"          yaml:"graceful_timeout"`
-	ImgClient         ImgClientConfig `yaml:"img_client"`
+	Address                string          `env:"LAZYSOAP_LISTEN_ADDR"               env-default:"0.0.0.0:8080" yaml:"listen_addr"`
+	ReadTimeout            time.Duration   `env:"LAZYSOAP_READ_TIMEOUT"              env-default:"10s"          yaml:"read_timeout"`
+	ReadHeaderTimeout      time.Duration   `env:"LAZYSOAP_READ_HEADER_TIMEOUT"       env-default:"10s"          yaml:"read_header_timeout"`
+	WriteTimeout           time.Duration   `env:"LAZYSOAP_WRITE_TIMEOUT"             env-default:"10s"          yaml:"write_timeout"`
+	IdleTimeout            time.Duration   `env:"LAZYSOAP_IDLE_TIMEOUT"              env-default:"10s"          yaml:"idle_timeout"`
+	GracefulTimeout        time.Duration   `env:"LAZYSOAP_GRACEFUL_TIMEOUT"          env-default:"10s"          yaml:"graceful_timeout"`
+	DefaultBestQuantile    float32         `env:"LAZYSOAP_DEFAULT_BEST_QUANTILE"     env-default:"0.9"          yaml:"default_best_quantile"`
+	DefaultBestMinEpisodes int             `env:"LAZYSOAP_DEFAULT_BEST_MIN_EPISODES" env-default:"3"            yaml:"default_best_min_episodes"`
+	ImgClient              ImgClientConfig `yaml:"img_client"`
 }
 
 type ImgClientConfig struct {

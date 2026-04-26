@@ -2,7 +2,6 @@ package lazysoap
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net/http"
 	"sort"
@@ -38,9 +37,10 @@ type episode struct {
 // the response itself is ordered chronologically by (season, number) for
 // display. The optional ?limit=N query parameter caps the number of episodes
 // returned; when omitted the response contains the server-computed
-// `defaultBest` (count of episodes whose rating is at or above the series
-// average). The response always carries `defaultBest` and `totalEpisodes` so a
-// client can render a slider over the full episode space.
+// `defaultBest` (count of episodes whose rating exceeds the configured
+// quantile of all ratings, with a configurable lower bound). The response
+// always carries `defaultBest` and `totalEpisodes` so a client can render a
+// slider over the full episode space.
 func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	language := r.URL.Query().Get("language")
@@ -66,17 +66,15 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	avgRating, err := s.getAvgRating(seasons)
-	if err != nil {
-		logger.Error(ctx, "Failed to count avg rating", "err", err)
+	byRating := s.flattenSortedByRating(seasons)
+	totalEpisodes := len(byRating)
+	if totalEpisodes == 0 {
+		logger.Error(ctx, "Failed to compute defaults", "err", errZeroEpisodes)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	logger.Info(ctx, fmt.Sprintf("Avg Rating for id %d is %v", intID, avgRating))
 
-	byRating := s.flattenSortedByRating(seasons)
-	defaultBest := countAboveRating(byRating, avgRating)
-	totalEpisodes := len(byRating)
+	defaultBest := s.computeDefaultBest(byRating)
 
 	effectiveLimit := min(parseLimit(limitParam, defaultBest), totalEpisodes)
 
@@ -114,41 +112,69 @@ func parseLimit(raw string, defaultLimit int) int {
 	return v
 }
 
-func (s *Server) getAvgRating(seasons *tvmeta.AllSeasonsWithDetails) (float32, error) {
-	var (
-		sumRating     float32
-		episodesCount int
-	)
+// computeDefaultBest returns the recommended count of episodes to surface as
+// the "best" set. It's the number of episodes whose rating strictly exceeds
+// the configured quantile of all ratings, raised to the configured minimum
+// (capped by total episode count). Assumes byRating is sorted by rating
+// descending.
+func (s *Server) computeDefaultBest(byRating []episode) int {
+	n := len(byRating)
+	if n == 0 {
+		return 0
+	}
+	threshold := quantileRating(byRating, s.config.DefaultBestQuantile)
+	count := countAboveStrict(byRating, threshold)
 
-	for _, s := range seasons.Seasons {
-		for _, e := range s.Episodes {
-			//nolint:mnd
-			e.Rating = float32(math.Round(float64(e.Rating*100))) / 100
-			sumRating += e.Rating
-			episodesCount++
+	floor := max(min(s.config.DefaultBestMinEpisodes, n), 0)
+	return max(count, floor)
+}
+
+// quantileRating returns the q-th quantile of ratings in byRating, which is
+// expected to be sorted by rating descending. q is clamped to [0, 1]. Uses
+// the lower-index nearest-rank definition: index = floor(q * (n-1)) over the
+// ascending sequence.
+func quantileRating(byRating []episode, q float32) float32 {
+	n := len(byRating)
+	if n == 0 {
+		return 0
+	}
+	if q < 0 {
+		q = 0
+	}
+	if q > 1 {
+		q = 1
+	}
+	idxFromBottom := int(math.Floor(float64(q) * float64(n-1)))
+	return byRating[n-1-idxFromBottom].Rating
+}
+
+// countAboveStrict returns the number of leading episodes whose rating is
+// strictly greater than the threshold. Assumes the slice is sorted by rating
+// descending.
+func countAboveStrict(episodes []episode, threshold float32) int {
+	for i, e := range episodes {
+		if e.Rating <= threshold {
+			return i
 		}
 	}
-
-	if episodesCount == 0 {
-		return 0, errZeroEpisodes
-	}
-
-	avgRating := sumRating / float32(episodesCount)
-
-	return avgRating, nil
+	return len(episodes)
 }
 
 // flattenSortedByRating returns every episode across all seasons, sorted by
-// rating descending. Ties are broken by (season, number) ascending so that the
-// order is stable and chronologically intuitive within each rating tier.
+// rating descending. Ratings are rounded to two decimals so that the response
+// and downstream comparisons use stable values. Ties are broken by
+// (season, number) ascending so that the order is stable and chronologically
+// intuitive within each rating tier.
 func (s *Server) flattenSortedByRating(seasons *tvmeta.AllSeasonsWithDetails) []episode {
 	episodes := make([]episode, 0)
 	for _, season := range seasons.Seasons {
 		for _, e := range season.Episodes {
+			//nolint:mnd
+			rating := float32(math.Round(float64(e.Rating*100))) / 100
 			episodes = append(episodes, episode{
 				Title:       e.Name,
 				Description: e.Description,
-				Rating:      e.Rating,
+				Rating:      rating,
 				Number:      e.Number,
 				Season:      season.SeasonNumber,
 			})
@@ -166,15 +192,4 @@ func (s *Server) flattenSortedByRating(seasons *tvmeta.AllSeasonsWithDetails) []
 	})
 
 	return episodes
-}
-
-// countAboveRating returns the number of leading episodes whose rating is at
-// or above the threshold. Assumes the slice is sorted by rating descending.
-func countAboveRating(episodes []episode, threshold float32) int {
-	for i, e := range episodes {
-		if e.Rating < threshold {
-			return i
-		}
-	}
-	return len(episodes)
 }

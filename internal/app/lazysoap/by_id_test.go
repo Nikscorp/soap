@@ -2,11 +2,14 @@ package lazysoap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/Nikscorp/soap/internal/app/lazysoap/mocks"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +17,9 @@ import (
 // fixtureSeasons returns the canonical 9-episode/3-season fixture used by the
 // /id/{id} tests. Episodes ratings (after server-side rounding) are:
 // S1E1=9.99, S1E2=9.8, S1E3=1.1, S2E1=9, S2E2=9, S2E3=1, S3E1=9, S3E2=9, S3E3=1.
-// avg ≈ 6.543, so 6 episodes are at or above the average ⇒ defaultBest=6.
+// With q=0.9 the 0.9-quantile rating is 9.8 (ratings sorted asc, index
+// floor(0.9*8)=7 ⇒ value 9.8); only S1E1 strictly exceeds it, so the
+// minimum-episodes floor of 3 wins ⇒ defaultBest=3.
 func fixtureSeasons() *tvmeta.AllSeasonsWithDetails {
 	return &tvmeta.AllSeasonsWithDetails{
 		Details: &tvmeta.TvShowDetails{
@@ -59,15 +64,12 @@ const (
 		"episodes": [
 			{"title": "First One",     "description": "Greatest episode ever",  "rating": 9.99, "number": 1, "season": 1},
 			{"title": "Second One",    "description": "Greatest episode ever2", "rating": 9.8,  "number": 2, "season": 1},
-			{"title": "S2 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 2},
-			{"title": "S2 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 2},
-			{"title": "S3 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 3},
-			{"title": "S3 Second One", "description": "Greatest episode ever2", "rating": 9,    "number": 2, "season": 3}
+			{"title": "S2 First One",  "description": "Greatest episode ever",  "rating": 9,    "number": 1, "season": 2}
 		],
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
-		"defaultBest": 6,
+		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`
 
@@ -80,7 +82,7 @@ const (
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
-		"defaultBest": 6,
+		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`
 
@@ -100,7 +102,7 @@ const (
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
-		"defaultBest": 6,
+		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`
 )
@@ -184,6 +186,53 @@ func TestIDHandler(t *testing.T) {
 		})
 	}
 	require.Equal(t, len(testCases), len(srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Calls()))
+}
+
+func TestIDHandlerDefaultBestConfig(t *testing.T) {
+	testCases := []struct {
+		name            string
+		quantile        float32
+		minEpisodes     int
+		wantDefaultBest int
+	}{
+		// q=0.5 over the 9-episode fixture: ratings asc index floor(0.5*8)=4
+		// → threshold rating 9 (the median 9), 2 episodes strictly above (9.99, 9.8).
+		{name: "median quantile picks tail above threshold", quantile: 0.5, minEpisodes: 0, wantDefaultBest: 2},
+		// Same quantile but with a higher floor.
+		{name: "minEpisodes raises the floor", quantile: 0.5, minEpisodes: 5, wantDefaultBest: 5},
+		// q=1.0: threshold equals the highest rating, so no episode strictly
+		// exceeds it; the floor wins.
+		{name: "q=1 falls back to minEpisodes", quantile: 1.0, minEpisodes: 4, wantDefaultBest: 4},
+		// minEpisodes greater than total clamps to total.
+		{name: "minEpisodes capped at totalEpisodes", quantile: 1.0, minEpisodes: 100, wantDefaultBest: 9},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tvMetaClientMock := mocks.NewTvMetaClientMock(t)
+			srv := New(Config{
+				DefaultBestQuantile:    tc.quantile,
+				DefaultBestMinEpisodes: tc.minEpisodes,
+			}, tvMetaClientMock, "")
+			ts := httptest.NewServer(srv.newRouter())
+			defer ts.Close()
+
+			tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Set(func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
+				return fixtureSeasons(), nil
+			})
+
+			resp, err := http.Get(ts.URL + "/id/42")
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			var got episodesResp
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&got))
+			require.Equal(t, tc.wantDefaultBest, got.DefaultBest)
+			require.Equal(t, 9, got.TotalEpisodes)
+			require.Len(t, got.Episodes, tc.wantDefaultBest)
+		})
+	}
 }
 
 func TestIDHandlerInvalidID(t *testing.T) {

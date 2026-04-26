@@ -67,9 +67,11 @@ paths:
         rating descending (top-N) but the returned slice is sorted
         chronologically by `(season, number)` ascending for display. When
         `limit` is omitted, the response contains `defaultBest` episodes — the
-        count of episodes whose rating is at or above the series average. The
-        full episode count is reported as `totalEpisodes` so clients can
-        render a slider over the entire episode space.
+        count of episodes whose rating strictly exceeds the configured
+        quantile of all ratings (default `0.9`), raised to the configured
+        minimum-episode floor (default `3`) when fewer episodes clear the
+        threshold. The full episode count is reported as `totalEpisodes` so
+        clients can render a slider over the entire episode space.
       parameters:
         - name: id
           in: path
@@ -233,9 +235,11 @@ components:
           format: int64
           minimum: 0
           description: |
-            Number of episodes whose rating is at or above the series
-            average; the size of the response when `limit` is omitted, and
-            the recommended initial value for a "top N" slider on the client.
+            Number of episodes whose rating strictly exceeds the configured
+            quantile of all ratings (default `0.9`), with a configured
+            minimum floor (default `3`); the size of the response when
+            `limit` is omitted, and the recommended initial value for a
+            "top N" slider on the client.
           example: 3
         totalEpisodes:
           type: integer
