@@ -16,12 +16,7 @@ jobs:
         packages: write
         contents: read
       steps:
-        # See note in ci.yml: pinned to @v2 because the frontend submodule
-        # lives in a third-party org and v3+ tightened submodule auth.
-        - uses: actions/checkout@v2
-          with:
-            submodules: recursive
-            token: ${{ secrets.BOT_PAT }}
+        - uses: actions/checkout@v4
         - name: Build image
           run: docker build . --file Dockerfile --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
         - name: Log in to registry
