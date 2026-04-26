@@ -6,7 +6,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # NOTE: pinned to @v2 because the frontend submodule lives in a third-party
+      # org (sokks/series-app) and v3+ tightened submodule auth — BOT_PAT can't
+      # authenticate against it, which surfaces as
+      # "fatal: could not read Username for 'https://github.com'".
+      # TODO: bump back to @v4 once the submodule fetch uses a deploy key or
+      # the PAT is granted read access to sokks/series-app.
+      - uses: actions/checkout@v2
         with:
           submodules: recursive
           token: ${{ secrets.BOT_PAT }}

@@ -16,7 +16,9 @@ jobs:
         packages: write
         contents: read
       steps:
-        - uses: actions/checkout@v4
+        # See note in ci.yml: pinned to @v2 because the frontend submodule
+        # lives in a third-party org and v3+ tightened submodule auth.
+        - uses: actions/checkout@v2
           with:
             submodules: recursive
             token: ${{ secrets.BOT_PAT }}
