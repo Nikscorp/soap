@@ -18,6 +18,12 @@ import (
 type TvMetaClientMock struct {
 	t minimock.Tester
 
+	funcPopularTVShows          func(ctx context.Context, language string) (tpa1 []*tvmeta.TVShow, err error)
+	inspectFuncPopularTVShows   func(ctx context.Context, language string)
+	afterPopularTVShowsCounter  uint64
+	beforePopularTVShowsCounter uint64
+	PopularTVShowsMock          mTvMetaClientMockPopularTVShows
+
 	funcSearchTVShows          func(ctx context.Context, query string) (tp1 *tvmeta.TVShows, err error)
 	inspectFuncSearchTVShows   func(ctx context.Context, query string)
 	afterSearchTVShowsCounter  uint64
@@ -29,6 +35,12 @@ type TvMetaClientMock struct {
 	afterTVShowAllSeasonsWithDetailsCounter  uint64
 	beforeTVShowAllSeasonsWithDetailsCounter uint64
 	TVShowAllSeasonsWithDetailsMock          mTvMetaClientMockTVShowAllSeasonsWithDetails
+
+	funcTVShowDetails          func(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error)
+	inspectFuncTVShowDetails   func(ctx context.Context, id int)
+	afterTVShowDetailsCounter  uint64
+	beforeTVShowDetailsCounter uint64
+	TVShowDetailsMock          mTvMetaClientMockTVShowDetails
 }
 
 // NewTvMetaClientMock returns a mock for lazysoap.tvMetaClient
@@ -38,13 +50,236 @@ func NewTvMetaClientMock(t minimock.Tester) *TvMetaClientMock {
 		controller.RegisterMocker(m)
 	}
 
+	m.PopularTVShowsMock = mTvMetaClientMockPopularTVShows{mock: m}
+	m.PopularTVShowsMock.callArgs = []*TvMetaClientMockPopularTVShowsParams{}
+
 	m.SearchTVShowsMock = mTvMetaClientMockSearchTVShows{mock: m}
 	m.SearchTVShowsMock.callArgs = []*TvMetaClientMockSearchTVShowsParams{}
 
 	m.TVShowAllSeasonsWithDetailsMock = mTvMetaClientMockTVShowAllSeasonsWithDetails{mock: m}
 	m.TVShowAllSeasonsWithDetailsMock.callArgs = []*TvMetaClientMockTVShowAllSeasonsWithDetailsParams{}
 
+	m.TVShowDetailsMock = mTvMetaClientMockTVShowDetails{mock: m}
+	m.TVShowDetailsMock.callArgs = []*TvMetaClientMockTVShowDetailsParams{}
+
 	return m
+}
+
+type mTvMetaClientMockPopularTVShows struct {
+	mock               *TvMetaClientMock
+	defaultExpectation *TvMetaClientMockPopularTVShowsExpectation
+	expectations       []*TvMetaClientMockPopularTVShowsExpectation
+
+	callArgs []*TvMetaClientMockPopularTVShowsParams
+	mutex    sync.RWMutex
+}
+
+// TvMetaClientMockPopularTVShowsExpectation specifies expectation struct of the tvMetaClient.PopularTVShows
+type TvMetaClientMockPopularTVShowsExpectation struct {
+	mock    *TvMetaClientMock
+	params  *TvMetaClientMockPopularTVShowsParams
+	results *TvMetaClientMockPopularTVShowsResults
+	Counter uint64
+}
+
+// TvMetaClientMockPopularTVShowsParams contains parameters of the tvMetaClient.PopularTVShows
+type TvMetaClientMockPopularTVShowsParams struct {
+	ctx      context.Context
+	language string
+}
+
+// TvMetaClientMockPopularTVShowsResults contains results of the tvMetaClient.PopularTVShows
+type TvMetaClientMockPopularTVShowsResults struct {
+	tpa1 []*tvmeta.TVShow
+	err  error
+}
+
+// Expect sets up expected params for tvMetaClient.PopularTVShows
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) Expect(ctx context.Context, language string) *mTvMetaClientMockPopularTVShows {
+	if mmPopularTVShows.mock.funcPopularTVShows != nil {
+		mmPopularTVShows.mock.t.Fatalf("TvMetaClientMock.PopularTVShows mock is already set by Set")
+	}
+
+	if mmPopularTVShows.defaultExpectation == nil {
+		mmPopularTVShows.defaultExpectation = &TvMetaClientMockPopularTVShowsExpectation{}
+	}
+
+	mmPopularTVShows.defaultExpectation.params = &TvMetaClientMockPopularTVShowsParams{ctx, language}
+	for _, e := range mmPopularTVShows.expectations {
+		if minimock.Equal(e.params, mmPopularTVShows.defaultExpectation.params) {
+			mmPopularTVShows.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmPopularTVShows.defaultExpectation.params)
+		}
+	}
+
+	return mmPopularTVShows
+}
+
+// Inspect accepts an inspector function that has same arguments as the tvMetaClient.PopularTVShows
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) Inspect(f func(ctx context.Context, language string)) *mTvMetaClientMockPopularTVShows {
+	if mmPopularTVShows.mock.inspectFuncPopularTVShows != nil {
+		mmPopularTVShows.mock.t.Fatalf("Inspect function is already set for TvMetaClientMock.PopularTVShows")
+	}
+
+	mmPopularTVShows.mock.inspectFuncPopularTVShows = f
+
+	return mmPopularTVShows
+}
+
+// Return sets up results that will be returned by tvMetaClient.PopularTVShows
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) Return(tpa1 []*tvmeta.TVShow, err error) *TvMetaClientMock {
+	if mmPopularTVShows.mock.funcPopularTVShows != nil {
+		mmPopularTVShows.mock.t.Fatalf("TvMetaClientMock.PopularTVShows mock is already set by Set")
+	}
+
+	if mmPopularTVShows.defaultExpectation == nil {
+		mmPopularTVShows.defaultExpectation = &TvMetaClientMockPopularTVShowsExpectation{mock: mmPopularTVShows.mock}
+	}
+	mmPopularTVShows.defaultExpectation.results = &TvMetaClientMockPopularTVShowsResults{tpa1, err}
+	return mmPopularTVShows.mock
+}
+
+// Set uses given function f to mock the tvMetaClient.PopularTVShows method
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) Set(f func(ctx context.Context, language string) (tpa1 []*tvmeta.TVShow, err error)) *TvMetaClientMock {
+	if mmPopularTVShows.defaultExpectation != nil {
+		mmPopularTVShows.mock.t.Fatalf("Default expectation is already set for the tvMetaClient.PopularTVShows method")
+	}
+
+	if len(mmPopularTVShows.expectations) > 0 {
+		mmPopularTVShows.mock.t.Fatalf("Some expectations are already set for the tvMetaClient.PopularTVShows method")
+	}
+
+	mmPopularTVShows.mock.funcPopularTVShows = f
+	return mmPopularTVShows.mock
+}
+
+// When sets expectation for the tvMetaClient.PopularTVShows which will trigger the result defined by the following
+// Then helper
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) When(ctx context.Context, language string) *TvMetaClientMockPopularTVShowsExpectation {
+	if mmPopularTVShows.mock.funcPopularTVShows != nil {
+		mmPopularTVShows.mock.t.Fatalf("TvMetaClientMock.PopularTVShows mock is already set by Set")
+	}
+
+	expectation := &TvMetaClientMockPopularTVShowsExpectation{
+		mock:   mmPopularTVShows.mock,
+		params: &TvMetaClientMockPopularTVShowsParams{ctx, language},
+	}
+	mmPopularTVShows.expectations = append(mmPopularTVShows.expectations, expectation)
+	return expectation
+}
+
+// Then sets up tvMetaClient.PopularTVShows return parameters for the expectation previously defined by the When method
+func (e *TvMetaClientMockPopularTVShowsExpectation) Then(tpa1 []*tvmeta.TVShow, err error) *TvMetaClientMock {
+	e.results = &TvMetaClientMockPopularTVShowsResults{tpa1, err}
+	return e.mock
+}
+
+// PopularTVShows implements lazysoap.tvMetaClient
+func (mmPopularTVShows *TvMetaClientMock) PopularTVShows(ctx context.Context, language string) (tpa1 []*tvmeta.TVShow, err error) {
+	mm_atomic.AddUint64(&mmPopularTVShows.beforePopularTVShowsCounter, 1)
+	defer mm_atomic.AddUint64(&mmPopularTVShows.afterPopularTVShowsCounter, 1)
+
+	if mmPopularTVShows.inspectFuncPopularTVShows != nil {
+		mmPopularTVShows.inspectFuncPopularTVShows(ctx, language)
+	}
+
+	mm_params := &TvMetaClientMockPopularTVShowsParams{ctx, language}
+
+	// Record call args
+	mmPopularTVShows.PopularTVShowsMock.mutex.Lock()
+	mmPopularTVShows.PopularTVShowsMock.callArgs = append(mmPopularTVShows.PopularTVShowsMock.callArgs, mm_params)
+	mmPopularTVShows.PopularTVShowsMock.mutex.Unlock()
+
+	for _, e := range mmPopularTVShows.PopularTVShowsMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.tpa1, e.results.err
+		}
+	}
+
+	if mmPopularTVShows.PopularTVShowsMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmPopularTVShows.PopularTVShowsMock.defaultExpectation.Counter, 1)
+		mm_want := mmPopularTVShows.PopularTVShowsMock.defaultExpectation.params
+		mm_got := TvMetaClientMockPopularTVShowsParams{ctx, language}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmPopularTVShows.t.Errorf("TvMetaClientMock.PopularTVShows got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmPopularTVShows.PopularTVShowsMock.defaultExpectation.results
+		if mm_results == nil {
+			mmPopularTVShows.t.Fatal("No results are set for the TvMetaClientMock.PopularTVShows")
+		}
+		return (*mm_results).tpa1, (*mm_results).err
+	}
+	if mmPopularTVShows.funcPopularTVShows != nil {
+		return mmPopularTVShows.funcPopularTVShows(ctx, language)
+	}
+	mmPopularTVShows.t.Fatalf("Unexpected call to TvMetaClientMock.PopularTVShows. %v %v", ctx, language)
+	return
+}
+
+// PopularTVShowsAfterCounter returns a count of finished TvMetaClientMock.PopularTVShows invocations
+func (mmPopularTVShows *TvMetaClientMock) PopularTVShowsAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmPopularTVShows.afterPopularTVShowsCounter)
+}
+
+// PopularTVShowsBeforeCounter returns a count of TvMetaClientMock.PopularTVShows invocations
+func (mmPopularTVShows *TvMetaClientMock) PopularTVShowsBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmPopularTVShows.beforePopularTVShowsCounter)
+}
+
+// Calls returns a list of arguments used in each call to TvMetaClientMock.PopularTVShows.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmPopularTVShows *mTvMetaClientMockPopularTVShows) Calls() []*TvMetaClientMockPopularTVShowsParams {
+	mmPopularTVShows.mutex.RLock()
+
+	argCopy := make([]*TvMetaClientMockPopularTVShowsParams, len(mmPopularTVShows.callArgs))
+	copy(argCopy, mmPopularTVShows.callArgs)
+
+	mmPopularTVShows.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockPopularTVShowsDone returns true if the count of the PopularTVShows invocations corresponds
+// the number of defined expectations
+func (m *TvMetaClientMock) MinimockPopularTVShowsDone() bool {
+	for _, e := range m.PopularTVShowsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.PopularTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcPopularTVShows != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockPopularTVShowsInspect logs each unmet expectation
+func (m *TvMetaClientMock) MinimockPopularTVShowsInspect() {
+	for _, e := range m.PopularTVShowsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to TvMetaClientMock.PopularTVShows with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.PopularTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+		if m.PopularTVShowsMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to TvMetaClientMock.PopularTVShows")
+		} else {
+			m.t.Errorf("Expected call to TvMetaClientMock.PopularTVShows with params: %#v", *m.PopularTVShowsMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcPopularTVShows != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+		m.t.Error("Expected call to TvMetaClientMock.PopularTVShows")
+	}
 }
 
 type mTvMetaClientMockSearchTVShows struct {
@@ -482,12 +717,233 @@ func (m *TvMetaClientMock) MinimockTVShowAllSeasonsWithDetailsInspect() {
 	}
 }
 
+type mTvMetaClientMockTVShowDetails struct {
+	mock               *TvMetaClientMock
+	defaultExpectation *TvMetaClientMockTVShowDetailsExpectation
+	expectations       []*TvMetaClientMockTVShowDetailsExpectation
+
+	callArgs []*TvMetaClientMockTVShowDetailsParams
+	mutex    sync.RWMutex
+}
+
+// TvMetaClientMockTVShowDetailsExpectation specifies expectation struct of the tvMetaClient.TVShowDetails
+type TvMetaClientMockTVShowDetailsExpectation struct {
+	mock    *TvMetaClientMock
+	params  *TvMetaClientMockTVShowDetailsParams
+	results *TvMetaClientMockTVShowDetailsResults
+	Counter uint64
+}
+
+// TvMetaClientMockTVShowDetailsParams contains parameters of the tvMetaClient.TVShowDetails
+type TvMetaClientMockTVShowDetailsParams struct {
+	ctx context.Context
+	id  int
+}
+
+// TvMetaClientMockTVShowDetailsResults contains results of the tvMetaClient.TVShowDetails
+type TvMetaClientMockTVShowDetailsResults struct {
+	tp1 *tvmeta.TvShowDetails
+	err error
+}
+
+// Expect sets up expected params for tvMetaClient.TVShowDetails
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) Expect(ctx context.Context, id int) *mTvMetaClientMockTVShowDetails {
+	if mmTVShowDetails.mock.funcTVShowDetails != nil {
+		mmTVShowDetails.mock.t.Fatalf("TvMetaClientMock.TVShowDetails mock is already set by Set")
+	}
+
+	if mmTVShowDetails.defaultExpectation == nil {
+		mmTVShowDetails.defaultExpectation = &TvMetaClientMockTVShowDetailsExpectation{}
+	}
+
+	mmTVShowDetails.defaultExpectation.params = &TvMetaClientMockTVShowDetailsParams{ctx, id}
+	for _, e := range mmTVShowDetails.expectations {
+		if minimock.Equal(e.params, mmTVShowDetails.defaultExpectation.params) {
+			mmTVShowDetails.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmTVShowDetails.defaultExpectation.params)
+		}
+	}
+
+	return mmTVShowDetails
+}
+
+// Inspect accepts an inspector function that has same arguments as the tvMetaClient.TVShowDetails
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) Inspect(f func(ctx context.Context, id int)) *mTvMetaClientMockTVShowDetails {
+	if mmTVShowDetails.mock.inspectFuncTVShowDetails != nil {
+		mmTVShowDetails.mock.t.Fatalf("Inspect function is already set for TvMetaClientMock.TVShowDetails")
+	}
+
+	mmTVShowDetails.mock.inspectFuncTVShowDetails = f
+
+	return mmTVShowDetails
+}
+
+// Return sets up results that will be returned by tvMetaClient.TVShowDetails
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) Return(tp1 *tvmeta.TvShowDetails, err error) *TvMetaClientMock {
+	if mmTVShowDetails.mock.funcTVShowDetails != nil {
+		mmTVShowDetails.mock.t.Fatalf("TvMetaClientMock.TVShowDetails mock is already set by Set")
+	}
+
+	if mmTVShowDetails.defaultExpectation == nil {
+		mmTVShowDetails.defaultExpectation = &TvMetaClientMockTVShowDetailsExpectation{mock: mmTVShowDetails.mock}
+	}
+	mmTVShowDetails.defaultExpectation.results = &TvMetaClientMockTVShowDetailsResults{tp1, err}
+	return mmTVShowDetails.mock
+}
+
+// Set uses given function f to mock the tvMetaClient.TVShowDetails method
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) Set(f func(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error)) *TvMetaClientMock {
+	if mmTVShowDetails.defaultExpectation != nil {
+		mmTVShowDetails.mock.t.Fatalf("Default expectation is already set for the tvMetaClient.TVShowDetails method")
+	}
+
+	if len(mmTVShowDetails.expectations) > 0 {
+		mmTVShowDetails.mock.t.Fatalf("Some expectations are already set for the tvMetaClient.TVShowDetails method")
+	}
+
+	mmTVShowDetails.mock.funcTVShowDetails = f
+	return mmTVShowDetails.mock
+}
+
+// When sets expectation for the tvMetaClient.TVShowDetails which will trigger the result defined by the following
+// Then helper
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) When(ctx context.Context, id int) *TvMetaClientMockTVShowDetailsExpectation {
+	if mmTVShowDetails.mock.funcTVShowDetails != nil {
+		mmTVShowDetails.mock.t.Fatalf("TvMetaClientMock.TVShowDetails mock is already set by Set")
+	}
+
+	expectation := &TvMetaClientMockTVShowDetailsExpectation{
+		mock:   mmTVShowDetails.mock,
+		params: &TvMetaClientMockTVShowDetailsParams{ctx, id},
+	}
+	mmTVShowDetails.expectations = append(mmTVShowDetails.expectations, expectation)
+	return expectation
+}
+
+// Then sets up tvMetaClient.TVShowDetails return parameters for the expectation previously defined by the When method
+func (e *TvMetaClientMockTVShowDetailsExpectation) Then(tp1 *tvmeta.TvShowDetails, err error) *TvMetaClientMock {
+	e.results = &TvMetaClientMockTVShowDetailsResults{tp1, err}
+	return e.mock
+}
+
+// TVShowDetails implements lazysoap.tvMetaClient
+func (mmTVShowDetails *TvMetaClientMock) TVShowDetails(ctx context.Context, id int) (tp1 *tvmeta.TvShowDetails, err error) {
+	mm_atomic.AddUint64(&mmTVShowDetails.beforeTVShowDetailsCounter, 1)
+	defer mm_atomic.AddUint64(&mmTVShowDetails.afterTVShowDetailsCounter, 1)
+
+	if mmTVShowDetails.inspectFuncTVShowDetails != nil {
+		mmTVShowDetails.inspectFuncTVShowDetails(ctx, id)
+	}
+
+	mm_params := &TvMetaClientMockTVShowDetailsParams{ctx, id}
+
+	// Record call args
+	mmTVShowDetails.TVShowDetailsMock.mutex.Lock()
+	mmTVShowDetails.TVShowDetailsMock.callArgs = append(mmTVShowDetails.TVShowDetailsMock.callArgs, mm_params)
+	mmTVShowDetails.TVShowDetailsMock.mutex.Unlock()
+
+	for _, e := range mmTVShowDetails.TVShowDetailsMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.tp1, e.results.err
+		}
+	}
+
+	if mmTVShowDetails.TVShowDetailsMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmTVShowDetails.TVShowDetailsMock.defaultExpectation.Counter, 1)
+		mm_want := mmTVShowDetails.TVShowDetailsMock.defaultExpectation.params
+		mm_got := TvMetaClientMockTVShowDetailsParams{ctx, id}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmTVShowDetails.t.Errorf("TvMetaClientMock.TVShowDetails got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmTVShowDetails.TVShowDetailsMock.defaultExpectation.results
+		if mm_results == nil {
+			mmTVShowDetails.t.Fatal("No results are set for the TvMetaClientMock.TVShowDetails")
+		}
+		return (*mm_results).tp1, (*mm_results).err
+	}
+	if mmTVShowDetails.funcTVShowDetails != nil {
+		return mmTVShowDetails.funcTVShowDetails(ctx, id)
+	}
+	mmTVShowDetails.t.Fatalf("Unexpected call to TvMetaClientMock.TVShowDetails. %v %v", ctx, id)
+	return
+}
+
+// TVShowDetailsAfterCounter returns a count of finished TvMetaClientMock.TVShowDetails invocations
+func (mmTVShowDetails *TvMetaClientMock) TVShowDetailsAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmTVShowDetails.afterTVShowDetailsCounter)
+}
+
+// TVShowDetailsBeforeCounter returns a count of TvMetaClientMock.TVShowDetails invocations
+func (mmTVShowDetails *TvMetaClientMock) TVShowDetailsBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmTVShowDetails.beforeTVShowDetailsCounter)
+}
+
+// Calls returns a list of arguments used in each call to TvMetaClientMock.TVShowDetails.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmTVShowDetails *mTvMetaClientMockTVShowDetails) Calls() []*TvMetaClientMockTVShowDetailsParams {
+	mmTVShowDetails.mutex.RLock()
+
+	argCopy := make([]*TvMetaClientMockTVShowDetailsParams, len(mmTVShowDetails.callArgs))
+	copy(argCopy, mmTVShowDetails.callArgs)
+
+	mmTVShowDetails.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockTVShowDetailsDone returns true if the count of the TVShowDetails invocations corresponds
+// the number of defined expectations
+func (m *TvMetaClientMock) MinimockTVShowDetailsDone() bool {
+	for _, e := range m.TVShowDetailsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.TVShowDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcTVShowDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockTVShowDetailsInspect logs each unmet expectation
+func (m *TvMetaClientMock) MinimockTVShowDetailsInspect() {
+	for _, e := range m.TVShowDetailsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to TvMetaClientMock.TVShowDetails with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.TVShowDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+		if m.TVShowDetailsMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to TvMetaClientMock.TVShowDetails")
+		} else {
+			m.t.Errorf("Expected call to TvMetaClientMock.TVShowDetails with params: %#v", *m.TVShowDetailsMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcTVShowDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+		m.t.Error("Expected call to TvMetaClientMock.TVShowDetails")
+	}
+}
+
 // MinimockFinish checks that all mocked methods have been called the expected number of times
 func (m *TvMetaClientMock) MinimockFinish() {
 	if !m.minimockDone() {
+		m.MinimockPopularTVShowsInspect()
+
 		m.MinimockSearchTVShowsInspect()
 
 		m.MinimockTVShowAllSeasonsWithDetailsInspect()
+
+		m.MinimockTVShowDetailsInspect()
 		m.t.FailNow()
 	}
 }
@@ -511,6 +967,8 @@ func (m *TvMetaClientMock) MinimockWait(timeout mm_time.Duration) {
 func (m *TvMetaClientMock) minimockDone() bool {
 	done := true
 	return done &&
+		m.MinimockPopularTVShowsDone() &&
 		m.MinimockSearchTVShowsDone() &&
-		m.MinimockTVShowAllSeasonsWithDetailsDone()
+		m.MinimockTVShowAllSeasonsWithDetailsDone() &&
+		m.MinimockTVShowDetailsDone()
 }

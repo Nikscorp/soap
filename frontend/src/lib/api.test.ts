@@ -28,4 +28,15 @@ describe('normalizePosterUrl', () => {
     expect(normalizePosterUrl(undefined)).toBeNull();
     expect(normalizePosterUrl('')).toBeNull();
   });
+
+  it('appends ?size=… for proxied paths when a size is requested', () => {
+    expect(normalizePosterUrl('/img/abc.jpg', 'w342')).toBe('/img/abc.jpg?size=w342');
+    expect(normalizePosterUrl('abc.jpg', 'w500')).toBe('/img/abc.jpg?size=w500');
+  });
+
+  it('leaves absolute urls untouched even when a size is provided', () => {
+    expect(normalizePosterUrl('https://image.tmdb.org/t/p/w92/abc.jpg', 'w500')).toBe(
+      'https://image.tmdb.org/t/p/w92/abc.jpg',
+    );
+  });
 });

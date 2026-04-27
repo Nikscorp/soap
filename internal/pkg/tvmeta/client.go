@@ -16,6 +16,7 @@ type tmdbClient interface {
 	GetSearchTVShow(query string, urlOptions map[string]string) (*tmdb.SearchTVShows, error)
 	GetTVDetails(id int, urlOptions map[string]string) (*tmdb.TVDetails, error)
 	GetTVSeasonDetails(id int, seasonNumber int, urlOptions map[string]string) (*tmdb.TVSeasonDetails, error)
+	GetTVPopular(urlOptions map[string]string) (*tmdb.TVPopular, error)
 }
 
 func New(tmdbClient tmdbClient) *Client {

@@ -19,15 +19,19 @@ import (
 )
 
 type Config struct {
-	Address                string          `env:"LAZYSOAP_LISTEN_ADDR"               env-default:"0.0.0.0:8080" yaml:"listen_addr"`
-	ReadTimeout            time.Duration   `env:"LAZYSOAP_READ_TIMEOUT"              env-default:"10s"          yaml:"read_timeout"`
-	ReadHeaderTimeout      time.Duration   `env:"LAZYSOAP_READ_HEADER_TIMEOUT"       env-default:"10s"          yaml:"read_header_timeout"`
-	WriteTimeout           time.Duration   `env:"LAZYSOAP_WRITE_TIMEOUT"             env-default:"10s"          yaml:"write_timeout"`
-	IdleTimeout            time.Duration   `env:"LAZYSOAP_IDLE_TIMEOUT"              env-default:"10s"          yaml:"idle_timeout"`
-	GracefulTimeout        time.Duration   `env:"LAZYSOAP_GRACEFUL_TIMEOUT"          env-default:"10s"          yaml:"graceful_timeout"`
-	DefaultBestQuantile    float32         `env:"LAZYSOAP_DEFAULT_BEST_QUANTILE"     env-default:"0.9"          yaml:"default_best_quantile"`
-	DefaultBestMinEpisodes int             `env:"LAZYSOAP_DEFAULT_BEST_MIN_EPISODES" env-default:"3"            yaml:"default_best_min_episodes"`
-	ImgClient              ImgClientConfig `yaml:"img_client"`
+	Address                       string          `env:"LAZYSOAP_LISTEN_ADDR"                      env-default:"0.0.0.0:8080"                                        yaml:"listen_addr"`
+	ReadTimeout                   time.Duration   `env:"LAZYSOAP_READ_TIMEOUT"                     env-default:"10s"                                                 yaml:"read_timeout"`
+	ReadHeaderTimeout             time.Duration   `env:"LAZYSOAP_READ_HEADER_TIMEOUT"              env-default:"10s"                                                 yaml:"read_header_timeout"`
+	WriteTimeout                  time.Duration   `env:"LAZYSOAP_WRITE_TIMEOUT"                    env-default:"10s"                                                 yaml:"write_timeout"`
+	IdleTimeout                   time.Duration   `env:"LAZYSOAP_IDLE_TIMEOUT"                     env-default:"10s"                                                 yaml:"idle_timeout"`
+	GracefulTimeout               time.Duration   `env:"LAZYSOAP_GRACEFUL_TIMEOUT"                 env-default:"10s"                                                 yaml:"graceful_timeout"`
+	DefaultBestQuantile           float32         `env:"LAZYSOAP_DEFAULT_BEST_QUANTILE"            env-default:"0.9"                                                 yaml:"default_best_quantile"`
+	DefaultBestMinEpisodes        int             `env:"LAZYSOAP_DEFAULT_BEST_MIN_EPISODES"        env-default:"3"                                                   yaml:"default_best_min_episodes"`
+	FeaturedCount                 int             `env:"LAZYSOAP_FEATURED_COUNT"                   env-default:"3"                                                   yaml:"featured_count"`
+	FeaturedMinVoteCount          int             `env:"LAZYSOAP_FEATURED_MIN_VOTE_COUNT"          env-default:"100"                                                 yaml:"featured_min_vote_count"`
+	FeaturedExtraIDs              []int           `env:"LAZYSOAP_FEATURED_EXTRA_IDS"               env-default:"1399,1396,1668,2316,1418,66732,1100,42009,1622,4607" env-separator:","                       yaml:"featured_extra_ids"`
+	FeaturedExtrasRefreshInterval time.Duration   `env:"LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL" env-default:"24h"                                                 yaml:"featured_extras_refresh_interval"`
+	ImgClient                     ImgClientConfig `yaml:"img_client"`
 }
 
 type ImgClientConfig struct {
@@ -37,16 +41,19 @@ type ImgClientConfig struct {
 }
 
 type Server struct {
-	config    Config
-	tvMeta    tvMetaClient
-	metrics   *rest.Metrics
-	imgClient *http.Client
-	version   string
+	config         Config
+	tvMeta         tvMetaClient
+	metrics        *rest.Metrics
+	imgClient      *http.Client
+	version        string
+	featuredExtras *featuredExtrasCache
 }
 
 type tvMetaClient interface {
 	SearchTVShows(ctx context.Context, query string) (*tvmeta.TVShows, error)
 	TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*tvmeta.AllSeasonsWithDetails, error)
+	PopularTVShows(ctx context.Context, language string) ([]*tvmeta.TVShow, error)
+	TVShowDetails(ctx context.Context, id int) (*tvmeta.TvShowDetails, error)
 }
 
 func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
@@ -67,7 +74,8 @@ func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
 				return clone
 			}(),
 		},
-		version: version,
+		version:        version,
+		featuredExtras: newFeaturedExtrasCache(),
 	}
 }
 
@@ -80,6 +88,12 @@ func (s *Server) Run(ctx context.Context) error {
 		IdleTimeout:       s.config.IdleTimeout,
 		Handler:           s.newRouter(),
 	}
+
+	// Warm and periodically refresh the featured-extras cache so the request
+	// path doesn't have to round-trip TMDB for static curated IDs. Async on
+	// purpose: a slow / down TMDB at boot must not block the server from
+	// listening (k8s liveness, fast restarts).
+	go s.runFeaturedExtrasRefresh(ctx)
 
 	//nolint:gosec // request-scoped ctx is already cancelled here; we deliberately use a fresh one for graceful shutdown
 	go func() {
@@ -115,6 +129,7 @@ func (s *Server) newRouter() http.Handler {
 	r.HandleFunc("/id/{id}", s.idHandler)
 	r.HandleFunc("/search/{query}", s.searchHandler)
 	r.HandleFunc("/img/{path}", s.imgProxyHandler)
+	r.HandleFunc("/featured", s.featuredHandler)
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)

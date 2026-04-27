@@ -11,8 +11,9 @@ import (
 
 func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
 	path := chi.URLParam(r, "path")
-	ctx := logger.WithAttrs(r.Context(), "path", path)
-	url := tvmeta.GetURLByPosterPath(path)
+	size := r.URL.Query().Get("size")
+	ctx := logger.WithAttrs(r.Context(), "path", path, "size", size)
+	url := tvmeta.GetURLByPosterPathWithSize(path, size)
 
 	//nolint:gosec // url is built from a TMDB poster path; this handler intentionally proxies that fixed host
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

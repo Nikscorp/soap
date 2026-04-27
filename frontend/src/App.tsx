@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { SeriesCombobox } from './components/SeriesCombobox';
 import { EpisodesList } from './components/EpisodesList';
 import { SearchResultsPage } from './components/SearchResultsPage';
+import { FeaturedSeries } from './components/FeaturedSeries';
 import { useUrlState } from './hooks/useUrlState';
 import type { SearchResult } from './lib/types';
 
@@ -67,6 +68,9 @@ export default function App() {
             onSubmit={handleSubmit}
           />
         </section>
+        {!showEpisodes && !showResults && (
+          <FeaturedSeries language={lang || 'en'} onSelect={handleSelect} />
+        )}
         {showResults && <SearchResultsPage q={q} onSelect={handleSelect} />}
         {showEpisodes && (
           <>

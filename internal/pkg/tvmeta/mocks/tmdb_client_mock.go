@@ -29,6 +29,12 @@ type TmdbClientMock struct {
 	beforeGetTVDetailsCounter uint64
 	GetTVDetailsMock          mTmdbClientMockGetTVDetails
 
+	funcGetTVPopular          func(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error)
+	inspectFuncGetTVPopular   func(urlOptions map[string]string)
+	afterGetTVPopularCounter  uint64
+	beforeGetTVPopularCounter uint64
+	GetTVPopularMock          mTmdbClientMockGetTVPopular
+
 	funcGetTVSeasonDetails          func(id int, seasonNumber int, urlOptions map[string]string) (tp1 *tmdb.TVSeasonDetails, err error)
 	inspectFuncGetTVSeasonDetails   func(id int, seasonNumber int, urlOptions map[string]string)
 	afterGetTVSeasonDetailsCounter  uint64
@@ -48,6 +54,9 @@ func NewTmdbClientMock(t minimock.Tester) *TmdbClientMock {
 
 	m.GetTVDetailsMock = mTmdbClientMockGetTVDetails{mock: m}
 	m.GetTVDetailsMock.callArgs = []*TmdbClientMockGetTVDetailsParams{}
+
+	m.GetTVPopularMock = mTmdbClientMockGetTVPopular{mock: m}
+	m.GetTVPopularMock.callArgs = []*TmdbClientMockGetTVPopularParams{}
 
 	m.GetTVSeasonDetailsMock = mTmdbClientMockGetTVSeasonDetails{mock: m}
 	m.GetTVSeasonDetailsMock.callArgs = []*TmdbClientMockGetTVSeasonDetailsParams{}
@@ -489,6 +498,222 @@ func (m *TmdbClientMock) MinimockGetTVDetailsInspect() {
 	}
 }
 
+type mTmdbClientMockGetTVPopular struct {
+	mock               *TmdbClientMock
+	defaultExpectation *TmdbClientMockGetTVPopularExpectation
+	expectations       []*TmdbClientMockGetTVPopularExpectation
+
+	callArgs []*TmdbClientMockGetTVPopularParams
+	mutex    sync.RWMutex
+}
+
+// TmdbClientMockGetTVPopularExpectation specifies expectation struct of the tmdbClient.GetTVPopular
+type TmdbClientMockGetTVPopularExpectation struct {
+	mock    *TmdbClientMock
+	params  *TmdbClientMockGetTVPopularParams
+	results *TmdbClientMockGetTVPopularResults
+	Counter uint64
+}
+
+// TmdbClientMockGetTVPopularParams contains parameters of the tmdbClient.GetTVPopular
+type TmdbClientMockGetTVPopularParams struct {
+	urlOptions map[string]string
+}
+
+// TmdbClientMockGetTVPopularResults contains results of the tmdbClient.GetTVPopular
+type TmdbClientMockGetTVPopularResults struct {
+	tp1 *tmdb.TVPopular
+	err error
+}
+
+// Expect sets up expected params for tmdbClient.GetTVPopular
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) Expect(urlOptions map[string]string) *mTmdbClientMockGetTVPopular {
+	if mmGetTVPopular.mock.funcGetTVPopular != nil {
+		mmGetTVPopular.mock.t.Fatalf("TmdbClientMock.GetTVPopular mock is already set by Set")
+	}
+
+	if mmGetTVPopular.defaultExpectation == nil {
+		mmGetTVPopular.defaultExpectation = &TmdbClientMockGetTVPopularExpectation{}
+	}
+
+	mmGetTVPopular.defaultExpectation.params = &TmdbClientMockGetTVPopularParams{urlOptions}
+	for _, e := range mmGetTVPopular.expectations {
+		if minimock.Equal(e.params, mmGetTVPopular.defaultExpectation.params) {
+			mmGetTVPopular.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmGetTVPopular.defaultExpectation.params)
+		}
+	}
+
+	return mmGetTVPopular
+}
+
+// Inspect accepts an inspector function that has same arguments as the tmdbClient.GetTVPopular
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) Inspect(f func(urlOptions map[string]string)) *mTmdbClientMockGetTVPopular {
+	if mmGetTVPopular.mock.inspectFuncGetTVPopular != nil {
+		mmGetTVPopular.mock.t.Fatalf("Inspect function is already set for TmdbClientMock.GetTVPopular")
+	}
+
+	mmGetTVPopular.mock.inspectFuncGetTVPopular = f
+
+	return mmGetTVPopular
+}
+
+// Return sets up results that will be returned by tmdbClient.GetTVPopular
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) Return(tp1 *tmdb.TVPopular, err error) *TmdbClientMock {
+	if mmGetTVPopular.mock.funcGetTVPopular != nil {
+		mmGetTVPopular.mock.t.Fatalf("TmdbClientMock.GetTVPopular mock is already set by Set")
+	}
+
+	if mmGetTVPopular.defaultExpectation == nil {
+		mmGetTVPopular.defaultExpectation = &TmdbClientMockGetTVPopularExpectation{mock: mmGetTVPopular.mock}
+	}
+	mmGetTVPopular.defaultExpectation.results = &TmdbClientMockGetTVPopularResults{tp1, err}
+	return mmGetTVPopular.mock
+}
+
+// Set uses given function f to mock the tmdbClient.GetTVPopular method
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) Set(f func(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error)) *TmdbClientMock {
+	if mmGetTVPopular.defaultExpectation != nil {
+		mmGetTVPopular.mock.t.Fatalf("Default expectation is already set for the tmdbClient.GetTVPopular method")
+	}
+
+	if len(mmGetTVPopular.expectations) > 0 {
+		mmGetTVPopular.mock.t.Fatalf("Some expectations are already set for the tmdbClient.GetTVPopular method")
+	}
+
+	mmGetTVPopular.mock.funcGetTVPopular = f
+	return mmGetTVPopular.mock
+}
+
+// When sets expectation for the tmdbClient.GetTVPopular which will trigger the result defined by the following
+// Then helper
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) When(urlOptions map[string]string) *TmdbClientMockGetTVPopularExpectation {
+	if mmGetTVPopular.mock.funcGetTVPopular != nil {
+		mmGetTVPopular.mock.t.Fatalf("TmdbClientMock.GetTVPopular mock is already set by Set")
+	}
+
+	expectation := &TmdbClientMockGetTVPopularExpectation{
+		mock:   mmGetTVPopular.mock,
+		params: &TmdbClientMockGetTVPopularParams{urlOptions},
+	}
+	mmGetTVPopular.expectations = append(mmGetTVPopular.expectations, expectation)
+	return expectation
+}
+
+// Then sets up tmdbClient.GetTVPopular return parameters for the expectation previously defined by the When method
+func (e *TmdbClientMockGetTVPopularExpectation) Then(tp1 *tmdb.TVPopular, err error) *TmdbClientMock {
+	e.results = &TmdbClientMockGetTVPopularResults{tp1, err}
+	return e.mock
+}
+
+// GetTVPopular implements tvmeta.tmdbClient
+func (mmGetTVPopular *TmdbClientMock) GetTVPopular(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error) {
+	mm_atomic.AddUint64(&mmGetTVPopular.beforeGetTVPopularCounter, 1)
+	defer mm_atomic.AddUint64(&mmGetTVPopular.afterGetTVPopularCounter, 1)
+
+	if mmGetTVPopular.inspectFuncGetTVPopular != nil {
+		mmGetTVPopular.inspectFuncGetTVPopular(urlOptions)
+	}
+
+	mm_params := &TmdbClientMockGetTVPopularParams{urlOptions}
+
+	// Record call args
+	mmGetTVPopular.GetTVPopularMock.mutex.Lock()
+	mmGetTVPopular.GetTVPopularMock.callArgs = append(mmGetTVPopular.GetTVPopularMock.callArgs, mm_params)
+	mmGetTVPopular.GetTVPopularMock.mutex.Unlock()
+
+	for _, e := range mmGetTVPopular.GetTVPopularMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.tp1, e.results.err
+		}
+	}
+
+	if mmGetTVPopular.GetTVPopularMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmGetTVPopular.GetTVPopularMock.defaultExpectation.Counter, 1)
+		mm_want := mmGetTVPopular.GetTVPopularMock.defaultExpectation.params
+		mm_got := TmdbClientMockGetTVPopularParams{urlOptions}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmGetTVPopular.t.Errorf("TmdbClientMock.GetTVPopular got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmGetTVPopular.GetTVPopularMock.defaultExpectation.results
+		if mm_results == nil {
+			mmGetTVPopular.t.Fatal("No results are set for the TmdbClientMock.GetTVPopular")
+		}
+		return (*mm_results).tp1, (*mm_results).err
+	}
+	if mmGetTVPopular.funcGetTVPopular != nil {
+		return mmGetTVPopular.funcGetTVPopular(urlOptions)
+	}
+	mmGetTVPopular.t.Fatalf("Unexpected call to TmdbClientMock.GetTVPopular. %v", urlOptions)
+	return
+}
+
+// GetTVPopularAfterCounter returns a count of finished TmdbClientMock.GetTVPopular invocations
+func (mmGetTVPopular *TmdbClientMock) GetTVPopularAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetTVPopular.afterGetTVPopularCounter)
+}
+
+// GetTVPopularBeforeCounter returns a count of TmdbClientMock.GetTVPopular invocations
+func (mmGetTVPopular *TmdbClientMock) GetTVPopularBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetTVPopular.beforeGetTVPopularCounter)
+}
+
+// Calls returns a list of arguments used in each call to TmdbClientMock.GetTVPopular.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmGetTVPopular *mTmdbClientMockGetTVPopular) Calls() []*TmdbClientMockGetTVPopularParams {
+	mmGetTVPopular.mutex.RLock()
+
+	argCopy := make([]*TmdbClientMockGetTVPopularParams, len(mmGetTVPopular.callArgs))
+	copy(argCopy, mmGetTVPopular.callArgs)
+
+	mmGetTVPopular.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockGetTVPopularDone returns true if the count of the GetTVPopular invocations corresponds
+// the number of defined expectations
+func (m *TmdbClientMock) MinimockGetTVPopularDone() bool {
+	for _, e := range m.GetTVPopularMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.GetTVPopularMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcGetTVPopular != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockGetTVPopularInspect logs each unmet expectation
+func (m *TmdbClientMock) MinimockGetTVPopularInspect() {
+	for _, e := range m.GetTVPopularMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to TmdbClientMock.GetTVPopular with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.GetTVPopularMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+		if m.GetTVPopularMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to TmdbClientMock.GetTVPopular")
+		} else {
+			m.t.Errorf("Expected call to TmdbClientMock.GetTVPopular with params: %#v", *m.GetTVPopularMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcGetTVPopular != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+		m.t.Error("Expected call to TmdbClientMock.GetTVPopular")
+	}
+}
+
 type mTmdbClientMockGetTVSeasonDetails struct {
 	mock               *TmdbClientMock
 	defaultExpectation *TmdbClientMockGetTVSeasonDetailsExpectation
@@ -714,6 +939,8 @@ func (m *TmdbClientMock) MinimockFinish() {
 
 		m.MinimockGetTVDetailsInspect()
 
+		m.MinimockGetTVPopularInspect()
+
 		m.MinimockGetTVSeasonDetailsInspect()
 		m.t.FailNow()
 	}
@@ -740,5 +967,6 @@ func (m *TmdbClientMock) minimockDone() bool {
 	return done &&
 		m.MinimockGetSearchTVShowDone() &&
 		m.MinimockGetTVDetailsDone() &&
+		m.MinimockGetTVPopularDone() &&
 		m.MinimockGetTVSeasonDetailsDone()
 }

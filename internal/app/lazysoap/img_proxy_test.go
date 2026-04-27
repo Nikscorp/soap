@@ -30,9 +30,10 @@ func NewTestClient(fn RoundTripFunc) *http.Client {
 func NewServerWithImgClient(t *testing.T) *ServerM {
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
 	srv := &Server{
-		config:  Config{},
-		tvMeta:  tvMetaClientMock,
-		metrics: rest.NewMetrics(),
+		config:         Config{},
+		tvMeta:         tvMetaClientMock,
+		metrics:        rest.NewMetrics(),
+		featuredExtras: newFeaturedExtrasCache(),
 		imgClient: NewTestClient(func(req *http.Request) *http.Response {
 			switch path := req.URL.String(); path {
 			case "https://image.tmdb.org/t/p/w92/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg":
@@ -61,6 +62,12 @@ func NewServerWithImgClient(t *testing.T) *ServerM {
 				}
 			case "https://image.tmdb.org/t/p/w92/transport_error.jpg":
 				return nil
+			case "https://image.tmdb.org/t/p/w342/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg":
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString("w342 binary data")),
+					Header:     make(http.Header),
+				}
 			default:
 				require.FailNow(t, "invalid path %s", path)
 				return nil
@@ -114,6 +121,18 @@ func TestCommon(t *testing.T) {
 			reqURL:         "/img/nil_body.jpg",
 			wantStatusCode: http.StatusInternalServerError,
 			wantBody:       "",
+		},
+		{
+			name:           "size query selects allowed variant",
+			reqURL:         "/img/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg?size=w342",
+			wantStatusCode: http.StatusOK,
+			wantBody:       "w342 binary data",
+		},
+		{
+			name:           "disallowed size falls back to default",
+			reqURL:         "/img/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg?size=original",
+			wantStatusCode: http.StatusOK,
+			wantBody:       "i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg binary data",
 		},
 	}
 

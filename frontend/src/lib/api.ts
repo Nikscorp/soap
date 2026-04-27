@@ -1,4 +1,4 @@
-import type { EpisodesResponse, SearchResponse } from './types';
+import type { EpisodesResponse, FeaturedResponse, SearchResponse } from './types';
 
 // Base URL for backend calls. Empty string ("") means same-origin, which is
 // what production uses since the Go server hosts both the SPA and the API.
@@ -48,13 +48,29 @@ export function getEpisodesById(
   );
 }
 
+export function getFeaturedSeries(
+  language: string,
+  signal?: AbortSignal,
+): Promise<FeaturedResponse> {
+  const lang = encodeURIComponent(language || 'en');
+  return request<FeaturedResponse>(`/featured?language=${lang}`, signal);
+}
+
 // Poster path normalization. The backend currently returns relative paths
 // like "/img/<file>.jpg" served by its own proxy handler; if it ever returns
 // absolute http(s) URLs (e.g. straight from TMDB), we pass them through.
 // A bare "<file>.jpg" is treated as a poster path under /img/.
-export function normalizePosterUrl(poster: string | null | undefined): string | null {
+//
+// `size` lets callers request a larger TMDB variant (allow-list lives in the
+// backend: w92, w154, w185, w342, w500, w780). Absolute URLs are returned
+// untouched since their size is already baked in.
+export function normalizePosterUrl(
+  poster: string | null | undefined,
+  size?: string,
+): string | null {
   if (!poster) return null;
   if (/^https?:\/\//i.test(poster)) return poster;
-  if (poster.startsWith('/')) return `${BASE_URL}${poster}`;
-  return `${BASE_URL}/img/${poster}`;
+  const path = poster.startsWith('/') ? poster : `/img/${poster}`;
+  const qs = size ? `?size=${encodeURIComponent(size)}` : '';
+  return `${BASE_URL}${path}${qs}`;
 }

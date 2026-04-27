@@ -31,3 +31,15 @@ export interface EpisodesResponse {
   defaultBest: number;
   totalEpisodes: number;
 }
+
+export interface FeaturedSeries {
+  id: number;
+  title: string;
+  firstAirDate: string;
+  poster: string;
+}
+
+export interface FeaturedResponse {
+  series: FeaturedSeries[] | null;
+  language: string;
+}

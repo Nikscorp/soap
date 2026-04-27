@@ -17,9 +17,11 @@ servers:
     description: Public production instance
   - url: http://localhost:8080
     description: Local development
+# The public API is unauthenticated; the TMDB key is used server-side only.
+security: []
 tags:
   - name: series
-    description: TV series search and best-episodes endpoints.
+    description: TV series search, best-episodes, and featured endpoints.
   - name: media
     description: TMDB poster image proxy.
 paths:
@@ -52,8 +54,9 @@ paths:
                       - id: 42009
                         title: Black Mirror
                         firstAirDate: "2011-12-04"
-                        poster: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                        poster: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
                         rating: 8.3
+                        description: A British anthology television series that examines modern society.
                     language: en
         "500":
           description: Upstream metadata lookup failed.
@@ -113,7 +116,8 @@ paths:
                   summary: Black Mirror best episodes
                   value:
                     title: Black Mirror
-                    poster: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                    poster: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                    firstAirDate: "2011-12-04"
                     defaultBest: 3
                     totalEpisodes: 27
                     episodes:
@@ -122,6 +126,7 @@ paths:
                         rating: 7.504
                         number: 1
                         season: 1
+                        still: /img/lj0R2Lo3oqxiSJp9XwVKr6IRPKp.jpg
                       - title: Fifteen Million Merits
                         description: In a future where most of the population must cycle on exercise bikes to power their surroundings, Bing tries to escape his routine.
                         rating: 7.696
@@ -134,12 +139,80 @@ paths:
                         season: 4
         "500":
           description: Failed to load episodes (invalid id, upstream error, or no episodes).
+  /featured:
+    get:
+      tags: [series]
+      operationId: getFeaturedSeries
+      summary: Get a randomized set of featured series.
+      description: |
+        Returns `LAZYSOAP_FEATURED_COUNT` (default 3) randomly chosen series,
+        deduplicated by id. The candidate pool is the union of:
+
+        - TMDB's "popular TV" endpoint (page 1), filtered to entries with
+          `vote_count >= LAZYSOAP_FEATURED_MIN_VOTE_COUNT` (default 100) so
+          unrated / spammy entries are dropped.
+        - An operator-curated list of TMDB ids
+          (`LAZYSOAP_FEATURED_EXTRA_IDS`). Curated ids bypass the vote-count
+          filter.
+
+        Each request reshuffles. Operator extras are warmed into an
+        in-memory cache at startup and refreshed every
+        `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` (default 24h), so the
+        request path itself never round-trips TMDB for those static ids. If
+        the unioned pool is smaller than the configured count, the handler
+        returns 503 instead of a short list.
+      parameters:
+        - name: language
+          in: query
+          required: false
+          description: Optional ISO 639-1 language code forwarded to TMDB for the popular pool.
+          schema:
+            type: string
+          example: en
+      responses:
+        "200":
+          description: A randomized set of featured series.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: Always `no-store` so each request reshuffles client-side caches as well.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeaturedResp"
+              examples:
+                blackMirror:
+                  summary: Three random featured series
+                  value:
+                    series:
+                      - id: 42009
+                        title: Black Mirror
+                        firstAirDate: "2011-12-04"
+                        poster: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+                      - id: 1399
+                        title: Game of Thrones
+                        firstAirDate: "2011-04-17"
+                        poster: /img/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg
+                      - id: 66732
+                        title: Stranger Things
+                        firstAirDate: "2016-07-15"
+                        poster: /img/49WJfeN0moxb9IPfGn8AIqMGskD.jpg
+                    language: en
+        "503":
+          description: |
+            Both data sources failed (or yielded too few items) and the unioned
+            pool is smaller than `LAZYSOAP_FEATURED_COUNT`. The body is empty.
   /img/{path}:
     get:
       tags: [media]
       operationId: proxyPoster
       summary: Proxy a TMDB poster image.
-      description: Streams the TMDB poster identified by the given path through the server.
+      description: |
+        Streams the TMDB poster identified by the given path through the
+        server. The optional `size` query parameter selects a TMDB image
+        variant; values outside the allow-list are coerced to the default
+        (`w92`).
       parameters:
         - name: path
           in: path
@@ -148,6 +221,18 @@ paths:
           schema:
             type: string
           example: 7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+        - name: size
+          in: query
+          required: false
+          description: |
+            TMDB image-size token. Values outside the allow-list are silently
+            coerced to `w92` so a stray query can't be used to fan requests
+            out to arbitrary TMDB endpoints.
+          schema:
+            type: string
+            enum: [w92, w154, w185, w342, w500, w780]
+            default: w92
+          example: w342
       responses:
         "200":
           description: Raw image bytes proxied from TMDB.
@@ -196,8 +281,11 @@ components:
           example: "2011-12-04"
         poster:
           type: string
-          description: Absolute URL to the poster image.
-          example: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+          description: |
+            Relative reference to a TMDB poster, served by `/img/{path}`. The
+            same path resolves at multiple sizes via `?size=` (see
+            `proxyPoster`).
+          example: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
         rating:
           type: number
           format: float
@@ -211,7 +299,7 @@ components:
           example: A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.
     EpisodesResp:
       type: object
-      required: [episodes, title, poster, defaultBest, totalEpisodes]
+      required: [episodes, title, poster, firstAirDate, defaultBest, totalEpisodes]
       properties:
         episodes:
           type: array
@@ -228,8 +316,12 @@ components:
           example: Black Mirror
         poster:
           type: string
-          description: Absolute URL to the series poster image.
-          example: https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+          description: Relative reference to the series poster, served by `/img/{path}`.
+          example: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg
+        firstAirDate:
+          type: string
+          description: First air date of the series in YYYY-MM-DD form.
+          example: "2011-12-04"
         defaultBest:
           type: integer
           format: int64
@@ -275,3 +367,42 @@ components:
           format: int64
           description: Season number.
           example: 1
+        still:
+          type: string
+          description: |
+            Optional relative reference to a TMDB still frame for the episode,
+            served by `/img/{path}`. Omitted when TMDB has no still for the
+            episode.
+          example: /img/lj0R2Lo3oqxiSJp9XwVKr6IRPKp.jpg
+    FeaturedResp:
+      type: object
+      required: [series, language]
+      properties:
+        series:
+          type: array
+          description: Random subset of the featured pool, deduplicated by id.
+          items:
+            $ref: "#/components/schemas/FeaturedSeries"
+        language:
+          type: string
+          description: Language echoed back from the request (defaults to `en`).
+          example: en
+    FeaturedSeries:
+      type: object
+      required: [id, title, firstAirDate, poster]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 42009
+        title:
+          type: string
+          example: Black Mirror
+        firstAirDate:
+          type: string
+          description: First air date in YYYY-MM-DD form.
+          example: "2011-12-04"
+        poster:
+          type: string
+          description: Relative reference to the series poster, served by `/img/{path}`.
+          example: /img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg

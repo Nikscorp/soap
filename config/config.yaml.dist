@@ -5,6 +5,12 @@ lazysoap:
   write_timeout: 10s
   idle_timeout: 60s
   gracefult_timeout: 5s
+  default_best_quantile: 0.9
+  default_best_min_episodes: 3
+  featured_count: 3
+  featured_min_vote_count: 100
+  featured_extra_ids: [1399, 1396, 1668, 2316, 1418, 66732, 1100, 42009, 1622, 4607]
+  featured_extras_refresh_interval: 24h
   img_client:
     timeout: 10s
     max_idle_conns: 100

@@ -16,7 +16,7 @@ The web client and the JSON API are served from the same origin. The frontend is
 
 ## API
 
-A full OpenAPI 3 spec lives at [`api/openapi.yaml`](api/openapi.yaml). Three endpoints back the app:
+A full OpenAPI 3 spec lives at [`api/openapi.yaml`](api/openapi.yaml). Four endpoints back the app:
 
 ### `GET /search/{query}` — search series by name
 
@@ -27,22 +27,26 @@ A full OpenAPI 3 spec lives at [`api/openapi.yaml`](api/openapi.yaml). Three end
       "id": 42009,
       "title": "Black Mirror",
       "firstAirDate": "2011-12-04",
-      "poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
-      "rating": 8.3
+      "poster": "/img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
+      "rating": 8.3,
+      "description": "A British anthology television series that examines modern society."
     }
   ],
   "language": "en"
 }
 ```
 
+Posters are returned as relative `/img/{path}` references that resolve through the proxy below — the same image is reachable at multiple sizes via `?size=`.
+
 ### `GET /id/{id}?language=&limit=` — best episodes for a series
 
-`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating is at or above the series average. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display.
+`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating is at or above the series average. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display. Episodes carry an optional `still` (a `/img/{path}` reference to the TMDB still frame).
 
 ```json
 {
   "title": "Black Mirror",
-  "poster": "https://image.tmdb.org/t/p/w92/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
+  "poster": "/img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
+  "firstAirDate": "2011-12-04",
   "defaultBest": 3,
   "totalEpisodes": 27,
   "episodes": [
@@ -51,29 +55,51 @@ A full OpenAPI 3 spec lives at [`api/openapi.yaml`](api/openapi.yaml). Three end
       "description": "The British prime minister faces a shocking dilemma when Princess Susannah is kidnapped.",
       "rating": 7.504,
       "number": 1,
-      "season": 1
-    },
-    {
-      "title": "Fifteen Million Merits",
-      "description": "In a future where most of the population must cycle on exercise bikes to power their surroundings, Bing tries to escape his routine.",
-      "rating": 7.696,
-      "number": 2,
-      "season": 1
-    },
-    {
-      "title": "Black Museum",
-      "description": "A traveler stumbles upon a museum whose proprietor trades in criminological artifacts with disturbing histories.",
-      "rating": 7.858,
-      "number": 6,
-      "season": 4
+      "season": 1,
+      "still": "/img/lj0R2Lo3oqxiSJp9XwVKr6IRPKp.jpg"
     }
   ]
 }
 ```
 
-### `GET /img/{path}` — TMDB poster proxy
+### `GET /featured?language=` — random featured series for the home screen
 
-Streams the TMDB poster identified by the trailing filename of a TMDB image URL (for example `7PRddO7z7mcPi21nZTCMGShAyy1.jpg`). Lets the SPA load posters through the same origin without exposing TMDB directly.
+Returns `LAZYSOAP_FEATURED_COUNT` (default 3) randomly chosen series, deduplicated by id, drawn from the union of:
+
+- TMDB's "popular TV" endpoint (page 1), filtered to entries with `vote_count >= LAZYSOAP_FEATURED_MIN_VOTE_COUNT` (default 100) so unrated/spam entries are dropped.
+- An operator-curated list of TMDB ids (`LAZYSOAP_FEATURED_EXTRA_IDS`). These bypass the vote-count filter — if it's in your list, it's trusted.
+
+Each request reshuffles, so refreshing the home page surfaces different shows. The response sets `Cache-Control: no-store`. Operator extras are warmed into an in-memory cache at startup and refreshed every `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` (default 24h) — the request path itself never round-trips TMDB for those static ids. If the unioned pool would have fewer than `FEATURED_COUNT` items the handler returns 503 instead of a short list.
+
+```json
+{
+  "series": [
+    {
+      "id": 42009,
+      "title": "Black Mirror",
+      "firstAirDate": "2011-12-04",
+      "poster": "/img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg"
+    },
+    {
+      "id": 1399,
+      "title": "Game of Thrones",
+      "firstAirDate": "2011-04-17",
+      "poster": "/img/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
+    },
+    {
+      "id": 66732,
+      "title": "Stranger Things",
+      "firstAirDate": "2016-07-15",
+      "poster": "/img/49WJfeN0moxb9IPfGn8AIqMGskD.jpg"
+    }
+  ],
+  "language": "en"
+}
+```
+
+### `GET /img/{path}?size=` — TMDB poster proxy
+
+Streams the TMDB poster identified by the trailing filename of a TMDB image URL (for example `7PRddO7z7mcPi21nZTCMGShAyy1.jpg`). Lets the SPA load posters through the same origin without exposing TMDB directly. The optional `size` query parameter selects a TMDB image variant from the allow-list `w92, w154, w185, w342, w500, w780`; anything else is coerced back to the default (`w92`).
 
 ### Operational endpoints
 
@@ -126,6 +152,10 @@ Defaults live in `config/config.yaml.dist`. Every field can also be overridden t
 | `LAZYSOAP_LISTEN_ADDR` | `0.0.0.0:8080` | HTTP listen address |
 | `LAZYSOAP_READ_TIMEOUT` / `LAZYSOAP_WRITE_TIMEOUT` / `LAZYSOAP_IDLE_TIMEOUT` | `10s` / `10s` / `10s` | Server timeouts |
 | `LAZYSOAP_GRACEFUL_TIMEOUT` | `10s` | Shutdown grace period |
+| `LAZYSOAP_FEATURED_COUNT` | `3` | Number of series returned by `/featured` |
+| `LAZYSOAP_FEATURED_MIN_VOTE_COUNT` | `100` | Min `vote_count` an entry from TMDB's popular pool must have to be eligible. Curated extras bypass this. |
+| `LAZYSOAP_FEATURED_EXTRA_IDS` | curated TMDB ids | Comma-separated TMDB ids always eligible for `/featured` (e.g. `1399,1396,1668`). |
+| `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` | `24h` | How often the extras cache is refreshed; `0` means startup-only. |
 | `TMDB_REQUEST_TIMEOUT` | `10s` | Outbound TMDB request timeout |
 | `TMDB_ENABLE_AUTO_RETRY` | `true` | Retry transient TMDB errors |
 

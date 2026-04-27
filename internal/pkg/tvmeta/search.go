@@ -15,6 +15,7 @@ type TVShow struct {
 	PosterLink   string
 	FirstAirDate string
 	Popularity   float32
+	VoteCount    int
 }
 
 type TVShows struct {
@@ -45,6 +46,7 @@ func (c *Client) SearchTVShows(_ context.Context, query string) (*TVShows, error
 			PosterLink:   posterToInternalPath(tvShow.PosterPath),
 			FirstAirDate: tvShow.FirstAirDate,
 			Popularity:   tvShow.Popularity,
+			VoteCount:    int(tvShow.VoteCount),
 		}
 		tvShows = append(tvShows, parsedShow)
 	}
