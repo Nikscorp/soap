@@ -40,13 +40,14 @@ Posters are returned as relative `/img/{path}` references that resolve through t
 
 ### `GET /id/{id}?language=&limit=` — best episodes for a series
 
-`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating is at or above the series average. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display. Episodes carry an optional `still` (a `/img/{path}` reference to the TMDB still frame).
+`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating is at or above the series average. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display. Episodes carry an optional `still` (a `/img/{path}` reference to the TMDB still frame). `description` is the series synopsis from TMDB (localized via `language`); it can be an empty string when TMDB has no overview for the series in the requested language.
 
 ```json
 {
   "title": "Black Mirror",
   "poster": "/img/7PRddO7z7mcPi21nZTCMGShAyy1.jpg",
   "firstAirDate": "2011-12-04",
+  "description": "A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.",
   "defaultBest": 3,
   "totalEpisodes": 27,
   "episodes": [

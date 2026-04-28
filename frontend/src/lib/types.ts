@@ -28,6 +28,7 @@ export interface EpisodesResponse {
   title: string;
   poster: string;
   firstAirDate: string;
+  description?: string;
   defaultBest: number;
   totalEpisodes: number;
 }

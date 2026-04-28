@@ -13,15 +13,17 @@ func TestTvShowDetails(t *testing.T) {
 	client := NewClientM(t)
 	client.mockedTMDB.GetTVDetailsMock.Set(func(id int, urlOptions map[string]string) (tp1 *tmdb.TVDetails, err error) {
 		require.Equal(t, 42, id)
+		require.Equal(t, "de", urlOptions["language"])
 		return &tmdb.TVDetails{
 			Name:            "Lost",
 			NumberOfSeasons: 23,
 			PosterPath:      "/lost.png",
 			FirstAirDate:    "2004-09-22",
+			Overview:        "A plane crashes on a mysterious island.",
 		}, nil
 	})
 
-	resp, err := client.client.TVShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42, "de")
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.NoError(t, err)
@@ -31,7 +33,21 @@ func TestTvShowDetails(t *testing.T) {
 		PosterLink:   "/img/lost.png",
 		SeasonsCnt:   23,
 		FirstAirDate: "2004-09-22",
+		Overview:     "A plane crashes on a mysterious island.",
 	}, resp)
+}
+
+func TestTvShowDetailsEmptyLanguageOmitsOption(t *testing.T) {
+	client := NewClientM(t)
+	client.mockedTMDB.GetTVDetailsMock.Set(func(id int, urlOptions map[string]string) (tp1 *tmdb.TVDetails, err error) {
+		require.Equal(t, 42, id)
+		require.Nil(t, urlOptions)
+		return &tmdb.TVDetails{Name: "Lost"}, nil
+	})
+
+	_, err := client.client.TVShowDetails(context.Background(), 42, "")
+
+	require.NoError(t, err)
 }
 
 func TestTvShowDetailsErrorResp(t *testing.T) {
@@ -42,7 +58,7 @@ func TestTvShowDetailsErrorResp(t *testing.T) {
 		return nil, someError
 	})
 
-	resp, err := client.client.TVShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42, "")
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.ErrorIs(t, err, someError)
@@ -56,7 +72,7 @@ func TestTvShowDetailsNilResp(t *testing.T) {
 		return nil, nil
 	})
 
-	resp, err := client.client.TVShowDetails(context.Background(), 42)
+	resp, err := client.client.TVShowDetails(context.Background(), 42, "")
 
 	require.Equal(t, 1, len(client.mockedTMDB.GetTVDetailsMock.Calls()))
 	require.ErrorIs(t, err, ErrNilResp)

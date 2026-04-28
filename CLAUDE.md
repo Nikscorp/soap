@@ -70,6 +70,25 @@ Four endpoints, fully specified in `api/openapi.yaml` (treat that file as the co
 
 Operational: `/ping`, `/version`, `/metrics` (Prometheus), `/debug/pprof/*`.
 
+## Before claiming a task done
+
+For any change that touches the public API contract, the response shapes, or user-visible UI, do **all** of the following before reporting completion. Tests and lint passing is necessary but not sufficient.
+
+1. **README.md.** It contains a hand-written API tour with JSON examples for `/search/{query}`, `/id/{id}`, `/featured`, `/img/{path}`. Whenever you add/remove/rename a field on any of those, or change defaults/behavior described in prose (e.g. `defaultBest` semantics, featured pool rules, image size allow-list), update the matching section. The OpenAPI spec is the contract; the README is the human-facing summary — both must move together.
+2. **`api/openapi.yaml`.** Keep schemas exhaustive. New optional fields go into `properties` but stay out of `required` unless the server *always* emits them.
+3. **End-to-end via Docker.** Type checks and unit tests confirm code-level correctness; they do not exercise the integrated stack (real TMDB calls, frontend bundle copied into the image, static asset serving). Run:
+   ```sh
+   make docker-build
+   docker compose up -d
+   until curl -fsS http://127.0.0.1:8202/ping >/dev/null; do sleep 1; done
+   # exercise the changed endpoint(s) — at minimum the happy path,
+   # plus localization (?language=ru) for anything TMDB-localized
+   curl -fsS 'http://127.0.0.1:8202/id/42009?language=en' | jq .
+   docker compose down
+   ```
+   The image is multi-stage (frontend build → Go build → final), so a passing `make docker-build` also certifies that `npm run build` succeeded and the SPA bundle landed at `/static/`. Don't skip the `compose up` step — it's the only thing that exercises the bundled image against live TMDB.
+4. **Frontend feature in a real browser** when UI changed. `npm run typecheck`/`test:ci` will not catch a broken layout, a missing prop, or an unstyled component. Either run `npm run dev` against `make docker-up` or open the Docker container's served SPA, navigate to the affected screen, and confirm visually.
+
 ## Testing notes
 
 - Mocks live under `*/mocks/` and are minimock-generated. The `//go:generate` directive is in the mock file itself, so adding a new interface means adding a stub mock file with the directive *or* running minimock manually once, then `make generate-mocks` keeps it in sync.

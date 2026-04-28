@@ -196,7 +196,7 @@ func (s *Server) fetchExtraDetails(ctx context.Context, ids []int) []featuredIte
 
 	for i, id := range ids {
 		eg.Go(func() error {
-			details, err := s.tvMeta.TVShowDetails(egCtx, id)
+			details, err := s.tvMeta.TVShowDetails(egCtx, id, "")
 			if err != nil {
 				logger.Error(egCtx, "Failed to fetch featured extra details", "err", err, "id", id)
 				return nil

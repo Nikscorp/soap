@@ -20,6 +20,7 @@ type episodesResp struct {
 	Title         string    `json:"title"`
 	Poster        string    `json:"poster"`
 	FirstAirDate  string    `json:"firstAirDate"`
+	Description   string    `json:"description"`
 	DefaultBest   int       `json:"defaultBest"`
 	TotalEpisodes int       `json:"totalEpisodes"`
 }
@@ -92,6 +93,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 		Title:         seasons.Details.Title,
 		Poster:        seasons.Details.PosterLink,
 		FirstAirDate:  seasons.Details.FirstAirDate,
+		Description:   seasons.Details.Overview,
 		DefaultBest:   defaultBest,
 		TotalEpisodes: totalEpisodes,
 	}

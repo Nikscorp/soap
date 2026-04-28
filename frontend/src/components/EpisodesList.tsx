@@ -100,13 +100,19 @@ export function EpisodesList({ seriesId, language, best, hint, onBestChange }: P
   const cardTitle = query.data?.title ?? hint?.title ?? '';
   const cardPoster = query.data?.poster ?? hint?.poster ?? '';
   const cardYear = query.data?.firstAirDate ?? hint?.firstAirDate ?? '';
+  const cardDescription = query.data?.description ?? '';
 
   return (
     <section
       className="mx-auto mt-5 mb-10 w-[95%] max-w-3xl overflow-hidden rounded-md bg-white shadow-card sm:w-[80%]"
       aria-busy={query.isPending}
     >
-      <SelectedSeriesCard title={cardTitle} poster={cardPoster} firstAirDate={cardYear} />
+      <SelectedSeriesCard
+        title={cardTitle}
+        poster={cardPoster}
+        firstAirDate={cardYear}
+        description={cardDescription}
+      />
       <div className="border-t border-slate-100">
         {query.isPending && <Spinner label="Loading best episodes…" />}
         {query.isError && <ErrorState>Service unavailable</ErrorState>}

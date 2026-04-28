@@ -8,9 +8,10 @@ interface Props {
   title: string;
   poster: string;
   firstAirDate: string;
+  description?: string;
 }
 
-export function SelectedSeriesCard({ title, poster, firstAirDate }: Props) {
+export function SelectedSeriesCard({ title, poster, firstAirDate, description }: Props) {
   const [posterFailed, setPosterFailed] = useState(false);
   // Poster renders at ~80px wide on mobile and ~96px on desktop. w185 covers
   // the 1x case crisply; w342 is the 2x source for HiDPI / Retina screens.
@@ -41,6 +42,11 @@ export function SelectedSeriesCard({ title, poster, firstAirDate }: Props) {
           {title || ' '}
         </h2>
         {year && <p className="text-sm text-slate-500">{year}</p>}
+        {description && (
+          <p className="mt-2 line-clamp-3 text-sm leading-snug text-slate-600 sm:line-clamp-4">
+            {description}
+          </p>
+        )}
       </div>
       <CopyLinkButton />
     </div>

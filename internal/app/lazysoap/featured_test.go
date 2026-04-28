@@ -55,7 +55,7 @@ func TestFeaturedHandlerUnionDedupAndCount(t *testing.T) {
 		}, nil
 	})
 
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		switch id {
 		case 100:
 			return &tvmeta.TvShowDetails{ID: 100, Title: "Extra A", PosterLink: "/img/a.jpg", FirstAirDate: "2010"}, nil
@@ -107,7 +107,7 @@ func TestFeaturedHandlerPopularErrorFallsBackToExtras(t *testing.T) {
 	f.mock.PopularTVShowsMock.Set(func(_ context.Context, _ string) ([]*tvmeta.TVShow, error) {
 		return nil, errors.New("tmdb down")
 	})
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		return &tvmeta.TvShowDetails{ID: id, Title: "Extra", PosterLink: "/img/x.jpg", FirstAirDate: "2000"}, nil
 	})
 
@@ -133,7 +133,7 @@ func TestFeaturedHandlerSkipsExtraDetailsErrors(t *testing.T) {
 	f.mock.PopularTVShowsMock.Set(func(_ context.Context, _ string) ([]*tvmeta.TVShow, error) {
 		return nil, nil
 	})
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		if id == 200 {
 			return nil, errors.New("not found")
 		}
@@ -166,7 +166,7 @@ func TestFeaturedHandlerPoolSmallerThanCountReturns503(t *testing.T) {
 	f.mock.PopularTVShowsMock.Set(func(_ context.Context, _ string) ([]*tvmeta.TVShow, error) {
 		return nil, nil
 	})
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		return &tvmeta.TvShowDetails{ID: id, Title: "Extra", PosterLink: "/img/x.jpg", FirstAirDate: "2000"}, nil
 	})
 
@@ -225,7 +225,7 @@ func TestFeaturedHandlerExtrasBypassVoteCountFilter(t *testing.T) {
 			{ID: 1, Name: "P1", VoteCount: 5, PosterLink: "/img/1.jpg", FirstAirDate: "2020"},
 		}, nil
 	})
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		return &tvmeta.TvShowDetails{ID: id, Title: "Curated", PosterLink: "/img/x.jpg", FirstAirDate: "2000"}, nil
 	})
 
@@ -274,7 +274,7 @@ func TestFeaturedHandlerNeverHitsTMDBForExtrasOnRequestPath(t *testing.T) {
 	f.mock.PopularTVShowsMock.Set(func(_ context.Context, _ string) ([]*tvmeta.TVShow, error) {
 		return nil, nil
 	})
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		return &tvmeta.TvShowDetails{ID: id, Title: "Extra", PosterLink: "/img/x.jpg", FirstAirDate: "2000"}, nil
 	})
 
@@ -303,14 +303,14 @@ func TestRefreshFeaturedExtrasKeepsPreviousCacheOnTotalFailure(t *testing.T) {
 	defer f.close()
 
 	// First refresh: both succeed → cache populated with 2 items.
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		return &tvmeta.TvShowDetails{ID: id, Title: "Good", PosterLink: "/img/g.jpg", FirstAirDate: "2000"}, nil
 	})
 	f.srv.refreshFeaturedExtras(context.Background())
 	require.Len(t, f.srv.featuredExtras.view(), 2)
 
 	// Second refresh: every ID errors → previous cache kept intact.
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, _ int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, _ int, _ string) (*tvmeta.TvShowDetails, error) {
 		return nil, errors.New("tmdb down")
 	})
 	f.srv.refreshFeaturedExtras(context.Background())
@@ -326,7 +326,7 @@ func TestRunFeaturedExtrasRefreshTicks(t *testing.T) {
 	defer f.close()
 
 	var calls atomic.Int32
-	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int) (*tvmeta.TvShowDetails, error) {
+	f.mock.TVShowDetailsMock.Set(func(_ context.Context, id int, _ string) (*tvmeta.TvShowDetails, error) {
 		calls.Add(1)
 		return &tvmeta.TvShowDetails{ID: id, Title: "T", PosterLink: "/img/t.jpg", FirstAirDate: "2000"}, nil
 	})

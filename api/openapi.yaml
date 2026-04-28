@@ -322,6 +322,14 @@ components:
           type: string
           description: First air date of the series in YYYY-MM-DD form.
           example: "2011-12-04"
+        description:
+          type: string
+          description: |
+            Series synopsis sourced from TMDB. Localized via the `language`
+            query parameter. May be an empty string when the metadata
+            provider has no overview for this series (or in the requested
+            language).
+          example: A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.
         defaultBest:
           type: integer
           format: int64

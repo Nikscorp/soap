@@ -53,7 +53,7 @@ type tvMetaClient interface {
 	SearchTVShows(ctx context.Context, query string) (*tvmeta.TVShows, error)
 	TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*tvmeta.AllSeasonsWithDetails, error)
 	PopularTVShows(ctx context.Context, language string) ([]*tvmeta.TVShow, error)
-	TVShowDetails(ctx context.Context, id int) (*tvmeta.TvShowDetails, error)
+	TVShowDetails(ctx context.Context, id int, language string) (*tvmeta.TvShowDetails, error)
 }
 
 func New(config Config, tvMetaClient tvMetaClient, version string) *Server {

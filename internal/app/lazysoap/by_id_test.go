@@ -28,6 +28,7 @@ func fixtureSeasons() *tvmeta.AllSeasonsWithDetails {
 			PosterLink:   "/img/lost.png",
 			SeasonsCnt:   3,
 			FirstAirDate: "2004-09-22",
+			Overview:     "A plane crashes on a mysterious island.",
 		},
 		Seasons: []*tvmeta.TVShowSeasonEpisodes{
 			{
@@ -69,6 +70,7 @@ const (
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
+		"description": "A plane crashes on a mysterious island.",
 		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`
@@ -82,6 +84,7 @@ const (
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
+		"description": "A plane crashes on a mysterious island.",
 		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`
@@ -102,6 +105,7 @@ const (
 		"title": "Lost",
 		"poster": "/img/lost.png",
 		"firstAirDate": "2004-09-22",
+		"description": "A plane crashes on a mysterious island.",
 		"defaultBest": 3,
 		"totalEpisodes": 9
 	}`

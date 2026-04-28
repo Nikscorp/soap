@@ -11,10 +11,15 @@ type TvShowDetails struct {
 	PosterLink   string
 	SeasonsCnt   int
 	FirstAirDate string
+	Overview     string
 }
 
-func (c *Client) TVShowDetails(_ context.Context, id int) (*TvShowDetails, error) {
-	resp, err := c.client.GetTVDetails(id, nil)
+func (c *Client) TVShowDetails(_ context.Context, id int, language string) (*TvShowDetails, error) {
+	var opts map[string]string
+	if language != "" {
+		opts = map[string]string{"language": language}
+	}
+	resp, err := c.client.GetTVDetails(id, opts)
 	if err != nil {
 		return nil, fmt.Errorf("get tv details error: %w", err)
 	}
@@ -28,5 +33,6 @@ func (c *Client) TVShowDetails(_ context.Context, id int) (*TvShowDetails, error
 		PosterLink:   posterToInternalPath(resp.PosterPath),
 		SeasonsCnt:   resp.NumberOfSeasons,
 		FirstAirDate: resp.FirstAirDate,
+		Overview:     resp.Overview,
 	}, nil
 }

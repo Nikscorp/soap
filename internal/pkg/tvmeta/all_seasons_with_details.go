@@ -13,7 +13,7 @@ type AllSeasonsWithDetails struct {
 }
 
 func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
-	tvShowDetails, err := c.TVShowDetails(ctx, id)
+	tvShowDetails, err := c.TVShowDetails(ctx, id, language)
 	if err != nil {
 		return nil, fmt.Errorf("get all episodes: %w", err)
 	}
