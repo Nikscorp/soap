@@ -21,8 +21,11 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
   const year = yearFromAirDate(firstAirDate);
 
   return (
-    <div className="flex items-start gap-4 px-5 py-4 sm:px-6">
-      <div className="flex aspect-[2/3] w-20 flex-none items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 sm:w-24">
+    <div className="flow-root px-5 py-4 sm:px-6">
+      <span className="float-right ml-3">
+        <CopyLinkButton />
+      </span>
+      <div className="float-left mr-4 flex aspect-[2/3] w-20 items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 sm:w-24">
         {posterUrl && !posterFailed ? (
           <img
             src={posterUrl}
@@ -37,18 +40,15 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
           <ImageOff className="h-6 w-6" aria-hidden="true" />
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-base font-semibold text-slate-900 sm:text-lg">
-          {title || ' '}
-        </h2>
-        {year && <p className="text-sm text-slate-500">{year}</p>}
-        {description && (
-          <p className="mt-2 line-clamp-3 text-sm leading-snug text-slate-600 sm:line-clamp-4">
-            {description}
-          </p>
-        )}
-      </div>
-      <CopyLinkButton />
+      <h2 className="text-base font-semibold break-words text-slate-900 sm:text-lg">
+        {title || ' '}
+      </h2>
+      {year && <p className="text-sm text-slate-500">{year}</p>}
+      {description && (
+        <p className="mt-2 text-sm leading-snug break-words text-slate-600">
+          {description}
+        </p>
+      )}
     </div>
   );
 }

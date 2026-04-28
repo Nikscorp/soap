@@ -30,7 +30,7 @@ export function EpisodeRow({ episode }: Props) {
           {formatEpisodeCode(episode.season, episode.number)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800">{episode.title}</p>
+          <p className="text-sm font-semibold break-words text-slate-800">{episode.title}</p>
           {description && (
             <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
           )}

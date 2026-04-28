@@ -38,7 +38,7 @@ export function SearchResultCard({ result, onSelect }: Props) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <h3 className="truncate text-base font-semibold text-slate-900 sm:text-lg">
+            <h3 className="text-base font-semibold break-words text-slate-900 sm:text-lg">
               {result.title}
             </h3>
             {year && <span className="shrink-0 text-sm text-slate-500">({year})</span>}
@@ -51,7 +51,7 @@ export function SearchResultCard({ result, onSelect }: Props) {
             {formatRating(result.rating)}
           </div>
           {description ? (
-            <p className="mt-2 line-clamp-3 text-sm leading-snug text-slate-600">{description}</p>
+            <p className="mt-2 line-clamp-3 text-sm leading-snug text-slate-600 sm:line-clamp-4">{description}</p>
           ) : (
             <p className="mt-2 text-sm text-slate-400 italic">No description available.</p>
           )}
