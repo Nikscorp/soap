@@ -14,35 +14,37 @@ export function EpisodeRow({ episode }: Props) {
   const [stillFailed, setStillFailed] = useState(false);
   const showStill = stillUrl && !stillFailed;
   return (
-    <li className="flex items-start justify-between gap-3 px-5 py-3 sm:px-10">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        {showStill && (
-          <img
-            src={stillUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => setStillFailed(true)}
-            className="h-[60px] w-[100px] flex-none rounded object-cover"
-          />
-        )}
-        <span className="w-12 flex-none pt-0.5 text-xs font-medium tracking-wide text-slate-400 tabular-nums">
-          {formatEpisodeCode(episode.season, episode.number)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold break-words text-slate-800">{episode.title}</p>
-          {description && (
-            <p className="mt-0.5 text-xs leading-snug text-slate-500">{description}</p>
-          )}
+    <li className="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-8">
+      {showStill && (
+        <img
+          src={stillUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setStillFailed(true)}
+          className="h-[60px] w-[100px] flex-none rounded object-cover"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="flex-none text-xs font-medium tracking-wide text-slate-400 tabular-nums">
+            {formatEpisodeCode(episode.season, episode.number)}
+          </span>
+          <p className="min-w-0 flex-1 text-sm font-semibold break-words text-slate-800">
+            {episode.title}
+          </p>
+          <span
+            className="flex flex-none items-center gap-1 text-xs font-semibold text-slate-500 tabular-nums"
+            aria-label={`Rating ${formatRating(episode.rating)}`}
+          >
+            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" aria-hidden="true" />
+            {formatRating(episode.rating)}
+          </span>
         </div>
+        {description && (
+          <p className="mt-1 text-xs leading-snug break-words text-slate-500">{description}</p>
+        )}
       </div>
-      <span
-        className="flex flex-none items-center gap-1 pt-0.5 text-xs font-semibold text-slate-500 tabular-nums"
-        aria-label={`Rating ${formatRating(episode.rating)}`}
-      >
-        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" aria-hidden="true" />
-        {formatRating(episode.rating)}
-      </span>
     </li>
   );
 }

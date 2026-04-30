@@ -21,31 +21,39 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
   const year = yearFromAirDate(firstAirDate);
 
   return (
-    <div className="flow-root px-5 py-4 sm:px-6">
-      <span className="float-right ml-3">
-        <CopyLinkButton />
-      </span>
-      <div className="float-left mr-4 flex aspect-[2/3] w-20 items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 sm:w-24">
-        {posterUrl && !posterFailed ? (
-          <img
-            src={posterUrl}
-            srcSet={srcSet}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover"
-            onError={() => setPosterFailed(true)}
-          />
-        ) : (
-          <ImageOff className="h-6 w-6" aria-hidden="true" />
-        )}
+    <div className="px-5 py-4 sm:px-6">
+      <div className="flex items-start gap-4">
+        <div className="flex aspect-[2/3] w-20 flex-none items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 sm:w-24">
+          {posterUrl && !posterFailed ? (
+            <img
+              src={posterUrl}
+              srcSet={srcSet}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              onError={() => setPosterFailed(true)}
+            />
+          ) : (
+            <ImageOff className="h-6 w-6" aria-hidden="true" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold break-words text-slate-900 sm:text-lg">
+                {title || ' '}
+              </h2>
+              {year && <p className="text-sm text-slate-500">{year}</p>}
+            </div>
+            <span className="flex-none">
+              <CopyLinkButton />
+            </span>
+          </div>
+        </div>
       </div>
-      <h2 className="text-base font-semibold break-words text-slate-900 sm:text-lg">
-        {title || ' '}
-      </h2>
-      {year && <p className="text-sm text-slate-500">{year}</p>}
       {description && (
-        <p className="mt-2 text-sm leading-snug break-words text-slate-600">
+        <p className="mt-3 text-sm leading-snug break-words text-slate-600 sm:mt-4">
           {description}
         </p>
       )}
