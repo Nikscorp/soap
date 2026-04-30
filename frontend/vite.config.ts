@@ -32,7 +32,7 @@ export default defineConfig({
       },
       workbox: {
         // Avoid caching API responses; React Query owns runtime caching.
-        navigateFallbackDenylist: [/^\/(search|id|img|featured|metrics|debug|ping|version)/],
+        navigateFallbackDenylist: [/^\/(search|id|img|featured|meta|metrics|debug|ping|version)/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       },
     }),
@@ -64,6 +64,7 @@ export default defineConfig({
       '/id': { target: 'http://127.0.0.1:8202', changeOrigin: true },
       '/img': { target: 'http://127.0.0.1:8202', changeOrigin: true },
       '/featured': { target: 'http://127.0.0.1:8202', changeOrigin: true },
+      '/meta': { target: 'http://127.0.0.1:8202', changeOrigin: true },
       '/ping': { target: 'http://127.0.0.1:8202', changeOrigin: true },
       '/version': { target: 'http://127.0.0.1:8202', changeOrigin: true },
     },

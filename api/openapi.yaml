@@ -203,6 +203,33 @@ paths:
           description: |
             Both data sources failed (or yielded too few items) and the unioned
             pool is smaller than `LAZYSOAP_FEATURED_COUNT`. The body is empty.
+  /meta:
+    get:
+      tags: [series]
+      operationId: getMeta
+      summary: Server-wide configuration metadata.
+      description: |
+        Returns server-wide knobs the SPA needs to render correctly. Today the
+        only field is `ratingsSource`, which the SPA uses to decide whether to
+        render the IMDb attribution required by IMDb's data usage policy. The
+        response is browser-cacheable for 5 minutes; the values only change
+        on server restart.
+      responses:
+        "200":
+          description: Server metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaResp"
+              examples:
+                tmdb:
+                  summary: TMDB rating source (default)
+                  value:
+                    ratingsSource: tmdb
+                imdb:
+                  summary: IMDb rating source
+                  value:
+                    ratingsSource: imdb
   /img/{path}:
     get:
       tags: [media]
@@ -289,6 +316,13 @@ components:
         rating:
           type: number
           format: float
+          description: |
+            Series rating on a 0–10 scale. Sourced from TMDB by default
+            (`vote_average`); when the server is started with
+            `LAZYSOAP_RATINGS_SOURCE=imdb`, the value is replaced with IMDb's
+            average rating where available, with per-series fallback to TMDB
+            when IMDb has no entry. Source selection is server-wide and
+            opaque to the client.
           example: 8.3
         description:
           type: string
@@ -364,6 +398,15 @@ components:
         rating:
           type: number
           format: float
+          description: |
+            Episode rating on a 0–10 scale. Sourced from TMDB by default
+            (`vote_average`); when the server is started with
+            `LAZYSOAP_RATINGS_SOURCE=imdb`, the value is replaced with IMDb's
+            average rating for the episode where available, with per-episode
+            fallback to TMDB when IMDb has no entry (mixed-source seasons
+            are intentional and invisible to the client). The
+            `defaultBest` quantile is computed against whichever ratings
+            were ultimately populated.
           example: 7.504
         number:
           type: integer
@@ -395,6 +438,19 @@ components:
           type: string
           description: Language echoed back from the request (defaults to `en`).
           example: en
+    MetaResp:
+      type: object
+      required: [ratingsSource]
+      properties:
+        ratingsSource:
+          type: string
+          description: |
+            Source of the `rating` field on `/search/{query}` and `/id/{id}`
+            responses. `tmdb` means TMDB `vote_average`; `imdb` means IMDb's
+            non-commercial dataset (with per-item TMDB fallback when IMDb has
+            no entry). Server-wide and only changes on restart.
+          enum: [tmdb, imdb]
+          example: tmdb
     FeaturedSeries:
       type: object
       required: [id, title, firstAirDate, poster]

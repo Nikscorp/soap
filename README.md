@@ -8,6 +8,8 @@
 
 A small website that surfaces the highest-rated episodes of a TV series, backed by [TMDB](https://www.themoviedb.org/) metadata. Useful for anthology shows like *Black Mirror* where episodes stand alone, or for revisiting the peaks of a long-running series without rewatching the whole thing.
 
+Ratings can be sourced from TMDB (the default) or from IMDb's non-commercial dataset dumps — see [Rating source](#rating-source).
+
 ## Usage
 
 A public instance lives at [https://soap.nivoynov.dev](https://soap.nivoynov.dev). You can also self-host by pulling the pre-built image, building one locally, or running the binary directly — see [Installation](#installation).
@@ -98,6 +100,24 @@ Each request reshuffles, so refreshing the home page surfaces different shows. T
 }
 ```
 
+### Rating source
+
+The numeric `rating` field on every endpoint that returns one (`/search/{query}`, `/id/{id}`) reflects whichever rating source the server is configured for. The wire shape of the response does not change — only the source of the number.
+
+| `LAZYSOAP_RATINGS_SOURCE` | Where ratings come from |
+| --- | --- |
+| `tmdb` *(default)* | TMDB `vote_average`, identical to historical behavior. |
+| `imdb` | IMDb's non-commercial dataset dumps (`title.ratings.tsv.gz` + `title.episode.tsv.gz` from [datasets.imdbws.com](https://datasets.imdbws.com/)), refreshed daily by a background goroutine. The series-level resolution path makes one extra TMDB `external_ids` call per series (cached in-process). When IMDb has no entry for a particular episode (e.g. brand-new episodes IMDb hasn't ingested yet) the server transparently falls back to that episode's TMDB rating. |
+
+Selecting `imdb` adds two startup characteristics to the server:
+
+- The first dataset load pulls roughly 60–90 MB of compressed TSV and parses it into ~35 MB of resident heap (~290 MB RSS during build). The HTTP listener comes up immediately; until the first load completes the server keeps serving TMDB ratings, then atomically swaps to IMDb on completion. Refresh failures keep serving the previously published snapshot — there is no fall-back-to-TMDB on transient dataset-host outages, but the failure is logged at WARN so it's visible in the operator's log pipeline.
+- The dataset is cached on disk in `LAZYSOAP_IMDB_CACHE_DIR` (default `./var/imdb`) so container restarts don't re-download. The freshness check runs at startup and on every scheduled refresh: if a cached file's mtime is younger than `LAZYSOAP_IMDB_REFRESH_INTERVAL`, the HTTP fetch is skipped and we re-parse the local copy directly. Setting `LAZYSOAP_IMDB_REFRESH_INTERVAL=0` disables periodic refresh and treats any cached file as authoritative across restarts (re-downloads only happen when the cache directory is empty). Both bundled compose files (`docker-compose.yml`, `docker-compose-remote.yml`) declare an `imdb-cache` named volume mounted at `/var/imdb` so the cache survives `docker compose down`.
+
+> Information courtesy of IMDb (https://www.imdb.com). Used with permission.
+
+The IMDb dataset is licensed for personal, non-commercial use; review [IMDb's data usage policy](https://help.imdb.com/article/imdb/general-information/can-i-use-imdb-data-in-my-software/G5JTRESSHJBBHTGX) before pointing a hosted instance at it.
+
 ### `GET /img/{path}?size=` — TMDB poster proxy
 
 Streams the TMDB poster identified by the trailing filename of a TMDB image URL (for example `7PRddO7z7mcPi21nZTCMGShAyy1.jpg`). Lets the SPA load posters through the same origin without exposing TMDB directly. The optional `size` query parameter selects a TMDB image variant from the allow-list `w92, w154, w185, w342, w500, w780`; anything else is coerced back to the default (`w92`).
@@ -157,6 +177,11 @@ Defaults live in `config/config.yaml.dist`. Every field can also be overridden t
 | `LAZYSOAP_FEATURED_MIN_VOTE_COUNT` | `100` | Min `vote_count` an entry from TMDB's popular pool must have to be eligible. Curated extras bypass this. |
 | `LAZYSOAP_FEATURED_EXTRA_IDS` | curated TMDB ids | Comma-separated TMDB ids always eligible for `/featured` (e.g. `1399,1396,1668`). |
 | `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` | `24h` | How often the extras cache is refreshed; `0` means startup-only. |
+| `LAZYSOAP_RATINGS_SOURCE` | `tmdb` | `tmdb` or `imdb`. See [Rating source](#rating-source). |
+| `LAZYSOAP_IMDB_DATASETS_URL` | `https://datasets.imdbws.com` | IMDb dataset host (only used when `RATINGS_SOURCE=imdb`). |
+| `LAZYSOAP_IMDB_REFRESH_INTERVAL` | `24h` | How often the IMDb dataset is re-downloaded; `0` means startup-only. |
+| `LAZYSOAP_IMDB_CACHE_DIR` | `./var/imdb` | On-disk cache of the downloaded TSV gzips, so restarts don't re-download. |
+| `LAZYSOAP_IMDB_HTTP_TIMEOUT` | `5m` | Per-file download timeout for the IMDb dataset host. |
 | `TMDB_REQUEST_TIMEOUT` | `10s` | Outbound TMDB request timeout |
 | `TMDB_ENABLE_AUTO_RETRY` | `true` | Retry transient TMDB errors |
 

@@ -44,3 +44,10 @@ export interface FeaturedResponse {
   series: FeaturedSeries[] | null;
   language: string;
 }
+
+// Server-wide config metadata exposed by GET /meta. Currently only carries
+// the rating source, which the footer reads to decide whether to render the
+// IMDb attribution required by IMDb's data usage policy.
+export interface MetaResponse {
+  ratingsSource: 'tmdb' | 'imdb' | string;
+}

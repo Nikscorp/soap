@@ -11,16 +11,25 @@ import (
 )
 
 type ClientM struct {
-	client     *Client
-	mockedTMDB *mocks.TmdbClientMock
+	client        *Client
+	mockedTMDB    *mocks.TmdbClientMock
+	mockedRatings *mocks.RatingsProviderMock
 }
 
+// NewClientM constructs a Client wired to a fresh tmdbClient mock and a
+// RatingsProvider mock that defaults to "not ready" (so existing tests
+// observe the legacy TMDB-only path without any extra setup). Tests that
+// exercise the IMDb-overlay path can call .Ready/.SeriesRating/.EpisodeRating
+// expectations on m.mockedRatings.
 func NewClientM(t *testing.T) *ClientM {
 	tmdbClient := mocks.NewTmdbClientMock(t)
-	client := New(tmdbClient)
+	ratings := mocks.NewRatingsProviderMock(t)
+	ratings.ReadyMock.Return(false)
+	client := New(tmdbClient, ratings)
 	return &ClientM{
-		client:     client,
-		mockedTMDB: tmdbClient,
+		client:        client,
+		mockedTMDB:    tmdbClient,
+		mockedRatings: ratings,
 	}
 }
 

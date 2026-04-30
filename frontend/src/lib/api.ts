@@ -1,4 +1,9 @@
-import type { EpisodesResponse, FeaturedResponse, SearchResponse } from './types';
+import type {
+  EpisodesResponse,
+  FeaturedResponse,
+  MetaResponse,
+  SearchResponse,
+} from './types';
 
 // Base URL for backend calls. Empty string ("") means same-origin, which is
 // what production uses since the Go server hosts both the SPA and the API.
@@ -54,6 +59,13 @@ export function getFeaturedSeries(
 ): Promise<FeaturedResponse> {
   const lang = encodeURIComponent(language || 'en');
   return request<FeaturedResponse>(`/featured?language=${lang}`, signal);
+}
+
+// getMeta returns server-wide metadata such as the configured rating source.
+// The backend caches the response with `Cache-Control: public, max-age=300`
+// so React Query's default staleness still allows a fresh check after restart.
+export function getMeta(signal?: AbortSignal): Promise<MetaResponse> {
+  return request<MetaResponse>(`/meta`, signal);
 }
 
 // Poster path normalization. The backend currently returns relative paths

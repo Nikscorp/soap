@@ -31,6 +31,7 @@ type Config struct {
 	FeaturedMinVoteCount          int             `env:"LAZYSOAP_FEATURED_MIN_VOTE_COUNT"          env-default:"100"                                                 yaml:"featured_min_vote_count"`
 	FeaturedExtraIDs              []int           `env:"LAZYSOAP_FEATURED_EXTRA_IDS"               env-default:"1399,1396,1668,2316,1418,66732,1100,42009,1622,4607" env-separator:","                       yaml:"featured_extra_ids"`
 	FeaturedExtrasRefreshInterval time.Duration   `env:"LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL" env-default:"24h"                                                 yaml:"featured_extras_refresh_interval"`
+	RatingsSource                 string          `env:"LAZYSOAP_RATINGS_SOURCE"                   env-default:"tmdb"                                                yaml:"ratings_source"`
 	ImgClient                     ImgClientConfig `yaml:"img_client"`
 }
 
@@ -130,6 +131,7 @@ func (s *Server) newRouter() http.Handler {
 	r.HandleFunc("/search/{query}", s.searchHandler)
 	r.HandleFunc("/img/{path}", s.imgProxyHandler)
 	r.HandleFunc("/featured", s.featuredHandler)
+	r.HandleFunc("/meta", s.metaHandler)
 
 	r.Handle("/metrics", promhttp.Handler())
 	r.HandleFunc("/debug/pprof/profile", pprof.Profile)

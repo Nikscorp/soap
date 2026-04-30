@@ -16,3 +16,12 @@ services:
     command: "/srv/soap -c /srv/config/config.yaml"
     volumes:
       - ./config:/srv/config
+      # Persist the IMDb dataset cache between container restarts. Only
+      # used when LAZYSOAP_RATINGS_SOURCE=imdb; harmless otherwise. The
+      # container path matches the default imdb.cache_dir
+      # (./var/imdb resolves to /var/imdb because the base image has no
+      # WORKDIR set, so CWD is /).
+      - imdb-cache:/var/imdb
+
+volumes:
+  imdb-cache: {}

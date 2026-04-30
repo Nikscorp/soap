@@ -5,6 +5,7 @@ import { SeriesCombobox } from './components/SeriesCombobox';
 import { EpisodesList } from './components/EpisodesList';
 import { SearchResultsPage } from './components/SearchResultsPage';
 import { FeaturedSeries } from './components/FeaturedSeries';
+import { Attribution } from './components/Attribution';
 import { useUrlState } from './hooks/useUrlState';
 import type { SearchResult } from './lib/types';
 
@@ -97,6 +98,7 @@ export default function App() {
           </>
         )}
       </main>
+      <Attribution />
     </div>
   );
 }

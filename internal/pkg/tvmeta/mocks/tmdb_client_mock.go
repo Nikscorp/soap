@@ -29,6 +29,12 @@ type TmdbClientMock struct {
 	beforeGetTVDetailsCounter uint64
 	GetTVDetailsMock          mTmdbClientMockGetTVDetails
 
+	funcGetTVExternalIDs          func(id int, urlOptions map[string]string) (tp1 *tmdb.TVExternalIDs, err error)
+	inspectFuncGetTVExternalIDs   func(id int, urlOptions map[string]string)
+	afterGetTVExternalIDsCounter  uint64
+	beforeGetTVExternalIDsCounter uint64
+	GetTVExternalIDsMock          mTmdbClientMockGetTVExternalIDs
+
 	funcGetTVPopular          func(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error)
 	inspectFuncGetTVPopular   func(urlOptions map[string]string)
 	afterGetTVPopularCounter  uint64
@@ -54,6 +60,9 @@ func NewTmdbClientMock(t minimock.Tester) *TmdbClientMock {
 
 	m.GetTVDetailsMock = mTmdbClientMockGetTVDetails{mock: m}
 	m.GetTVDetailsMock.callArgs = []*TmdbClientMockGetTVDetailsParams{}
+
+	m.GetTVExternalIDsMock = mTmdbClientMockGetTVExternalIDs{mock: m}
+	m.GetTVExternalIDsMock.callArgs = []*TmdbClientMockGetTVExternalIDsParams{}
 
 	m.GetTVPopularMock = mTmdbClientMockGetTVPopular{mock: m}
 	m.GetTVPopularMock.callArgs = []*TmdbClientMockGetTVPopularParams{}
@@ -498,6 +507,223 @@ func (m *TmdbClientMock) MinimockGetTVDetailsInspect() {
 	}
 }
 
+type mTmdbClientMockGetTVExternalIDs struct {
+	mock               *TmdbClientMock
+	defaultExpectation *TmdbClientMockGetTVExternalIDsExpectation
+	expectations       []*TmdbClientMockGetTVExternalIDsExpectation
+
+	callArgs []*TmdbClientMockGetTVExternalIDsParams
+	mutex    sync.RWMutex
+}
+
+// TmdbClientMockGetTVExternalIDsExpectation specifies expectation struct of the tmdbClient.GetTVExternalIDs
+type TmdbClientMockGetTVExternalIDsExpectation struct {
+	mock    *TmdbClientMock
+	params  *TmdbClientMockGetTVExternalIDsParams
+	results *TmdbClientMockGetTVExternalIDsResults
+	Counter uint64
+}
+
+// TmdbClientMockGetTVExternalIDsParams contains parameters of the tmdbClient.GetTVExternalIDs
+type TmdbClientMockGetTVExternalIDsParams struct {
+	id         int
+	urlOptions map[string]string
+}
+
+// TmdbClientMockGetTVExternalIDsResults contains results of the tmdbClient.GetTVExternalIDs
+type TmdbClientMockGetTVExternalIDsResults struct {
+	tp1 *tmdb.TVExternalIDs
+	err error
+}
+
+// Expect sets up expected params for tmdbClient.GetTVExternalIDs
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) Expect(id int, urlOptions map[string]string) *mTmdbClientMockGetTVExternalIDs {
+	if mmGetTVExternalIDs.mock.funcGetTVExternalIDs != nil {
+		mmGetTVExternalIDs.mock.t.Fatalf("TmdbClientMock.GetTVExternalIDs mock is already set by Set")
+	}
+
+	if mmGetTVExternalIDs.defaultExpectation == nil {
+		mmGetTVExternalIDs.defaultExpectation = &TmdbClientMockGetTVExternalIDsExpectation{}
+	}
+
+	mmGetTVExternalIDs.defaultExpectation.params = &TmdbClientMockGetTVExternalIDsParams{id, urlOptions}
+	for _, e := range mmGetTVExternalIDs.expectations {
+		if minimock.Equal(e.params, mmGetTVExternalIDs.defaultExpectation.params) {
+			mmGetTVExternalIDs.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmGetTVExternalIDs.defaultExpectation.params)
+		}
+	}
+
+	return mmGetTVExternalIDs
+}
+
+// Inspect accepts an inspector function that has same arguments as the tmdbClient.GetTVExternalIDs
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) Inspect(f func(id int, urlOptions map[string]string)) *mTmdbClientMockGetTVExternalIDs {
+	if mmGetTVExternalIDs.mock.inspectFuncGetTVExternalIDs != nil {
+		mmGetTVExternalIDs.mock.t.Fatalf("Inspect function is already set for TmdbClientMock.GetTVExternalIDs")
+	}
+
+	mmGetTVExternalIDs.mock.inspectFuncGetTVExternalIDs = f
+
+	return mmGetTVExternalIDs
+}
+
+// Return sets up results that will be returned by tmdbClient.GetTVExternalIDs
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) Return(tp1 *tmdb.TVExternalIDs, err error) *TmdbClientMock {
+	if mmGetTVExternalIDs.mock.funcGetTVExternalIDs != nil {
+		mmGetTVExternalIDs.mock.t.Fatalf("TmdbClientMock.GetTVExternalIDs mock is already set by Set")
+	}
+
+	if mmGetTVExternalIDs.defaultExpectation == nil {
+		mmGetTVExternalIDs.defaultExpectation = &TmdbClientMockGetTVExternalIDsExpectation{mock: mmGetTVExternalIDs.mock}
+	}
+	mmGetTVExternalIDs.defaultExpectation.results = &TmdbClientMockGetTVExternalIDsResults{tp1, err}
+	return mmGetTVExternalIDs.mock
+}
+
+// Set uses given function f to mock the tmdbClient.GetTVExternalIDs method
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) Set(f func(id int, urlOptions map[string]string) (tp1 *tmdb.TVExternalIDs, err error)) *TmdbClientMock {
+	if mmGetTVExternalIDs.defaultExpectation != nil {
+		mmGetTVExternalIDs.mock.t.Fatalf("Default expectation is already set for the tmdbClient.GetTVExternalIDs method")
+	}
+
+	if len(mmGetTVExternalIDs.expectations) > 0 {
+		mmGetTVExternalIDs.mock.t.Fatalf("Some expectations are already set for the tmdbClient.GetTVExternalIDs method")
+	}
+
+	mmGetTVExternalIDs.mock.funcGetTVExternalIDs = f
+	return mmGetTVExternalIDs.mock
+}
+
+// When sets expectation for the tmdbClient.GetTVExternalIDs which will trigger the result defined by the following
+// Then helper
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) When(id int, urlOptions map[string]string) *TmdbClientMockGetTVExternalIDsExpectation {
+	if mmGetTVExternalIDs.mock.funcGetTVExternalIDs != nil {
+		mmGetTVExternalIDs.mock.t.Fatalf("TmdbClientMock.GetTVExternalIDs mock is already set by Set")
+	}
+
+	expectation := &TmdbClientMockGetTVExternalIDsExpectation{
+		mock:   mmGetTVExternalIDs.mock,
+		params: &TmdbClientMockGetTVExternalIDsParams{id, urlOptions},
+	}
+	mmGetTVExternalIDs.expectations = append(mmGetTVExternalIDs.expectations, expectation)
+	return expectation
+}
+
+// Then sets up tmdbClient.GetTVExternalIDs return parameters for the expectation previously defined by the When method
+func (e *TmdbClientMockGetTVExternalIDsExpectation) Then(tp1 *tmdb.TVExternalIDs, err error) *TmdbClientMock {
+	e.results = &TmdbClientMockGetTVExternalIDsResults{tp1, err}
+	return e.mock
+}
+
+// GetTVExternalIDs implements tvmeta.tmdbClient
+func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDs(id int, urlOptions map[string]string) (tp1 *tmdb.TVExternalIDs, err error) {
+	mm_atomic.AddUint64(&mmGetTVExternalIDs.beforeGetTVExternalIDsCounter, 1)
+	defer mm_atomic.AddUint64(&mmGetTVExternalIDs.afterGetTVExternalIDsCounter, 1)
+
+	if mmGetTVExternalIDs.inspectFuncGetTVExternalIDs != nil {
+		mmGetTVExternalIDs.inspectFuncGetTVExternalIDs(id, urlOptions)
+	}
+
+	mm_params := &TmdbClientMockGetTVExternalIDsParams{id, urlOptions}
+
+	// Record call args
+	mmGetTVExternalIDs.GetTVExternalIDsMock.mutex.Lock()
+	mmGetTVExternalIDs.GetTVExternalIDsMock.callArgs = append(mmGetTVExternalIDs.GetTVExternalIDsMock.callArgs, mm_params)
+	mmGetTVExternalIDs.GetTVExternalIDsMock.mutex.Unlock()
+
+	for _, e := range mmGetTVExternalIDs.GetTVExternalIDsMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.tp1, e.results.err
+		}
+	}
+
+	if mmGetTVExternalIDs.GetTVExternalIDsMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmGetTVExternalIDs.GetTVExternalIDsMock.defaultExpectation.Counter, 1)
+		mm_want := mmGetTVExternalIDs.GetTVExternalIDsMock.defaultExpectation.params
+		mm_got := TmdbClientMockGetTVExternalIDsParams{id, urlOptions}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmGetTVExternalIDs.t.Errorf("TmdbClientMock.GetTVExternalIDs got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmGetTVExternalIDs.GetTVExternalIDsMock.defaultExpectation.results
+		if mm_results == nil {
+			mmGetTVExternalIDs.t.Fatal("No results are set for the TmdbClientMock.GetTVExternalIDs")
+		}
+		return (*mm_results).tp1, (*mm_results).err
+	}
+	if mmGetTVExternalIDs.funcGetTVExternalIDs != nil {
+		return mmGetTVExternalIDs.funcGetTVExternalIDs(id, urlOptions)
+	}
+	mmGetTVExternalIDs.t.Fatalf("Unexpected call to TmdbClientMock.GetTVExternalIDs. %v %v", id, urlOptions)
+	return
+}
+
+// GetTVExternalIDsAfterCounter returns a count of finished TmdbClientMock.GetTVExternalIDs invocations
+func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDsAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetTVExternalIDs.afterGetTVExternalIDsCounter)
+}
+
+// GetTVExternalIDsBeforeCounter returns a count of TmdbClientMock.GetTVExternalIDs invocations
+func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDsBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmGetTVExternalIDs.beforeGetTVExternalIDsCounter)
+}
+
+// Calls returns a list of arguments used in each call to TmdbClientMock.GetTVExternalIDs.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmGetTVExternalIDs *mTmdbClientMockGetTVExternalIDs) Calls() []*TmdbClientMockGetTVExternalIDsParams {
+	mmGetTVExternalIDs.mutex.RLock()
+
+	argCopy := make([]*TmdbClientMockGetTVExternalIDsParams, len(mmGetTVExternalIDs.callArgs))
+	copy(argCopy, mmGetTVExternalIDs.callArgs)
+
+	mmGetTVExternalIDs.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockGetTVExternalIDsDone returns true if the count of the GetTVExternalIDs invocations corresponds
+// the number of defined expectations
+func (m *TmdbClientMock) MinimockGetTVExternalIDsDone() bool {
+	for _, e := range m.GetTVExternalIDsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.GetTVExternalIDsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcGetTVExternalIDs != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockGetTVExternalIDsInspect logs each unmet expectation
+func (m *TmdbClientMock) MinimockGetTVExternalIDsInspect() {
+	for _, e := range m.GetTVExternalIDsMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to TmdbClientMock.GetTVExternalIDs with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.GetTVExternalIDsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+		if m.GetTVExternalIDsMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to TmdbClientMock.GetTVExternalIDs")
+		} else {
+			m.t.Errorf("Expected call to TmdbClientMock.GetTVExternalIDs with params: %#v", *m.GetTVExternalIDsMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcGetTVExternalIDs != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+		m.t.Error("Expected call to TmdbClientMock.GetTVExternalIDs")
+	}
+}
+
 type mTmdbClientMockGetTVPopular struct {
 	mock               *TmdbClientMock
 	defaultExpectation *TmdbClientMockGetTVPopularExpectation
@@ -939,6 +1165,8 @@ func (m *TmdbClientMock) MinimockFinish() {
 
 		m.MinimockGetTVDetailsInspect()
 
+		m.MinimockGetTVExternalIDsInspect()
+
 		m.MinimockGetTVPopularInspect()
 
 		m.MinimockGetTVSeasonDetailsInspect()
@@ -967,6 +1195,7 @@ func (m *TmdbClientMock) minimockDone() bool {
 	return done &&
 		m.MinimockGetSearchTVShowDone() &&
 		m.MinimockGetTVDetailsDone() &&
+		m.MinimockGetTVExternalIDsDone() &&
 		m.MinimockGetTVPopularDone() &&
 		m.MinimockGetTVSeasonDetailsDone()
 }
