@@ -21,6 +21,8 @@ Backend (Go ≥ 1.26, run from repo root):
 
 Run a single Go test: `go test -run TestName$ ./internal/path/...` (use `-race` when touching concurrent code — the featured-extras cache and `TVShowAllSeasonsWithDetails` errgroup are the hot spots).
 
+**Docker builds: foreground or `Monitor`, never `sleep` polling.** `make docker-build` takes 60–120s. Run it foreground with `timeout: 180000` on the Bash call, or background it and use the `Monitor` tool to await completion. Never chain `sleep N && tail` — the harness blocks long sleeps and you'll burn a turn on the rejection.
+
 Frontend (Node ≥ 22, run from `frontend/`):
 
 | Command | Purpose |
@@ -72,7 +74,7 @@ Operational: `/ping`, `/version`, `/metrics` (Prometheus), `/debug/pprof/*`.
 
 ## Before claiming a task done
 
-For any change that touches the public API contract, the response shapes, or user-visible UI, do **all** of the following before reporting completion. Tests and lint passing is necessary but not sufficient.
+For any change that touches the public API contract (Go handlers, response shapes) or user-visible UI, do **all** of the following before reporting completion. Tests and lint passing is necessary but not sufficient. Pure frontend layout/styling changes (no Go file or `api/openapi.yaml` touched) skip steps 1–2 but never skip 3–4. State the scope explicitly in the completion report so the user can audit.
 
 1. **README.md.** It contains a hand-written API tour with JSON examples for `/search/{query}`, `/id/{id}`, `/featured`, `/img/{path}`. Whenever you add/remove/rename a field on any of those, or change defaults/behavior described in prose (e.g. `defaultBest` semantics, featured pool rules, image size allow-list), update the matching section. The OpenAPI spec is the contract; the README is the human-facing summary — both must move together.
 2. **`api/openapi.yaml`.** Keep schemas exhaustive. New optional fields go into `properties` but stay out of `required` unless the server *always* emits them.
@@ -89,8 +91,17 @@ For any change that touches the public API contract, the response shapes, or use
    The image is multi-stage (frontend build → Go build → final), so a passing `make docker-build` also certifies that `npm run build` succeeded and the SPA bundle landed at `/static/`. Don't skip the `compose up` step — it's the only thing that exercises the bundled image against live TMDB.
 4. **Frontend feature in a real browser** when UI changed. `npm run typecheck`/`test:ci` will not catch a broken layout, a missing prop, or an unstyled component. Either run `npm run dev` against `make docker-up` or open the Docker container's served SPA, navigate to the affected screen, and confirm visually.
 
+## Frontend verification gotchas
+
+These caused multiple "I said done, user said it's still broken" cycles in past sessions. Internalize them.
+
+- **Service worker, not Tailwind.** When a UI change doesn't appear after `docker compose up -d`, the cause is the SPA's service worker serving a stale shell — *not* Tailwind caching, *not* the build. Before blaming the build or doing `docker buildx build --no-cache`, verify by curling `http://127.0.0.1:8202/` for the `index-*.js` hash and `docker exec soap grep` the served CSS in `/static/assets/` for the new class. If both contain the new code, the issue is purely client-side cache. Tell the user to hard-reload, or to run in DevTools: `navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))); caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))));` then reload.
+- **macOS Chrome clamps window width to ~500px.** Resizing to 375 or 390 silently lands on ~500 innerWidth, so a real iPhone bug shows up milder (or not at all) in a desktop Chrome window. To validate iPhone widths, set the User-Agent to iOS Safari **and** read column sizes via `getBoundingClientRect()` on the actual element — don't eyeball screenshots. The user is on iOS Safari; match that.
+- **Report numeric before/after for layout fixes.** A fix for "looks bad on mobile" must include a concrete delta the user can audit (e.g., "description column 80px → 301px at 375px width"). Vague "looks great now" claims have repeatedly turned out wrong on the user's actual device.
+
 ## Testing notes
 
 - Mocks live under `*/mocks/` and are minimock-generated. The `//go:generate` directive is in the mock file itself, so adding a new interface means adding a stub mock file with the directive *or* running minimock manually once, then `make generate-mocks` keeps it in sync.
 - `golangci-lint` is configured with `tests: false`, so test files don't go through the linter — don't be surprised that lint passes on test code with patterns the production linter would reject.
 - The frontend has one Playwright smoke test (`frontend/e2e/`) that runs against `vite preview` or the Docker container; unit/component tests use Vitest + RTL.
+- After an `Edit`, don't grep the file to "verify" the edit landed — the tool already errors on a miss. Re-read only when the next edit needs current line numbers.
