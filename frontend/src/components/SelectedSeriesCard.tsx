@@ -50,13 +50,13 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
               <CopyLinkButton />
             </span>
           </div>
+          {description && (
+            <p className="mt-2 text-sm leading-snug break-words text-slate-600 sm:mt-3">
+              {description}
+            </p>
+          )}
         </div>
       </div>
-      {description && (
-        <p className="mt-3 text-sm leading-snug break-words text-slate-600 sm:mt-4">
-          {description}
-        </p>
-      )}
     </div>
   );
 }
