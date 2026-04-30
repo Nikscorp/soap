@@ -91,6 +91,13 @@ For any change that touches the public API contract (Go handlers, response shape
    The image is multi-stage (frontend build → Go build → final), so a passing `make docker-build` also certifies that `npm run build` succeeded and the SPA bundle landed at `/static/`. Don't skip the `compose up` step — it's the only thing that exercises the bundled image against live TMDB.
 4. **Frontend feature in a real browser** when UI changed. `npm run typecheck`/`test:ci` will not catch a broken layout, a missing prop, or an unstyled component. Either run `npm run dev` against `make docker-up` or open the Docker container's served SPA, navigate to the affected screen, and confirm visually.
 
+## Documentation discipline
+
+These two patterns silently cost time in past sessions; both are about the README, OpenAPI, and code-comment prose drifting away from what the code actually does.
+
+- **README/OpenAPI/comment prose describing behavior must be derived from the code, not from the plan.** When you describe a cache, fallback, retry, freshness check, env-var precedence, or any rule in prose, generate that prose by reading the implementation. Past failure: the IMDb integration shipped a README claiming "container restarts don't re-download" while the actual `refreshFile` always called `download()` first and only fell back to the cached file on HTTP failure. The plan had said the right thing; the code didn't follow the plan; the README followed the plan, not the code. If you spot a plan/code disagreement, the doc tracks the code — or fix the code. Re-read the relevant function before writing the prose, every time.
+- **Performance / size / latency numbers come from measurement, not estimation.** Memory, RSS, response time, file size, and cardinality figures in comments, README, OpenAPI descriptions, or completion reports need a real number from a real run, not "should be about ~". Past failures from this session alone: shipped "~85 MB resident heap" for the IMDb dataset (actual RSS ~290 MB); claimed "`initialTitlesCapacity = 1.5M` is too small, rehashes during build" with zero data — measurement showed 1.5M was already enough and bumping to 2M doubled the bucket count for no gain. If you must ship the doc before the box exists, leave a `TODO: measure` and confirm via `docker stats` and `/debug/pprof/heap?gc=1` once the container is up. If you can already run the box, do it before writing the number — `pprof -top -inuse_space -unit=mb` is a one-liner.
+
 ## Frontend verification gotchas
 
 These caused multiple "I said done, user said it's still broken" cycles in past sessions. Internalize them.
@@ -101,7 +108,7 @@ These caused multiple "I said done, user said it's still broken" cycles in past 
 
 ## Testing notes
 
-- Mocks live under `*/mocks/` and are minimock-generated. The `//go:generate` directive is in the mock file itself, so adding a new interface means adding a stub mock file with the directive *or* running minimock manually once, then `make generate-mocks` keeps it in sync.
+- Mocks live under `*/mocks/` and are minimock-generated. The `//go:generate` directive is in the mock file itself, so adding a new interface means adding a stub mock file with the directive *or* running minimock manually once, then `make generate-mocks` keeps it in sync. **Run minimock from inside the target `mocks/` directory** (`cd internal/pkg/.../mocks && minimock -i …`). Running from the repo root bakes a path like `./internal/pkg/.../mocks/foo_mock.go` into the directive — relative to the wrong directory — and the next `make generate-mocks` regenerates the file in the wrong place. The existing `tmdb_client_mock.go` is the reference for the correct directive shape (`-o ./tmdb_client_mock.go`).
 - `golangci-lint` is configured with `tests: false`, so test files don't go through the linter — don't be surprised that lint passes on test code with patterns the production linter would reject.
 - The frontend has one Playwright smoke test (`frontend/e2e/`) that runs against `vite preview` or the Docker container; unit/component tests use Vitest + RTL.
 - After an `Edit`, don't grep the file to "verify" the edit landed — the tool already errors on a miss. Re-read only when the next edit needs current line numbers.
