@@ -29,9 +29,16 @@ type EpisodeScore struct {
 // snapshot is the immutable, point-in-time view published via atomic.Pointer.
 // Once stored, callers may read from it without locks; refreshes allocate a
 // new snapshot and atomically swap the pointer (copy-on-write).
+//
+// Keys are the numeric form of an IMDb tconst (the digits after the "tt"
+// prefix, parsed as uint32). Storing 4-byte numeric keys instead of the raw
+// "tt0944947"-style strings cuts the per-entry overhead by ~3-4× and avoids
+// allocating a fresh string for every parsed row at build time. Wire-facing
+// APIs still take string IDs; SeriesRating / EpisodeRating call parseTconst
+// once on the way in.
 type snapshot struct {
-	titles   map[string]Score          // any tconst -> Score (used for series-level lookup)
-	episodes map[string][]EpisodeScore // parentTconst -> sorted by (Season, Episode)
+	titles   map[uint32]Score          // any tconst -> Score (used for series-level lookup)
+	episodes map[uint32][]EpisodeScore // parentTconst -> sorted by (Season, Episode)
 }
 
 // Provider is an in-memory IMDb ratings index that can be consulted on the
@@ -63,13 +70,18 @@ func (p *Provider) Ready() bool {
 }
 
 // SeriesRating looks up the rating for a series tconst (e.g. "tt0944947").
-// Returns ok=false if the dataset is not yet loaded or the tconst is unknown.
+// Returns ok=false if the dataset is not yet loaded, the tconst is malformed,
+// or no entry exists.
 func (p *Provider) SeriesRating(imdbID string) (float32, uint32, bool) {
 	s := p.snap.Load()
-	if s == nil || imdbID == "" {
+	if s == nil {
 		return 0, 0, false
 	}
-	sc, ok := s.titles[imdbID]
+	id, ok := parseTconst(imdbID)
+	if !ok {
+		return 0, 0, false
+	}
+	sc, ok := s.titles[id]
 	if !ok {
 		return 0, 0, false
 	}
@@ -82,10 +94,14 @@ func (p *Provider) SeriesRating(imdbID string) (float32, uint32, bool) {
 // the index, or the (season, episode) tuple is missing.
 func (p *Provider) EpisodeRating(seriesIMDbID string, season, episode int) (float32, uint32, bool) {
 	s := p.snap.Load()
-	if s == nil || seriesIMDbID == "" {
+	if s == nil {
 		return 0, 0, false
 	}
-	eps, ok := s.episodes[seriesIMDbID]
+	id, ok := parseTconst(seriesIMDbID)
+	if !ok {
+		return 0, 0, false
+	}
+	eps, ok := s.episodes[id]
 	if !ok {
 		return 0, 0, false
 	}

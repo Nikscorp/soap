@@ -102,6 +102,36 @@ func buildSnapshotFromFiles(_ context.Context, ratingsPath, episodePath string) 
 	}, nil
 }
 
+// parseTconst converts an IMDb tconst (e.g. "tt0944947") into its numeric
+// form: the decimal digits that follow the "tt" prefix, parsed as uint32.
+// Returns ok=false on an empty input, missing "tt" prefix, missing digits,
+// any non-digit character, or a value that does not fit in uint32. As of
+// 2026 IMDb's largest tconst is well under 2^32, so the bound is comfortable.
+//
+// Used both during parsing (replacing string keys with 4-byte numeric keys
+// in the snapshot maps) and on the request path (called once per lookup so
+// the hot map probe sees a uint32 directly).
+func parseTconst(s string) (uint32, bool) {
+	const tconstPrefixLen = 2 // "tt"
+	if len(s) <= tconstPrefixLen || s[0] != 't' || s[1] != 't' {
+		return 0, false
+	}
+	var v uint64
+	for i := tconstPrefixLen; i < len(s); i++ {
+		c := s[i]
+		if c < '0' || c > '9' {
+			return 0, false
+		}
+		v = v*tconstDigitBase + uint64(c-'0')
+		if v > math.MaxUint32 {
+			return 0, false
+		}
+	}
+	return uint32(v), true
+}
+
+const tconstDigitBase = 10
+
 // pruneTitlesToSeries shrinks the titles map to only entries that appear as
 // a parentTconst in the joined episodes map. After this point the only
 // consumer of titles is SeriesRating(seriesTconst), so the dropped entries —
@@ -116,8 +146,8 @@ func buildSnapshotFromFiles(_ context.Context, ratingsPath, episodePath string) 
 // practice — most rated series have at least one rated episode — and the
 // fallback path is the same one we use for series with no IMDb mapping at
 // all, so the failure mode is invisible to the client.
-func pruneTitlesToSeries(titles map[string]Score, episodes map[string][]EpisodeScore) map[string]Score {
-	pruned := make(map[string]Score, len(episodes))
+func pruneTitlesToSeries(titles map[uint32]Score, episodes map[uint32][]EpisodeScore) map[uint32]Score {
+	pruned := make(map[uint32]Score, len(episodes))
 	for seriesTconst := range episodes {
 		if score, ok := titles[seriesTconst]; ok {
 			pruned[seriesTconst] = score
@@ -215,7 +245,7 @@ func download(ctx context.Context, client *http.Client, url, destPath string) er
 	return os.Rename(tmpPath, destPath)
 }
 
-func parseRatingsFile(path string) (map[string]Score, error) {
+func parseRatingsFile(path string) (map[uint32]Score, error) {
 	//nolint:gosec // path is built from the operator-configured cache dir, not user input
 	f, err := os.Open(path)
 	if err != nil {
@@ -225,10 +255,13 @@ func parseRatingsFile(path string) (map[string]Score, error) {
 	return parseRatings(f)
 }
 
-// parseRatings streams a gzipped IMDb ratings TSV into a map.
+// parseRatings streams a gzipped IMDb ratings TSV into a map keyed by the
+// numeric tconst form (see parseTconst). Rows whose tconst doesn't parse as
+// a uint32 are skipped — same downstream effect as the historical
+// parse-failure path, since unrecognised tconsts could never join anything.
 //
 // Schema: tconst \t averageRating \t numVotes.
-func parseRatings(r io.Reader) (map[string]Score, error) {
+func parseRatings(r io.Reader) (map[uint32]Score, error) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("gzip reader: %w", err)
@@ -238,7 +271,7 @@ func parseRatings(r io.Reader) (map[string]Score, error) {
 	sc := bufio.NewScanner(gz)
 	sc.Buffer(make([]byte, scannerBufferBytes), scannerBufferBytes)
 
-	out := make(map[string]Score, initialTitlesCapacity)
+	out := make(map[uint32]Score, initialTitlesCapacity)
 
 	if !sc.Scan() { // skip header
 		return out, sc.Err()
@@ -259,29 +292,33 @@ func parseRatings(r io.Reader) (map[string]Score, error) {
 
 // parseRatingsRow extracts (tconst, Score) from one TSV row, returning
 // ok=false for malformed, null, or out-of-range rows so the caller can skip.
-func parseRatingsRow(line string) (string, Score, bool) {
+func parseRatingsRow(line string) (uint32, Score, bool) {
 	parts := strings.SplitN(line, "\t", ratingsCols)
 	if len(parts) != ratingsCols {
-		return "", Score{}, false
+		return 0, Score{}, false
 	}
 	if parts[0] == tsvNull || parts[1] == tsvNull || parts[2] == tsvNull {
-		return "", Score{}, false
+		return 0, Score{}, false
+	}
+	id, ok := parseTconst(parts[0])
+	if !ok {
+		return 0, Score{}, false
 	}
 	rating64, err := strconv.ParseFloat(parts[1], ratingFloatBitSize)
 	if err != nil {
-		return "", Score{}, false
+		return 0, Score{}, false
 	}
 	votes64, err := strconv.ParseUint(parts[2], 10, votesUintBitSize)
 	if err != nil {
-		return "", Score{}, false
+		return 0, Score{}, false
 	}
-	return parts[0], Score{
+	return id, Score{
 		Rating: float32(rating64),
 		Votes:  uint32(votes64),
 	}, true
 }
 
-func parseEpisodesFile(path string, titles map[string]Score) (map[string][]EpisodeScore, error) {
+func parseEpisodesFile(path string, titles map[uint32]Score) (map[uint32][]EpisodeScore, error) {
 	//nolint:gosec // path is built from the operator-configured cache dir, not user input
 	f, err := os.Open(path)
 	if err != nil {
@@ -292,12 +329,12 @@ func parseEpisodesFile(path string, titles map[string]Score) (map[string][]Episo
 }
 
 // parseEpisodes streams a gzipped IMDb episode TSV and joins each row against
-// the titles map (keyed by episode tconst), accumulating per-series sorted
-// slices. Rows with missing fields, no rating in titles, or out-of-range
-// season/episode numbers are dropped.
+// the titles map (keyed by numeric episode tconst), accumulating per-series
+// sorted slices. Rows with missing fields, no rating in titles, or
+// out-of-range season/episode numbers are dropped.
 //
 // Schema: tconst \t parentTconst \t seasonNumber \t episodeNumber.
-func parseEpisodes(r io.Reader, titles map[string]Score) (map[string][]EpisodeScore, error) {
+func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeScore, error) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("gzip reader: %w", err)
@@ -307,7 +344,7 @@ func parseEpisodes(r io.Reader, titles map[string]Score) (map[string][]EpisodeSc
 	sc := bufio.NewScanner(gz)
 	sc.Buffer(make([]byte, scannerBufferBytes), scannerBufferBytes)
 
-	out := make(map[string][]EpisodeScore, initialEpisodesCapacity)
+	out := make(map[uint32][]EpisodeScore, initialEpisodesCapacity)
 
 	if !sc.Scan() { // skip header
 		return out, sc.Err()
@@ -336,22 +373,30 @@ func parseEpisodes(r io.Reader, titles map[string]Score) (map[string][]EpisodeSc
 }
 
 // parseEpisodeRow extracts (parentTconst, EpisodeScore) from one TSV row.
-// Returns ok=false on malformed rows, missing rating-side join keys, or
-// season/episode numbers that don't fit in int16.
-func parseEpisodeRow(line string, titles map[string]Score) (string, EpisodeScore, bool) {
+// Returns ok=false on malformed rows, unparseable tconsts, missing
+// rating-side join keys, or season/episode numbers that don't fit in int16.
+func parseEpisodeRow(line string, titles map[uint32]Score) (uint32, EpisodeScore, bool) {
 	parts := strings.SplitN(line, "\t", episodeCols)
 	if !validEpisodeRowParts(parts) {
-		return "", EpisodeScore{}, false
+		return 0, EpisodeScore{}, false
 	}
-	score, ok := titles[parts[0]]
+	episodeID, ok := parseTconst(parts[0])
 	if !ok {
-		return "", EpisodeScore{}, false
+		return 0, EpisodeScore{}, false
+	}
+	score, ok := titles[episodeID]
+	if !ok {
+		return 0, EpisodeScore{}, false
+	}
+	parentID, ok := parseTconst(parts[1])
+	if !ok {
+		return 0, EpisodeScore{}, false
 	}
 	season, episode, ok := parseSeasonEpisode(parts[2], parts[3])
 	if !ok {
-		return "", EpisodeScore{}, false
+		return 0, EpisodeScore{}, false
 	}
-	return parts[1], EpisodeScore{
+	return parentID, EpisodeScore{
 		Season:  season,
 		Episode: episode,
 		Rating:  score.Rating,

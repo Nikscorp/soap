@@ -105,7 +105,7 @@ func generateSyntheticDatasets(tb testing.TB, ratingsRows, episodeRows int) (rat
 // titlesFromGz parses a gzipped ratings blob into the titles map; used by
 // BenchmarkParseEpisodes_Synthetic to set up its join target outside the
 // timed loop.
-func titlesFromGz(tb testing.TB, gz []byte) map[string]Score {
+func titlesFromGz(tb testing.TB, gz []byte) map[uint32]Score {
 	tb.Helper()
 	titles, err := parseRatings(bytes.NewReader(gz))
 	require.NoError(tb, err)
@@ -124,7 +124,7 @@ func writeGzToTempFile(tb testing.TB, dir, name string, data []byte) string {
 func BenchmarkParseRatings_Synthetic(b *testing.B) {
 	ratingsGz, _ := generateSyntheticDatasets(b, syntheticRatingsRows, 0)
 	b.ReportAllocs()
-	var titles map[string]Score
+	var titles map[uint32]Score
 	for b.Loop() {
 		t, err := parseRatings(bytes.NewReader(ratingsGz))
 		if err != nil {
@@ -144,7 +144,7 @@ func BenchmarkParseEpisodes_Synthetic(b *testing.B) {
 	ratingsGz, episodesGz := generateSyntheticDatasets(b, syntheticRatingsRows, syntheticEpisodeRows)
 	titles := titlesFromGz(b, ratingsGz)
 	b.ReportAllocs()
-	var episodes map[string][]EpisodeScore
+	var episodes map[uint32][]EpisodeScore
 	for b.Loop() {
 		e, err := parseEpisodes(bytes.NewReader(episodesGz), titles)
 		if err != nil {

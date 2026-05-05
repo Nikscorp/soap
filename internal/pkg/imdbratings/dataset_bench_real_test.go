@@ -51,7 +51,7 @@ func mustOpenRealFile(tb testing.TB, name string) *os.File {
 func BenchmarkParseRatings_Real(b *testing.B) {
 	path := mustReadRealFile(b, ratingsFile)
 	b.ReportAllocs()
-	var titles map[string]Score
+	var titles map[uint32]Score
 	for b.Loop() {
 		f, err := os.Open(path) //nolint:gosec // operator-controlled bench fixture path
 		if err != nil {
@@ -73,7 +73,7 @@ func BenchmarkParseEpisodes_Real(b *testing.B) {
 	titles := buildRealTitles(b)
 	episodePath := mustReadRealFile(b, episodeFile)
 	b.ReportAllocs()
-	var episodes map[string][]EpisodeScore
+	var episodes map[uint32][]EpisodeScore
 	for b.Loop() {
 		f, err := os.Open(episodePath) //nolint:gosec // operator-controlled bench fixture path
 		if err != nil {
@@ -110,7 +110,7 @@ func BenchmarkBuildSnapshot_Real(b *testing.B) {
 	runtime.KeepAlive(snap)
 }
 
-func buildRealTitles(tb testing.TB) map[string]Score {
+func buildRealTitles(tb testing.TB) map[uint32]Score {
 	tb.Helper()
 	f := mustOpenRealFile(tb, ratingsFile)
 	defer func() { _ = f.Close() }()

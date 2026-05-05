@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -46,18 +47,72 @@ func TestParseRatings(t *testing.T) {
 	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, sampleRatings)))
 	require.NoError(t, err)
 
-	got, ok := titles["tt0944947"]
+	got, ok := titles[mustParseTconst(t, "tt0944947")]
 	require.True(t, ok)
 	assert.InDelta(t, 9.2, got.Rating, 0.001)
 	assert.Equal(t, uint32(2_300_000), got.Votes)
 
-	_, ok = titles["tt1480057"]
+	_, ok = titles[mustParseTconst(t, "tt1480057")]
 	assert.False(t, ok, "rows with \\N must be skipped")
 
-	_, ok = titles["tt0306414bad"]
-	assert.False(t, ok, "rows with non-numeric rating must be skipped")
+	// "tt0306414bad" has a "bad" suffix so parseTconst rejects it before
+	// we even reach the float parse — the row is skipped either way.
+	_, parseable := parseTconst("tt0306414bad")
+	assert.False(t, parseable, "tconst with non-digit suffix must not parse")
 
 	assert.Len(t, titles, 4)
+}
+
+// mustParseTconst is a tiny test helper that parses a tconst string and
+// fails the test if it doesn't. Used wherever tests want to look up an
+// entry by its public string ID in the new uint32-keyed snapshot maps.
+func mustParseTconst(t testing.TB, s string) uint32 {
+	t.Helper()
+	id, ok := parseTconst(s)
+	require.True(t, ok, "parseTconst(%q) must succeed", s)
+	return id
+}
+
+func TestParseTconst(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
+		cases := map[string]uint32{
+			"tt0000001": 1,
+			"tt0944947": 944947,
+			"tt1":       1,                // minimum valid (tt + 1 digit)
+			"tt9999999": 9_999_999,        // typical IMDb 7-digit tconst
+			"tt40000000": 40_000_000,      // beyond 2026's largest, still fits uint32
+			"tt4294967295": math.MaxUint32, // exact uint32 boundary
+		}
+		for in, want := range cases {
+			got, ok := parseTconst(in)
+			require.True(t, ok, "parseTconst(%q) must succeed", in)
+			assert.Equal(t, want, got, "parseTconst(%q)", in)
+		}
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		// Each of these should return ok=false: missing prefix, missing
+		// digits, non-digit body, overflow, raw IMDb NULL, empty input.
+		invalid := []string{
+			"",
+			"t",
+			"tt",
+			"xt0944947",
+			"tx0944947",
+			"0944947",
+			"tt-1",
+			"tt 1",
+			"tt0944947x",
+			"tt0944947 ",
+			`\N`,
+			"tt4294967296", // one past uint32 max
+			"tt99999999999", // wildly overflows
+		}
+		for _, in := range invalid {
+			_, ok := parseTconst(in)
+			assert.False(t, ok, "parseTconst(%q) must return ok=false", in)
+		}
+	})
 }
 
 func TestParseEpisodesJoinAndSort(t *testing.T) {
@@ -67,7 +122,7 @@ func TestParseEpisodesJoinAndSort(t *testing.T) {
 	episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, sampleEpisodes)), titles)
 	require.NoError(t, err)
 
-	gotSeries, ok := episodes["tt0944947"]
+	gotSeries, ok := episodes[mustParseTconst(t, "tt0944947")]
 	require.True(t, ok)
 	require.Len(t, gotSeries, 2, "only the two episodes with ratings in titles should join")
 
@@ -106,6 +161,15 @@ func TestProviderLookups(t *testing.T) {
 	t.Run("series rating empty input", func(t *testing.T) {
 		_, _, ok := p.SeriesRating("")
 		assert.False(t, ok)
+	})
+
+	t.Run("series rating malformed tconst", func(t *testing.T) {
+		// Numeric keys reject inputs that aren't "tt" + decimal digits;
+		// we should fall through to ok=false rather than panicking.
+		for _, s := range []string{"nope", "tt", "ttabc", "0944947", "tt0944947x"} {
+			_, _, ok := p.SeriesRating(s)
+			assert.False(t, ok, "SeriesRating(%q) must return ok=false", s)
+		}
 	})
 
 	t.Run("episode rating hit", func(t *testing.T) {
@@ -344,18 +408,17 @@ func TestParseRatingsHandlesTrailingNewlinesAndCRLF(t *testing.T) {
 	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, raw)))
 	require.NoError(t, err)
 
-	got1, ok := titles["tt1"]
+	got1, ok := titles[mustParseTconst(t, "tt1")]
 	require.True(t, ok)
 	assert.InDelta(t, 8.0, got1.Rating, 0.001)
 	assert.Equal(t, uint32(100), got1.Votes)
 
-	got2, ok := titles["tt2"]
+	got2, ok := titles[mustParseTconst(t, "tt2")]
 	require.True(t, ok)
 	assert.InDelta(t, 7.0, got2.Rating, 0.001)
 
-	// No empty-key entry from the blank line.
-	_, ok = titles[""]
-	assert.False(t, ok)
+	// Sanity: the blank line / CRLF stripping leaves no spurious entries.
+	assert.Len(t, titles, 2)
 
 	// Sanity: input really did contain a blank CRLF line.
 	assert.True(t, strings.Contains(raw, "\r\n\r\n"))
