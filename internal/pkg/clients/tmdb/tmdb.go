@@ -1,11 +1,14 @@
 package tmdb
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 )
+
+var errUnexpectedTransport = errors.New("http.DefaultTransport is not *http.Transport")
 
 type Config struct {
 	APIKey          string        `env:"TMDB_API_KEY"           env-required:"true" yaml:"api_key"`
@@ -21,7 +24,11 @@ func NewTMDB(cfg Config) (*tmdb.Client, error) {
 		return nil, err
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, errUnexpectedTransport
+	}
+	transport := defaultTransport.Clone()
 	transport.MaxIdleConns = cfg.MaxIdleConns
 	transport.MaxIdleConnsPerHost = cfg.MaxIdleConns
 	transport.IdleConnTimeout = cfg.IdleConnTimeout

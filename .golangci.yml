@@ -28,3 +28,4 @@ linters:
     paths:
       - vendor
       - .*/mocks/.*
+      - frontend/node_modules

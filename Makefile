@@ -17,6 +17,26 @@ test-cov:
 test-race:
 	go test -race -count=1 -v ./...
 
+bench:
+	@mkdir -p bin
+	go test -bench=. -benchmem -count=10 -run=^$$ ./internal/pkg/imdbratings/... | tee bin/bench.txt
+
+bench-real:
+	@mkdir -p bin
+	go test -tags imdbbench -bench=. -benchmem -count=10 -run=^$$ ./internal/pkg/imdbratings/... | tee bin/bench-real.txt
+
+bench-baseline: bench
+	@cp bin/bench.txt bin/bench-baseline.txt
+
+bench-real-baseline: bench-real
+	@cp bin/bench-real.txt bin/bench-real-baseline.txt
+
+bench-stat:
+	benchstat bin/bench-baseline.txt bin/bench.txt
+
+bench-real-stat:
+	benchstat bin/bench-real-baseline.txt bin/bench-real.txt
+
 up:
 	./bin/lazysoap
 

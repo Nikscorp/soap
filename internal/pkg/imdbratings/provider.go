@@ -1,8 +1,10 @@
 package imdbratings
 
 import (
+	"cmp"
 	"context"
 	"net/http"
+	"slices"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -26,12 +28,39 @@ type EpisodeScore struct {
 	Votes   uint32
 }
 
+// titleEntry is one entry in the published, ID-sorted titles slice. Lookup is
+// a binary search by ID. Layout is a flat 12 bytes (uint32 + Score), matching
+// the previous map-value width without map bucket overhead.
+type titleEntry struct {
+	ID    uint32
+	Score Score
+}
+
+// seriesEpisodes is one entry in the published, ID-sorted episodes slice. The
+// inner Episodes slice is sorted by (Season, Episode) at build time and stays
+// owned by this entry — the lookup path does not copy it.
+type seriesEpisodes struct {
+	ID       uint32
+	Episodes []EpisodeScore
+}
+
 // snapshot is the immutable, point-in-time view published via atomic.Pointer.
 // Once stored, callers may read from it without locks; refreshes allocate a
 // new snapshot and atomically swap the pointer (copy-on-write).
+//
+// IDs are the numeric form of an IMDb tconst (the digits after the "tt"
+// prefix, parsed as uint32). Storing 4-byte numeric IDs instead of raw
+// "tt0944947"-style strings cuts the per-entry overhead by ~3-4× and avoids
+// allocating a fresh string for every parsed row at build time. Wire-facing
+// APIs still take string IDs; SeriesRating / EpisodeRating call parseTconst
+// once on the way in.
+//
+// Both slices are sorted by ID. Lookup is slices.BinarySearchFunc — O(log N)
+// in the size of the published index (~45k titles, ~45k series), trading the
+// map's hash-and-bucket cost for a denser, contiguous read-only structure.
 type snapshot struct {
-	titles   map[string]Score          // any tconst -> Score (used for series-level lookup)
-	episodes map[string][]EpisodeScore // parentTconst -> sorted by (Season, Episode)
+	titles   []titleEntry     // sorted by ID
+	episodes []seriesEpisodes // sorted by ID
 }
 
 // Provider is an in-memory IMDb ratings index that can be consulted on the
@@ -63,46 +92,62 @@ func (p *Provider) Ready() bool {
 }
 
 // SeriesRating looks up the rating for a series tconst (e.g. "tt0944947").
-// Returns ok=false if the dataset is not yet loaded or the tconst is unknown.
+// Returns ok=false if the dataset is not yet loaded, the tconst is malformed,
+// or no entry exists.
 func (p *Provider) SeriesRating(imdbID string) (float32, uint32, bool) {
 	s := p.snap.Load()
-	if s == nil || imdbID == "" {
+	if s == nil {
 		return 0, 0, false
 	}
-	sc, ok := s.titles[imdbID]
+	id, ok := parseTconst(imdbID)
 	if !ok {
 		return 0, 0, false
 	}
+	idx, found := slices.BinarySearchFunc(s.titles, id, func(e titleEntry, target uint32) int {
+		return cmp.Compare(e.ID, target)
+	})
+	if !found {
+		return 0, 0, false
+	}
+	sc := s.titles[idx].Score
 	return sc.Rating, sc.Votes, true
 }
 
 // EpisodeRating looks up the rating for a specific (series, season, episode)
-// tuple. Uses binary search over the per-series sorted slice. Returns
-// ok=false if the dataset is not yet loaded, the series has no episodes in
-// the index, or the (season, episode) tuple is missing.
+// tuple. Two-level binary search: first the outer ID-sorted episodes slice,
+// then the per-series (Season, Episode)-sorted inner slice. Returns ok=false
+// if the dataset is not yet loaded, the series has no episodes in the index,
+// or the (season, episode) tuple is missing.
 func (p *Provider) EpisodeRating(seriesIMDbID string, season, episode int) (float32, uint32, bool) {
 	s := p.snap.Load()
-	if s == nil || seriesIMDbID == "" {
+	if s == nil {
 		return 0, 0, false
 	}
-	eps, ok := s.episodes[seriesIMDbID]
+	id, ok := parseTconst(seriesIMDbID)
 	if !ok {
 		return 0, 0, false
 	}
+	idx, found := slices.BinarySearchFunc(s.episodes, id, func(e seriesEpisodes, target uint32) int {
+		return cmp.Compare(e.ID, target)
+	})
+	if !found {
+		return 0, 0, false
+	}
+	eps := s.episodes[idx].Episodes
 	wantS, wantE, ok := narrowSeasonEpisode(season, episode)
 	if !ok {
 		return 0, 0, false
 	}
-	idx := sort.Search(len(eps), func(i int) bool {
+	innerIdx := sort.Search(len(eps), func(i int) bool {
 		if eps[i].Season != wantS {
 			return eps[i].Season >= wantS
 		}
 		return eps[i].Episode >= wantE
 	})
-	if idx >= len(eps) || eps[idx].Season != wantS || eps[idx].Episode != wantE {
+	if innerIdx >= len(eps) || eps[innerIdx].Season != wantS || eps[innerIdx].Episode != wantE {
 		return 0, 0, false
 	}
-	return eps[idx].Rating, eps[idx].Votes, true
+	return eps[innerIdx].Rating, eps[innerIdx].Votes, true
 }
 
 // narrowSeasonEpisode collapses the int→int16 bounds check into a single
