@@ -9,6 +9,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.2
 	github.com/gojuno/minimock/v3 v3.4.7
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/prometheus/client_golang v1.23.2

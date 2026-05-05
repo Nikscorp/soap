@@ -16,6 +16,7 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/imdbratings"
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // ratingsSourceIMDb is the value of LAZYSOAP_RATINGS_SOURCE that switches
@@ -65,7 +66,7 @@ func main() {
 		logger.Info(ctx, "IMDb ratings source enabled", "cache_dir", cfg.IMDbConfig.CacheDir)
 	}
 
-	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider), version)
+	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache, prometheus.DefaultRegisterer), version)
 
 	go func() {
 		stop := make(chan os.Signal, 1)

@@ -38,7 +38,7 @@ Local dev typically means running the backend in Docker (`make docker-up`) on `:
 Wiring (top of `cmd/lazysoap/main.go`):
 
 ```
-config.ParseConfig  →  tmdb.NewTMDB(cfg.TMDBConfig)  →  tvmeta.New(tmdbClient)  →  lazysoap.New(cfg, tvMeta, version).Run(ctx)
+config.ParseConfig  →  tmdb.NewTMDB(cfg.TMDBConfig)  →  tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache, prometheus.DefaultRegisterer)  →  lazysoap.New(cfg, tvMeta, version).Run(ctx)
 ```
 
 Three layers, in dependency order:
@@ -47,17 +47,20 @@ Three layers, in dependency order:
 2. **`internal/pkg/tvmeta`** — domain layer that hides TMDB quirks. Defines a `tmdbClient` interface (the seam used by tests/mocks) and exposes `SearchTVShows`, `TVShowDetails`, `TVShowAllSeasonsWithDetails`, `PopularTVShows`. `TVShowAllSeasonsWithDetails` fans out one goroutine per season via `errgroup` — preserve that when extending it.
 3. **`internal/app/lazysoap`** — HTTP layer. `server.go` builds the chi router and declares the `tvMetaClient` interface it consumes (this is the mock seam for handler tests). One file per endpoint: `search.go`, `by_id.go`, `featured.go`, `img_proxy.go`. `rest.AddFileServer` mounts the SPA last as the catch-all.
 
-Two pieces of non-obvious behavior to keep in mind when editing:
+Three pieces of non-obvious behavior to keep in mind when editing:
 
 - **Featured-extras cache (`featured.go`).** Curated TMDB IDs are resolved at startup and refreshed by a background goroutine (`runFeaturedExtrasRefresh`, kicked off from `Server.Run`). Reads use `atomic.Pointer[[]featuredItem]` — copy-on-write swap, no locks on the request path. The cached slice is shared and **read-only**; never mutate or append to a slice returned by `featuredExtras.view()`. The refresh goroutine is started async on purpose so a slow/down TMDB at boot can't block `ListenAndServe` (k8s liveness, fast restarts).
+- **TMDB response cache (`internal/pkg/tvmeta/cache.go`).** Typed LRU + TTL + `singleflight` wrappers around `TVShowDetails`, `TVShowEpisodesBySeason`, and the raw `searchTVShowsRaw`. Cached values are pointers (`*TvShowDetails`, `*TVShowSeasonEpisodes`, `*TVShows`) shared by every concurrent reader and **read-only** — same contract as `featuredExtras.view()`. Two callers in the codebase legitimately need to mutate a cached payload: `TVShowAllSeasonsWithDetails` (calls `overrideEpisodeRatings`, which writes `ep.Rating`) and `SearchTVShows` (calls `overrideSeriesRatings`, which writes the series-level `Rating`). Both deep-copy the cached pointer's contents before mutating; if you add a new caller, copy first or you'll silently overwrite values for every other waiter sharing the cached entry. Errors are never cached, so transient TMDB failures retry on the next request; size or TTL = 0 turns a method's cache into a pass-through (used by tests passing a zero `CacheConfig`).
 - **Static asset cache headers (`internal/pkg/rest/static.go`).** Vite content-hashed assets under `/assets/` and Workbox runtime get `max-age=31536000, immutable`; the SPA shell, manifest, and main service worker are `no-cache` so deploys propagate immediately. If you add new top-level static files, decide which bucket they fall into.
 
 ## Configuration
 
-`internal/pkg/config/config.go` calls `cleanenv.ReadConfig`, so every field has a YAML key *and* an env var (`env-default` provides the fallback). Defaults live in `config/config.yaml.dist`; the runtime config is `config/config.yaml`. The two struct trees worth knowing:
+`internal/pkg/config/config.go` calls `cleanenv.ReadConfig`, so every field has a YAML key *and* an env var (`env-default` provides the fallback). Defaults live in `config/config.yaml.dist`; the runtime config is `config/config.yaml`. The struct trees worth knowing:
 
 - `internal/app/lazysoap/server.go` — `Config` (server timeouts, `LAZYSOAP_FEATURED_*`, `DefaultBestQuantile`/`DefaultBestMinEpisodes` for the `/id/{id}` "default best" computation, `ImgClient` for the poster proxy).
 - `internal/pkg/clients/tmdb/tmdb.go` — `Config` (`TMDB_API_KEY` is required; `TMDB_REQUEST_TIMEOUT`, `TMDB_ENABLE_AUTO_RETRY`).
+- `internal/pkg/imdbratings/config.go` — `Config` (`LAZYSOAP_IMDB_*`: dataset host, refresh interval, on-disk cache dir, HTTP timeout).
+- `internal/pkg/tvmeta/config.go` — `tvmeta.Config { Cache CacheConfig }` (`TVMETA_CACHE_*`: per-method LRU size + TTL knobs for the response cache).
 
 When adding a new tunable, add it to both the struct (with `env`, `env-default`, `yaml` tags) and to `config/config.yaml.dist`.
 

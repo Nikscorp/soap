@@ -7,6 +7,7 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	tmdb "github.com/cyruzin/golang-tmdb"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var ErrNilResp = errors.New("nil resp error")
@@ -17,9 +18,36 @@ var ErrNilResp = errors.New("nil resp error")
 const externalIDsConcurrency = 8
 
 type Client struct {
-	client      tmdbClient
-	ratings     RatingsProvider
-	imdbIDCache sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	client        tmdbClient
+	ratings       RatingsProvider
+	imdbIDCache   sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	detailsCache  *responseCache[detailsKey, *TvShowDetails]
+	episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]
+	searchCache   *responseCache[searchKey, *TVShows]
+}
+
+// detailsKey is the cache key for TVShowDetails. Two requests collide iff
+// they target the same TMDB series ID and the same language tag.
+type detailsKey struct {
+	id   int
+	lang string
+}
+
+// episodesKey is the cache key for TVShowEpisodesBySeason. Requests collide
+// iff they target the same TMDB series ID, the same season number, and the
+// same language tag.
+type episodesKey struct {
+	id     int
+	season int
+	lang   string
+}
+
+// searchKey is the cache key for the raw (pre-override) SearchTVShows result.
+// lang is the resolved IETF tag from languageTag(query), not the raw input,
+// so two queries that route to the same TMDB language share a key.
+type searchKey struct {
+	query string
+	lang  string
 }
 
 type tmdbClient interface {
@@ -33,13 +61,29 @@ type tmdbClient interface {
 // New constructs a tvmeta client. ratings can be NoopRatingsProvider{} to keep
 // the legacy TMDB-only behavior; pass a real provider (e.g. *imdbratings.Provider)
 // to enable IMDb rating overrides on top of TMDB metadata.
-func New(tmdbClient tmdbClient, ratings RatingsProvider) *Client {
+//
+// cacheCfg configures the per-method TMDB response caches. A zero CacheConfig
+// disables every cache (each method behaves as if caching were never added),
+// which is the safe default for tests and for environments that have not yet
+// opted in via env / yaml. See CacheConfig for the available knobs.
+//
+// registerer receives the per-method cache observability counters
+// (tvmeta_cache_hits_total / _misses_total / _errors_total). Pass
+// prometheus.DefaultRegisterer in production to feed the existing /metrics
+// endpoint, or nil in tests that don't need observability — disabling metrics
+// avoids registry collisions when several Clients are constructed in the same
+// test binary.
+func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig, registerer prometheus.Registerer) *Client {
 	if ratings == nil {
 		ratings = NoopRatingsProvider{}
 	}
+	metrics := newCacheMetrics(registerer)
 	return &Client{
-		client:  tmdbClient,
-		ratings: ratings,
+		client:        tmdbClient,
+		ratings:       ratings,
+		detailsCache:  newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
+		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes]("episodes", cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL, metrics),
+		searchCache:   newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
 	}
 }
 
