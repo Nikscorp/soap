@@ -449,10 +449,87 @@ func TestSnapshotBinarySearchBoundaries(t *testing.T) {
 	assert.InDelta(t, 6.5, r, 0.001)
 }
 
+// TestParseRatingsSkipsMalformedRows — Opt 4 dropped strings.SplitN in favour
+// of bytes.Cut, which means lines with the wrong number of \t separators or
+// unparseable numeric fields take a different code path than they used to.
+// This test pins the behaviour: the parser silently skips broken rows and
+// keeps every valid row.
+func TestParseRatingsSkipsMalformedRows(t *testing.T) {
+	raw := "tconst\taverageRating\tnumVotes\n" +
+		"tt100\t8.0\t1000\n" + //                      valid baseline
+		"tt101\tnotafloat\t500\n" + //                 ParseFloat fails
+		"tt102\t7.5\tnotanint\n" + //                  ParseUint fails
+		"tt103\t6.0\n" + //                            short row, only one tab
+		"tt104onlyonefield\n" + //                     short row, no tabs
+		"tt105\t5.0\t100\n" //                         valid
+
+	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, raw)))
+	require.NoError(t, err)
+
+	for _, ok := range []string{"tt100", "tt105"} {
+		_, present := titles[mustParseTconst(t, ok)]
+		assert.True(t, present, "valid row %s must parse", ok)
+	}
+
+	// Each broken row must be skipped — every key absent from the map.
+	for _, sk := range []string{"tt101", "tt102", "tt103", "tt104onlyonefield"} {
+		id, parseable := parseTconst(sk)
+		if !parseable {
+			continue // tconst itself didn't parse; absence is implicit
+		}
+		_, present := titles[id]
+		assert.False(t, present, "%s must be skipped", sk)
+	}
+
+	assert.Len(t, titles, 2, "exactly two valid rows survive")
+}
+
+// TestParseRatingsHandlesNoTrailingNewline — the bufio.Reader.ReadSlice loop
+// returns the final line with io.EOF when the file does not end with \n.
+// We must still parse that row; previously bufio.Scanner did this for free,
+// but the new loop has to handle it explicitly.
+func TestParseRatingsHandlesNoTrailingNewline(t *testing.T) {
+	raw := "tconst\taverageRating\tnumVotes\n" +
+		"tt100\t8.0\t1000\n" +
+		"tt101\t9.0\t2000" // intentionally no trailing \n
+
+	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, raw)))
+	require.NoError(t, err)
+
+	assert.Len(t, titles, 2, "both rows must parse, including the unterminated last row")
+	got, ok := titles[mustParseTconst(t, "tt101")]
+	require.True(t, ok)
+	assert.InDelta(t, 9.0, got.Rating, 0.001)
+	assert.Equal(t, uint32(2000), got.Votes)
+}
+
+// TestParseEpisodesSkipsMalformedRows — same shape as the ratings variant,
+// covering the four-field episode schema after the bytes-level split.
+func TestParseEpisodesSkipsMalformedRows(t *testing.T) {
+	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, sampleRatings)))
+	require.NoError(t, err)
+
+	raw := "tconst\tparentTconst\tseasonNumber\tepisodeNumber\n" +
+		"tt1480055\ttt0944947\t1\t1\n" + //              valid baseline
+		"tt1480056\ttt0944947\t1\t2\n" + //              valid baseline
+		"tt1480055\ttt0944947\t1\n" + //                 short row, 3 fields
+		"tt1480055\ttt0944947\tnotanint\t1\n" + //       Atoi fails on season
+		"tt1480055\ttt0944947\t1\tnotanint\n" + //       Atoi fails on episode
+		"tt1480055badtconst\ttt0944947\t1\t1\n" //       parseTconst rejects ep id
+
+	episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, raw)), titles)
+	require.NoError(t, err)
+
+	got, ok := episodes[mustParseTconst(t, "tt0944947")]
+	require.True(t, ok)
+	require.Len(t, got, 2, "only the two well-formed rows must join through")
+}
+
 // TestParseRatingsHandlesTrailingNewlinesAndCRLF — defensive coverage for
-// CRLF-terminated lines and stray blank lines. bufio.Scanner's ScanLines
-// strips trailing \r, so well-formed rows still parse; blank lines must
-// not panic or pollute the map.
+// CRLF-terminated lines and stray blank lines. bufio.Reader.ReadSlice does
+// not strip trailing \r, so the parser does it explicitly via trimLineEnd;
+// well-formed rows still parse and blank lines must not panic or pollute
+// the map.
 func TestParseRatingsHandlesTrailingNewlinesAndCRLF(t *testing.T) {
 	raw := "tconst\taverageRating\tnumVotes\r\n" +
 		"tt1\t8.0\t100\r\n" +

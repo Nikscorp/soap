@@ -2,6 +2,7 @@ package imdbratings
 
 import (
 	"bufio"
+	"bytes"
 	"cmp"
 	"compress/gzip"
 	"context"
@@ -15,7 +16,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
@@ -28,10 +28,12 @@ const (
 	// IMDb's NULL sentinel.
 	tsvNull = `\N`
 
-	// Column counts for the two TSVs we read. Keeping them named avoids the
-	// magic-number lint and documents the wire schema next to the parsers.
-	ratingsCols = 3 // tconst, averageRating, numVotes
-	episodeCols = 4 // tconst, parentTconst, seasonNumber, episodeNumber
+	// episodeCols is the field count of one row in title.episode.tsv:
+	// tconst, parentTconst, seasonNumber, episodeNumber. The parser walks
+	// fields by tab index, so this is the loop bound for the inline split.
+	// (The ratings parser only has three fields and splits them inline by
+	// two bytes.Cut calls, so it doesn't need a named constant.)
+	episodeCols = 4
 
 	// Initial map sizing — empirical 2026 figures. Go's map sizes its
 	// bucket count to log2(hint / 6.5), giving ~262k buckets for hint
@@ -43,8 +45,11 @@ const (
 	initialTitlesCapacity   = 1_500_000
 	initialEpisodesCapacity = 250_000
 
-	// Bumped scanner buffer; default 64 KB has bitten people on edge cases.
-	scannerBufferBytes = 1 << 20
+	// bufio.Reader buffer size for the parsers. Default 4 KB is fine for
+	// IMDb's ~50-100-byte rows, but a larger buffer reduces syscall count
+	// against the gzip reader and trivially absorbs any pathological row
+	// length without falling back to the slow ErrBufferFull path.
+	readerBufferBytes = 1 << 20
 
 	cacheFileMode = 0o644
 	cacheDirMode  = 0o755
@@ -56,6 +61,19 @@ const (
 // errNon200 is the static error returned when an HTTP fetch responds with a
 // non-2xx status. Used so callers can errors.Is-check it if needed.
 var errNon200 = errors.New("non-200 response")
+
+// tsvNullBytes is the byte-slice form of IMDb's NULL sentinel (`\N`), used by
+// the parsers to short-circuit rows containing missing fields without
+// allocating a string from the line buffer.
+//
+//nolint:gochecknoglobals // immutable lookup constant; []byte cannot be const
+var tsvNullBytes = []byte(tsvNull)
+
+// tabSep is the one-byte TSV field separator. Hoisted to a package var so
+// bytes.Cut callers don't reallocate it per row.
+//
+//nolint:gochecknoglobals // immutable lookup constant; []byte cannot be const
+var tabSep = []byte{'\t'}
 
 // buildSnapshot downloads the two TSV gzip dumps (or reuses existing on-disk
 // caches when the network call fails) and delegates to buildSnapshotFromFiles
@@ -138,10 +156,12 @@ func snapshotFromMaps(titles map[uint32]Score, episodes map[uint32][]EpisodeScor
 // any non-digit character, or a value that does not fit in uint32. As of
 // 2026 IMDb's largest tconst is well under 2^32, so the bound is comfortable.
 //
-// Used both during parsing (replacing string keys with 4-byte numeric keys
-// in the snapshot maps) and on the request path (called once per lookup so
-// the hot map probe sees a uint32 directly).
-func parseTconst(s string) (uint32, bool) {
+// Generic over string | []byte so the parser path (which holds []byte slices
+// returned by bufio.Reader.ReadSlice) and the request path (which holds the
+// caller's string ID) share the same logic without per-call allocations or
+// unsafe casts. Both s[i] and len(s) behave identically for the two types,
+// so the body is type-agnostic.
+func parseTconst[T string | []byte](s T) (uint32, bool) {
 	const tconstPrefixLen = 2 // "tt"
 	if len(s) <= tconstPrefixLen || s[0] != 't' || s[1] != 't' {
 		return 0, false
@@ -290,6 +310,11 @@ func parseRatingsFile(path string) (map[uint32]Score, error) {
 // a uint32 are skipped — same downstream effect as the historical
 // parse-failure path, since unrecognised tconsts could never join anything.
 //
+// Implementation: bufio.Reader.ReadSlice + bytes-level field splits avoid
+// the per-row string allocation that bufio.Scanner.Text() used to make.
+// Across ~1.66M rows that allocation is the dominant garbage source for
+// this parse pass.
+//
 // Schema: tconst \t averageRating \t numVotes.
 func parseRatings(r io.Reader) (map[uint32]Score, error) {
 	gz, err := gzip.NewReader(r)
@@ -298,47 +323,88 @@ func parseRatings(r io.Reader) (map[uint32]Score, error) {
 	}
 	defer func() { _ = gz.Close() }()
 
-	sc := bufio.NewScanner(gz)
-	sc.Buffer(make([]byte, scannerBufferBytes), scannerBufferBytes)
+	br := bufio.NewReaderSize(gz, readerBufferBytes)
 
 	out := make(map[uint32]Score, initialTitlesCapacity)
 
-	if !sc.Scan() { // skip header
-		return out, sc.Err()
+	if err := skipHeaderLine(br); err != nil {
+		if errors.Is(err, io.EOF) {
+			return out, nil
+		}
+		return nil, fmt.Errorf("read ratings header: %w", err)
 	}
 
-	for sc.Scan() {
-		tconst, score, ok := parseRatingsRow(sc.Text())
-		if !ok {
-			continue
+	for {
+		line, err := br.ReadSlice('\n')
+		if len(line) > 0 {
+			if tconst, score, ok := parseRatingsRow(trimLineEnd(line)); ok {
+				out[tconst] = score
+			}
 		}
-		out[tconst] = score
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("scan ratings: %w", err)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, fmt.Errorf("read ratings: %w", err)
+		}
 	}
 	return out, nil
 }
 
+// skipHeaderLine consumes one line from br, returning io.EOF if the stream
+// ends before any newline (caller treats that as "empty file, return empty
+// map"). Other read errors propagate. The discarded slice is only valid
+// until the next ReadSlice call, so we never hold it.
+func skipHeaderLine(br *bufio.Reader) error {
+	_, err := br.ReadSlice('\n')
+	return err
+}
+
+// trimLineEnd drops a trailing \n and optional preceding \r from the line
+// returned by bufio.Reader.ReadSlice. Operates on a sub-slice — no copy —
+// so the result still aliases the bufio buffer and must not be retained
+// past the current iteration.
+func trimLineEnd(line []byte) []byte {
+	n := len(line)
+	if n > 0 && line[n-1] == '\n' {
+		n--
+	}
+	if n > 0 && line[n-1] == '\r' {
+		n--
+	}
+	return line[:n]
+}
+
 // parseRatingsRow extracts (tconst, Score) from one TSV row, returning
 // ok=false for malformed, null, or out-of-range rows so the caller can skip.
-func parseRatingsRow(line string) (uint32, Score, bool) {
-	parts := strings.SplitN(line, "\t", ratingsCols)
-	if len(parts) != ratingsCols {
+// Operates entirely on byte slices aliasing the bufio buffer; the only
+// strings we materialise are short numeric fields fed to strconv.
+func parseRatingsRow(line []byte) (uint32, Score, bool) {
+	if len(line) == 0 {
 		return 0, Score{}, false
 	}
-	if parts[0] == tsvNull || parts[1] == tsvNull || parts[2] == tsvNull {
-		return 0, Score{}, false
-	}
-	id, ok := parseTconst(parts[0])
+	tconstField, rest, ok := bytes.Cut(line, tabSep)
 	if !ok {
 		return 0, Score{}, false
 	}
-	rating64, err := strconv.ParseFloat(parts[1], ratingFloatBitSize)
+	ratingField, votesField, ok := bytes.Cut(rest, tabSep)
+	if !ok {
+		return 0, Score{}, false
+	}
+	if bytes.Equal(tconstField, tsvNullBytes) ||
+		bytes.Equal(ratingField, tsvNullBytes) ||
+		bytes.Equal(votesField, tsvNullBytes) {
+		return 0, Score{}, false
+	}
+	id, ok := parseTconst(tconstField)
+	if !ok {
+		return 0, Score{}, false
+	}
+	rating64, err := strconv.ParseFloat(string(ratingField), ratingFloatBitSize)
 	if err != nil {
 		return 0, Score{}, false
 	}
-	votes64, err := strconv.ParseUint(parts[2], 10, votesUintBitSize)
+	votes64, err := strconv.ParseUint(string(votesField), 10, votesUintBitSize)
 	if err != nil {
 		return 0, Score{}, false
 	}
@@ -363,6 +429,11 @@ func parseEpisodesFile(path string, titles map[uint32]Score) (map[uint32][]Episo
 // sorted slices. Rows with missing fields, no rating in titles, or
 // out-of-range season/episode numbers are dropped.
 //
+// Implementation matches parseRatings: bufio.Reader.ReadSlice + bytes-level
+// field splits, so the per-row sc.Text() allocation is gone. Episode parse
+// is the larger of the two passes (~9M rows in 2026) so this is where the
+// allocation savings show up most.
+//
 // Schema: tconst \t parentTconst \t seasonNumber \t episodeNumber.
 func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeScore, error) {
 	gz, err := gzip.NewReader(r)
@@ -371,26 +442,41 @@ func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeSc
 	}
 	defer func() { _ = gz.Close() }()
 
-	sc := bufio.NewScanner(gz)
-	sc.Buffer(make([]byte, scannerBufferBytes), scannerBufferBytes)
+	br := bufio.NewReaderSize(gz, readerBufferBytes)
 
 	out := make(map[uint32][]EpisodeScore, initialEpisodesCapacity)
 
-	if !sc.Scan() { // skip header
-		return out, sc.Err()
-	}
-
-	for sc.Scan() {
-		parent, score, ok := parseEpisodeRow(sc.Text(), titles)
-		if !ok {
-			continue
+	if err := skipHeaderLine(br); err != nil {
+		if errors.Is(err, io.EOF) {
+			return out, nil
 		}
-		out[parent] = append(out[parent], score)
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("scan episodes: %w", err)
+		return nil, fmt.Errorf("read episodes header: %w", err)
 	}
 
+	for {
+		line, err := br.ReadSlice('\n')
+		if len(line) > 0 {
+			if parent, score, ok := parseEpisodeRow(trimLineEnd(line), titles); ok {
+				out[parent] = append(out[parent], score)
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, fmt.Errorf("read episodes: %w", err)
+		}
+	}
+
+	sortEpisodesByAirOrder(out)
+	return out, nil
+}
+
+// sortEpisodesByAirOrder sorts each per-series slice by (Season, Episode) so
+// EpisodeRating's two-level binary search has a deterministic inner order.
+// Pulled out of parseEpisodes purely to keep that function under the
+// project's cyclomatic-complexity budget.
+func sortEpisodesByAirOrder(out map[uint32][]EpisodeScore) {
 	for _, eps := range out {
 		sort.Slice(eps, func(i, j int) bool {
 			if eps[i].Season != eps[j].Season {
@@ -399,18 +485,35 @@ func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeSc
 			return eps[i].Episode < eps[j].Episode
 		})
 	}
-	return out, nil
 }
 
 // parseEpisodeRow extracts (parentTconst, EpisodeScore) from one TSV row.
 // Returns ok=false on malformed rows, unparseable tconsts, missing
 // rating-side join keys, or season/episode numbers that don't fit in int16.
-func parseEpisodeRow(line string, titles map[uint32]Score) (uint32, EpisodeScore, bool) {
-	parts := strings.SplitN(line, "\t", episodeCols)
-	if !validEpisodeRowParts(parts) {
+// Each field is a sub-slice of the input line (no copies); only the
+// season/episode numeric fields are converted to short-lived strings for
+// strconv.Atoi.
+func parseEpisodeRow(line []byte, titles map[uint32]Score) (uint32, EpisodeScore, bool) {
+	if len(line) == 0 {
 		return 0, EpisodeScore{}, false
 	}
-	episodeID, ok := parseTconst(parts[0])
+	var fields [episodeCols][]byte
+	rest := line
+	for k := range episodeCols - 1 {
+		i := bytes.IndexByte(rest, '\t')
+		if i < 0 {
+			return 0, EpisodeScore{}, false
+		}
+		fields[k] = rest[:i]
+		rest = rest[i+1:]
+	}
+	fields[episodeCols-1] = rest
+	for _, f := range fields {
+		if bytes.Equal(f, tsvNullBytes) {
+			return 0, EpisodeScore{}, false
+		}
+	}
+	episodeID, ok := parseTconst(fields[0])
 	if !ok {
 		return 0, EpisodeScore{}, false
 	}
@@ -418,11 +521,11 @@ func parseEpisodeRow(line string, titles map[uint32]Score) (uint32, EpisodeScore
 	if !ok {
 		return 0, EpisodeScore{}, false
 	}
-	parentID, ok := parseTconst(parts[1])
+	parentID, ok := parseTconst(fields[1])
 	if !ok {
 		return 0, EpisodeScore{}, false
 	}
-	season, episode, ok := parseSeasonEpisode(parts[2], parts[3])
+	season, episode, ok := parseSeasonEpisode(fields[2], fields[3])
 	if !ok {
 		return 0, EpisodeScore{}, false
 	}
@@ -434,23 +537,16 @@ func parseEpisodeRow(line string, titles map[uint32]Score) (uint32, EpisodeScore
 	}, true
 }
 
-// validEpisodeRowParts checks that we got the right column count and that no
-// required column is IMDb's NULL sentinel.
-func validEpisodeRowParts(parts []string) bool {
-	if len(parts) != episodeCols {
-		return false
-	}
-	return !slices.Contains(parts, tsvNull)
-}
-
 // parseSeasonEpisode parses the season+episode columns into bounded int16s,
-// returning ok=false on parse failure or out-of-range numbers.
-func parseSeasonEpisode(seasonStr, episodeStr string) (int16, int16, bool) {
-	seasonI, err := strconv.Atoi(seasonStr)
+// returning ok=false on parse failure or out-of-range numbers. strconv.Atoi
+// only accepts string, so we materialise short (1-3 byte) strings here; the
+// allocation cost is dwarfed by the per-line allocation we're saving.
+func parseSeasonEpisode(seasonField, episodeField []byte) (int16, int16, bool) {
+	seasonI, err := strconv.Atoi(string(seasonField))
 	if err != nil || seasonI < math.MinInt16 || seasonI > math.MaxInt16 {
 		return 0, 0, false
 	}
-	episodeI, err := strconv.Atoi(episodeStr)
+	episodeI, err := strconv.Atoi(string(episodeField))
 	if err != nil || episodeI < math.MinInt16 || episodeI > math.MaxInt16 {
 		return 0, 0, false
 	}
