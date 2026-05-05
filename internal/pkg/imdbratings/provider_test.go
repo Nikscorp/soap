@@ -32,7 +32,7 @@ const sampleEpisodes = "tconst\tparentTconst\tseasonNumber\tepisodeNumber\n" +
 	"tt9999999\ttt0944947\t1\t3\n" + //    no rating row in titles, skipped
 	"tt0306414bad\ttt0306414\t1\t1\n" //   parent has rating but row was bad-skipped earlier, still has parent rating in titles? actually no — tt0306414bad was skipped from titles too
 
-func gzipBytes(t *testing.T, raw string) []byte {
+func gzipBytes(t testing.TB, raw string) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	w := gzip.NewWriter(&buf)

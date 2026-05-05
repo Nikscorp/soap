@@ -57,8 +57,9 @@ const (
 var errNon200 = errors.New("non-200 response")
 
 // buildSnapshot downloads the two TSV gzip dumps (or reuses existing on-disk
-// caches when the network call fails), parses them streaming, joins them,
-// sorts each per-series episode slice, and returns the resulting snapshot.
+// caches when the network call fails) and delegates to buildSnapshotFromFiles
+// to parse and join them. Splitting the I/O from the parse pipeline lets
+// benches and unit tests drive the parser without an HTTP round-trip.
 func buildSnapshot(ctx context.Context, client *http.Client, cfg Config) (*snapshot, error) {
 	if err := os.MkdirAll(cfg.CacheDir, cacheDirMode); err != nil {
 		return nil, fmt.Errorf("mkdir cache dir: %w", err)
@@ -74,6 +75,15 @@ func buildSnapshot(ctx context.Context, client *http.Client, cfg Config) (*snaps
 		return nil, fmt.Errorf("refresh episode: %w", err)
 	}
 
+	return buildSnapshotFromFiles(ctx, ratingsPath, episodePath)
+}
+
+// buildSnapshotFromFiles parses the two on-disk gzipped TSVs streaming, joins
+// them, sorts each per-series episode slice, and returns the resulting
+// snapshot. The ctx parameter is reserved for future cancellation hooks; it
+// is not consulted today since the parsers are CPU-bound and cheap to let
+// run to completion.
+func buildSnapshotFromFiles(_ context.Context, ratingsPath, episodePath string) (*snapshot, error) {
 	titles, err := parseRatingsFile(ratingsPath)
 	if err != nil {
 		return nil, fmt.Errorf("parse ratings: %w", err)

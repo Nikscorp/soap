@@ -4,3 +4,4 @@ test.http
 config/config.yaml
 var/
 docs/
+internal/pkg/imdbratings/testdata/real/
