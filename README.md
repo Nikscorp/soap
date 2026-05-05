@@ -199,6 +199,7 @@ Common workflows are exposed through `make`:
 | `make generate-mocks` | Regenerate [minimock](https://github.com/gojuno/minimock) mocks |
 | `make tidy` | `go mod tidy && go mod vendor` |
 | `make docker-build` / `make docker-up` | Build/run the full stack with Docker Compose |
+| `make bench` / `make bench-real` (and `*-baseline`, `*-stat` variants) | IMDb dataset parser benchmark harness — see [Benchmarks](#benchmarks) |
 
 The Go side uses [chi](https://github.com/go-chi/chi) for routing, [cleanenv](https://github.com/ilyakaznacheev/cleanenv) for config, and [prometheus/client_golang](https://github.com/prometheus/client_golang) for metrics. Frontend stack and scripts are documented in [`frontend/README.md`](frontend/README.md) — React 19, Vite, TypeScript, Tailwind v4, TanStack Query, and a Playwright smoke test.
 

@@ -41,8 +41,13 @@ const (
 	// while keeping the build-time allocation small. Bumping to 2M
 	// crosses into the next pow-2 bucket count (524k) and ~doubles the
 	// map's resident size for no measurable gain.
-	initialTitlesCapacity   = 1_500_000
-	initialEpisodesCapacity = 250_000
+	initialTitlesCapacity = 1_500_000
+	// initialEpisodesCapacity hints the per-parent counts map built during
+	// the episode parse. Real 2026 IMDb data has ~45k distinct series
+	// parents; 64k leaves headroom without crossing into the next pow-2
+	// bucket count. Used by both the counts map and the published
+	// episodes map (same cardinality).
+	initialEpisodesCapacity = 64_000
 
 	// initialJoinedEpisodesCapacity hints the size of the transient flat
 	// slice the episode parser collects before building per-parent slices
@@ -53,8 +58,11 @@ const (
 
 	// bufio.Reader buffer size for the parsers. Default 4 KB is fine for
 	// IMDb's ~50-100-byte rows, but a larger buffer reduces syscall count
-	// against the gzip reader and trivially absorbs any pathological row
-	// length without falling back to the slow ErrBufferFull path.
+	// against the gzip reader. Sized to comfortably exceed any realistic
+	// IMDb row length: ReadSlice returns bufio.ErrBufferFull (not io.EOF)
+	// when a single line exceeds this size, and the parser surfaces that
+	// as a fatal error — consistent with the prior bufio.Scanner behavior
+	// (bufio.ErrTooLong). Today's IMDb rows are well under 1 KiB.
 	readerBufferBytes = 1 << 20
 
 	cacheFileMode = 0o644
@@ -523,9 +531,10 @@ func fillEpisodesByParent(rows []parsedEpisode, counts map[uint32]int) map[uint3
 // Pulled out of parseEpisodes purely to keep that function under the
 // project's cyclomatic-complexity budget.
 //
-// slices.SortFunc over sort.Slice drops the closure-interface allocation that
-// sort.Slice incurs on every call. Across ~45k series that's ~45k allocations
-// avoided per build.
+// slices.SortFunc over sort.Slice removes the per-call closure-and-interface
+// boxing that sort.Slice incurs. Measured on the 2026 real-data bench: -70%
+// allocs/op on ParseEpisodes_Real (~120k allocations dropped across ~45k
+// series, i.e. roughly 2-3 allocs per sort.Slice call).
 func sortEpisodesByAirOrder(out map[uint32][]EpisodeScore) {
 	for _, eps := range out {
 		slices.SortFunc(eps, func(a, b EpisodeScore) int {

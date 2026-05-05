@@ -44,8 +44,12 @@ func reportHeapInUseMB(b *testing.B) {
 //     episode rows reuse one of these IDs as their episode tconst, so the
 //     parser-side join produces ~episodeRows/3 hits — matching the real
 //     ~3M/9M ratio.
-//   - Parent (series) IDs are drawn from a small pool sized roughly 1/30th of
-//     ratingsRows, mirroring the 45k-series-per-1.66M-titles real shape.
+//   - Parent (series) IDs are drawn as a random subset of ratedTconsts sized
+//     roughly 1/30th of ratingsRows, mirroring the 45k-series-per-1.66M-titles
+//     real shape. Drawing parents from rated IDs (rather than a disjoint
+//     range) ensures pruneTitlesToSeries has real work to do — otherwise
+//     every parent fails the title lookup and the published titles slice is
+//     empty, making the BuildSnapshot bench unrepresentative.
 func generateSyntheticDatasets(tb testing.TB, ratingsRows, episodeRows int) (ratingsGz, episodesGz []byte) {
 	tb.Helper()
 	rng := rand.New(rand.NewSource(1))
@@ -72,11 +76,10 @@ func generateSyntheticDatasets(tb testing.TB, ratingsRows, episodeRows int) (rat
 	}
 	require.NoError(tb, rgz.Close())
 
-	numSeries := max(ratingsRows/30, 100)
+	numSeries := min(max(ratingsRows/30, 100), len(ratedTconsts))
 	parents := make([]uint32, numSeries)
-	parentBase := uint32(idSpan) + 1
 	for i := range parents {
-		parents[i] = parentBase + uint32(rng.Intn(idSpan))
+		parents[i] = ratedTconsts[rng.Intn(len(ratedTconsts))]
 	}
 
 	var episodesBuf bytes.Buffer

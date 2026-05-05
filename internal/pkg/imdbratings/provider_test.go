@@ -403,10 +403,10 @@ func TestCachedFileAge(t *testing.T) {
 // lookups must miss.
 func TestSnapshotBinarySearchBoundaries(t *testing.T) {
 	titles := map[uint32]Score{
-		1:           {Rating: 5.0, Votes: 10},
-		100:         {Rating: 6.0, Votes: 20},
-		200:         {Rating: 7.0, Votes: 30},
-		math.MaxUint32: {Rating: 9.9, Votes: 1_000_000},
+		1:         {Rating: 5.0, Votes: 10},
+		100:       {Rating: 6.0, Votes: 20},
+		200:       {Rating: 7.0, Votes: 30},
+		1_000_000: {Rating: 9.9, Votes: 1_000_000},
 	}
 	episodes := map[uint32][]EpisodeScore{
 		100: {{Season: 1, Episode: 1, Rating: 6.5, Votes: 5}},
@@ -423,17 +423,18 @@ func TestSnapshotBinarySearchBoundaries(t *testing.T) {
 		{"tt0000001", 5.0},
 		{"tt100", 6.0},
 		{"tt200", 7.0},
-		{"tt4294967295", 9.9},
+		{"tt1000000", 9.9},
 	} {
 		r, _, ok := p.SeriesRating(want.id)
 		require.True(t, ok, "%s must hit", want.id)
 		assert.InDelta(t, want.rating, r, 0.001, "%s rating", want.id)
 	}
 
-	// Misses: gap below first, between adjacent, and just past the largest
-	// (which is uint32 max — no "above max" possible, so cover the gap below
-	// and the gap between 100 and 200 instead).
-	for _, miss := range []string{"tt0", "tt2", "tt99", "tt150", "tt199", "tt201"} {
+	// Misses: gap below first, between adjacent IDs, just below the largest,
+	// and above the largest. The above-max case is the slices.BinarySearchFunc
+	// "idx >= len(slice)" branch — covered explicitly because real-data top
+	// IDs are far below uint32 max, so production lookups regularly hit it.
+	for _, miss := range []string{"tt0", "tt2", "tt99", "tt150", "tt199", "tt201", "tt999999", "tt1000001", "tt4294967295"} {
 		_, _, ok := p.SeriesRating(miss)
 		assert.False(t, ok, "%s must miss", miss)
 	}
@@ -515,7 +516,8 @@ func TestParseEpisodesSkipsMalformedRows(t *testing.T) {
 		"tt1480055\ttt0944947\t1\n" + //                 short row, 3 fields
 		"tt1480055\ttt0944947\tnotanint\t1\n" + //       Atoi fails on season
 		"tt1480055\ttt0944947\t1\tnotanint\n" + //       Atoi fails on episode
-		"tt1480055badtconst\ttt0944947\t1\t1\n" //       parseTconst rejects ep id
+		"tt1480055badtconst\ttt0944947\t1\t1\n" + //     parseTconst rejects ep id
+		"tt1480055\ttt0944947badparent\t1\t1\n" //       parseTconst rejects parent id (rated ep id, but unparseable parent)
 
 	episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, raw)), titles)
 	require.NoError(t, err)
@@ -523,6 +525,95 @@ func TestParseEpisodesSkipsMalformedRows(t *testing.T) {
 	got, ok := episodes[mustParseTconst(t, "tt0944947")]
 	require.True(t, ok)
 	require.Len(t, got, 2, "only the two well-formed rows must join through")
+}
+
+// TestParseRatingsEmptyAndHeaderOnly — both parsers must return an empty,
+// non-nil map (and no error) for streams that contain no data rows. Covers
+// the io.EOF short-circuit branches in skipHeaderLine: an empty stream and
+// a stream containing only the schema header. Real production scenario:
+// the upstream IMDb host returns a 0-byte gzip body during an outage.
+func TestParseRatingsEmptyAndHeaderOnly(t *testing.T) {
+	t.Run("empty stream", func(t *testing.T) {
+		titles, err := parseRatings(bytes.NewReader(gzipBytes(t, "")))
+		require.NoError(t, err)
+		require.NotNil(t, titles)
+		assert.Empty(t, titles)
+	})
+	t.Run("header only", func(t *testing.T) {
+		titles, err := parseRatings(bytes.NewReader(gzipBytes(t, "tconst\taverageRating\tnumVotes\n")))
+		require.NoError(t, err)
+		require.NotNil(t, titles)
+		assert.Empty(t, titles)
+	})
+}
+
+func TestParseEpisodesEmptyAndHeaderOnly(t *testing.T) {
+	titles := map[uint32]Score{mustParseTconst(t, "tt1"): {Rating: 8.0, Votes: 100}}
+	t.Run("empty stream", func(t *testing.T) {
+		episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, "")), titles)
+		require.NoError(t, err)
+		require.NotNil(t, episodes)
+		assert.Empty(t, episodes)
+	})
+	t.Run("header only", func(t *testing.T) {
+		episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, "tconst\tparentTconst\tseasonNumber\tepisodeNumber\n")), titles)
+		require.NoError(t, err)
+		require.NotNil(t, episodes)
+		assert.Empty(t, episodes)
+	})
+}
+
+// TestSnapshotConcurrentReadWrite drives the lock-free read path against the
+// publish path under -race. The snapshot itself is documented as immutable
+// post-publish and reads are atomic.Pointer.Load(); writes are Store(). Any
+// future change that mutates a published snapshot or adds non-atomic Provider
+// fields shared between reader and refresh paths should fail this test under
+// the race detector.
+func TestSnapshotConcurrentReadWrite(t *testing.T) {
+	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, sampleRatings)))
+	require.NoError(t, err)
+	episodes, err := parseEpisodes(bytes.NewReader(gzipBytes(t, sampleEpisodes)), titles)
+	require.NoError(t, err)
+	p := &Provider{}
+	p.snap.Store(snapshotFromMaps(titles, episodes))
+
+	const readers = 4
+	const iters = 1000
+	stop := make(chan struct{})
+	done := make(chan struct{}, readers+1)
+
+	for range readers {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_, _, _ = p.SeriesRating("tt0944947")
+					_, _, _ = p.EpisodeRating("tt0944947", 1, 1)
+				}
+			}
+		}()
+	}
+
+	go func() {
+		defer func() { done <- struct{}{} }()
+		for range iters {
+			p.snap.Store(snapshotFromMaps(titles, episodes))
+		}
+	}()
+
+	// Let the writer finish, then halt readers.
+	<-done
+	close(stop)
+	for range readers {
+		<-done
+	}
+
+	r, _, ok := p.SeriesRating("tt0944947")
+	require.True(t, ok)
+	assert.InDelta(t, 9.2, r, 0.001)
 }
 
 // TestParseEpisodesPreallocatesPerParentSlices — Opt 5 asserts that each
