@@ -2,6 +2,7 @@ package imdbratings
 
 import (
 	"bufio"
+	"cmp"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -96,10 +97,39 @@ func buildSnapshotFromFiles(_ context.Context, ratingsPath, episodePath string) 
 
 	titles = pruneTitlesToSeries(titles, episodes)
 
+	return snapshotFromMaps(titles, episodes), nil
+}
+
+// snapshotFromMaps converts the build-time maps (which we use during parsing
+// for O(1) join-side lookups) into the published snapshot's ID-sorted slice
+// shape. The map containers are released by the GC after this returns; the
+// EpisodeScore slices are reused without copying.
+//
+// Sort cost is O(N log N) once at the end of build (~45k titles, ~45k series
+// in 2026 IMDb data) — negligible against the multi-second parse phase. The
+// shape is read-only from this point forward, so the lookup path can binary
+// search without any locking or copy-on-read.
+func snapshotFromMaps(titles map[uint32]Score, episodes map[uint32][]EpisodeScore) *snapshot {
+	titleEntries := make([]titleEntry, 0, len(titles))
+	for id, score := range titles {
+		titleEntries = append(titleEntries, titleEntry{ID: id, Score: score})
+	}
+	slices.SortFunc(titleEntries, func(a, b titleEntry) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
+	episodeEntries := make([]seriesEpisodes, 0, len(episodes))
+	for id, eps := range episodes {
+		episodeEntries = append(episodeEntries, seriesEpisodes{ID: id, Episodes: eps})
+	}
+	slices.SortFunc(episodeEntries, func(a, b seriesEpisodes) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+
 	return &snapshot{
-		titles:   titles,
-		episodes: episodes,
-	}, nil
+		titles:   titleEntries,
+		episodes: episodeEntries,
+	}
 }
 
 // parseTconst converts an IMDb tconst (e.g. "tt0944947") into its numeric

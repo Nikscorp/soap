@@ -143,7 +143,7 @@ func TestProviderLookups(t *testing.T) {
 	p := &Provider{}
 	assert.False(t, p.Ready(), "Ready must be false before any snapshot is stored")
 
-	p.snap.Store(&snapshot{titles: titles, episodes: episodes})
+	p.snap.Store(snapshotFromMaps(titles, episodes))
 	assert.True(t, p.Ready())
 
 	t.Run("series rating hit", func(t *testing.T) {
@@ -394,6 +394,59 @@ func TestCachedFileAge(t *testing.T) {
 		_, fresh := cachedFileAge(present, time.Hour)
 		assert.False(t, fresh)
 	})
+}
+
+// TestSnapshotBinarySearchBoundaries hits the corner cases that distinguish
+// the sorted-slice + binary-search lookup from the previous map shape: misses
+// before the first ID, after the last ID, between two adjacent IDs, and at
+// the exact min/max IDs in the slice. Boundary lookups must hit exactly; gap
+// lookups must miss.
+func TestSnapshotBinarySearchBoundaries(t *testing.T) {
+	titles := map[uint32]Score{
+		1:           {Rating: 5.0, Votes: 10},
+		100:         {Rating: 6.0, Votes: 20},
+		200:         {Rating: 7.0, Votes: 30},
+		math.MaxUint32: {Rating: 9.9, Votes: 1_000_000},
+	}
+	episodes := map[uint32][]EpisodeScore{
+		100: {{Season: 1, Episode: 1, Rating: 6.5, Votes: 5}},
+	}
+
+	p := &Provider{}
+	p.snap.Store(snapshotFromMaps(titles, episodes))
+
+	// Boundary hits: smallest ID, largest ID, and a middle ID all resolve.
+	for _, want := range []struct {
+		id     string
+		rating float32
+	}{
+		{"tt0000001", 5.0},
+		{"tt100", 6.0},
+		{"tt200", 7.0},
+		{"tt4294967295", 9.9},
+	} {
+		r, _, ok := p.SeriesRating(want.id)
+		require.True(t, ok, "%s must hit", want.id)
+		assert.InDelta(t, want.rating, r, 0.001, "%s rating", want.id)
+	}
+
+	// Misses: gap below first, between adjacent, and just past the largest
+	// (which is uint32 max — no "above max" possible, so cover the gap below
+	// and the gap between 100 and 200 instead).
+	for _, miss := range []string{"tt0", "tt2", "tt99", "tt150", "tt199", "tt201"} {
+		_, _, ok := p.SeriesRating(miss)
+		assert.False(t, ok, "%s must miss", miss)
+	}
+
+	// EpisodeRating boundary: a series ID present in titles but absent from
+	// episodes must miss without consulting the inner slice.
+	_, _, ok := p.EpisodeRating("tt200", 1, 1)
+	assert.False(t, ok, "series with no episode entries must miss")
+
+	// EpisodeRating boundary: present series, present (s,e) tuple — hits.
+	r, _, ok := p.EpisodeRating("tt100", 1, 1)
+	require.True(t, ok)
+	assert.InDelta(t, 6.5, r, 0.001)
 }
 
 // TestParseRatingsHandlesTrailingNewlinesAndCRLF — defensive coverage for
