@@ -66,10 +66,12 @@ type cacheMetrics struct {
 // need to nil-check the result — recordHit/recordMiss/recordError are
 // nil-receiver-safe on responseCache.
 //
-// Registration failures (e.g., a test-suite peer registering the same name
-// against the default registerer) are logged at warn and counters keep
-// working — collecting metrics that nobody scrapes is harmless and matches
-// the resilience pattern in rest.NewMetrics.
+// If the registerer already has the same vectors (a second tvmeta.New built
+// against the same registerer), the existing collectors are reused so
+// increments still hit the scraped counter rather than going into a
+// disconnected duplicate. Other registration failures are logged at warn and
+// counters keep working — collecting metrics that nobody scrapes is harmless
+// and matches the resilience pattern in rest.NewMetrics.
 func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
 	if registerer == nil {
 		return nil
@@ -97,8 +99,15 @@ func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
 			[]string{methodLabel},
 		),
 	}
-	for _, c := range []prometheus.Collector{m.hits, m.misses, m.errors} {
-		if err := registerer.Register(c); err != nil {
+	for _, p := range []**prometheus.CounterVec{&m.hits, &m.misses, &m.errors} {
+		if err := registerer.Register(*p); err != nil {
+			var already prometheus.AlreadyRegisteredError
+			if errors.As(err, &already) {
+				if existing, ok := already.ExistingCollector.(*prometheus.CounterVec); ok {
+					*p = existing
+					continue
+				}
+			}
 			logger.Warn(context.Background(), "Can't register prometheus tvmeta cache metric", "err", err)
 		}
 	}
@@ -179,7 +188,13 @@ func (c *responseCache[K, V]) GetOrFetch(
 		return v, nil
 	}
 	c.recordMiss()
-	ch := c.sf.DoChan(fmt.Sprint(key), func() (any, error) {
+	// fmt.Sprintf("%#v", key) round-trips through Go-syntax with quoted
+	// strings, so structurally distinct keys can never collide on the
+	// singleflight slot — fmt.Sprint(key) would render
+	// searchKey{"a b", "c"} and searchKey{"a", "b c"} identically as
+	// "{a b c}" and let one fetch's value land under the other's typed
+	// LRU key, silently poisoning the cache.
+	ch := c.sf.DoChan(fmt.Sprintf("%#v", key), func() (any, error) {
 		fetchCtx := context.WithoutCancel(ctx)
 		v, err := fetch(fetchCtx)
 		if err != nil {

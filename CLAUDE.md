@@ -38,7 +38,7 @@ Local dev typically means running the backend in Docker (`make docker-up`) on `:
 Wiring (top of `cmd/lazysoap/main.go`):
 
 ```
-config.ParseConfig  →  tmdb.NewTMDB(cfg.TMDBConfig)  →  tvmeta.New(tmdbClient)  →  lazysoap.New(cfg, tvMeta, version).Run(ctx)
+config.ParseConfig  →  tmdb.NewTMDB(cfg.TMDBConfig)  →  tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache, prometheus.DefaultRegisterer)  →  lazysoap.New(cfg, tvMeta, version).Run(ctx)
 ```
 
 Three layers, in dependency order:
@@ -55,10 +55,12 @@ Three pieces of non-obvious behavior to keep in mind when editing:
 
 ## Configuration
 
-`internal/pkg/config/config.go` calls `cleanenv.ReadConfig`, so every field has a YAML key *and* an env var (`env-default` provides the fallback). Defaults live in `config/config.yaml.dist`; the runtime config is `config/config.yaml`. The two struct trees worth knowing:
+`internal/pkg/config/config.go` calls `cleanenv.ReadConfig`, so every field has a YAML key *and* an env var (`env-default` provides the fallback). Defaults live in `config/config.yaml.dist`; the runtime config is `config/config.yaml`. The struct trees worth knowing:
 
 - `internal/app/lazysoap/server.go` — `Config` (server timeouts, `LAZYSOAP_FEATURED_*`, `DefaultBestQuantile`/`DefaultBestMinEpisodes` for the `/id/{id}` "default best" computation, `ImgClient` for the poster proxy).
 - `internal/pkg/clients/tmdb/tmdb.go` — `Config` (`TMDB_API_KEY` is required; `TMDB_REQUEST_TIMEOUT`, `TMDB_ENABLE_AUTO_RETRY`).
+- `internal/pkg/imdbratings/config.go` — `Config` (`LAZYSOAP_IMDB_*`: dataset host, refresh interval, on-disk cache dir, HTTP timeout).
+- `internal/pkg/tvmeta/config.go` — `tvmeta.Config { Cache CacheConfig }` (`TVMETA_CACHE_*`: per-method LRU size + TTL knobs for the response cache).
 
 When adding a new tunable, add it to both the struct (with `env`, `env-default`, `yaml` tags) and to `config/config.yaml.dist`.
 

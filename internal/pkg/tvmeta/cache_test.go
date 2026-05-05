@@ -109,6 +109,51 @@ func TestResponseCacheDifferentKeysDoNotCollide(t *testing.T) {
 	require.Equal(t, 2, c.len())
 }
 
+// TestResponseCacheSingleflightKeyDisambiguatesStructFields guards against a
+// regression where the singleflight slot was keyed off fmt.Sprint(key):
+// for a struct with multiple string fields, fmt.Sprint formats both
+// {"a b", "c"} and {"a", "b c"} as "{a b c}", letting one fetch's value
+// land under the other's typed LRU key. With the %#v keying both keys are
+// rendered as Go-syntax strings (`{query:"a b", lang:"c"}` vs
+// `{query:"a", lang:"b c"}`) and stay independent.
+func TestResponseCacheSingleflightKeyDisambiguatesStructFields(t *testing.T) {
+	type k struct {
+		query string
+		lang  string
+	}
+	c := newResponseCache[k, string]("test", 16, time.Hour, nil)
+
+	release := make(chan struct{})
+	var calls atomic.Int32
+	fetch := func(want string) func(context.Context) (string, error) {
+		return func(_ context.Context) (string, error) {
+			calls.Add(1)
+			<-release
+			return want, nil
+		}
+	}
+
+	resA := make(chan string, 1)
+	resB := make(chan string, 1)
+	go func() {
+		v, _ := c.GetOrFetch(context.Background(), k{query: "a b", lang: "c"}, fetch("A"))
+		resA <- v
+	}()
+	go func() {
+		v, _ := c.GetOrFetch(context.Background(), k{query: "a", lang: "b c"}, fetch("B"))
+		resB <- v
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	close(release)
+
+	gotA := <-resA
+	gotB := <-resB
+	require.Equal(t, "A", gotA, "key {a b, c} must receive its own fetched value")
+	require.Equal(t, "B", gotB, "key {a, b c} must receive its own fetched value")
+	require.Equal(t, int32(2), calls.Load(), "structurally distinct keys must NOT share a singleflight slot")
+}
+
 func TestResponseCacheConcurrentSingleflight(t *testing.T) {
 	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
 
