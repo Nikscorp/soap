@@ -45,8 +45,9 @@ const (
 	// initialEpisodesCapacity hints the per-parent counts map built during
 	// the episode parse. Real 2026 IMDb data has ~45k distinct series
 	// parents; 64k leaves headroom without crossing into the next pow-2
-	// bucket count. Used by both the counts map and the published
-	// episodes map (same cardinality).
+	// bucket count. The published episodes map sizes itself from the exact
+	// len(counts) in fillEpisodesByParent, so this constant is only used
+	// for the counts map.
 	initialEpisodesCapacity = 64_000
 
 	// initialJoinedEpisodesCapacity hints the size of the transient flat
