@@ -29,3 +29,12 @@ imdb:
   refresh_interval: 24h
   cache_dir: ./var/imdb
   http_timeout: 5m
+
+tvmeta:
+  cache:
+    details_size: 1024
+    details_ttl: 6h
+    episodes_size: 4096
+    episodes_ttl: 6h
+    search_size: 256
+    search_ttl: 30m

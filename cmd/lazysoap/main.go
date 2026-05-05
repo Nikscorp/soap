@@ -65,11 +65,7 @@ func main() {
 		logger.Info(ctx, "IMDb ratings source enabled", "cache_dir", cfg.IMDbConfig.CacheDir)
 	}
 
-	// CacheConfig is intentionally zero here: env / yaml plumbing for the
-	// per-method TMDB response caches lands in Task 6 of the
-	// tmdb-response-cache plan. Until then every cache is disabled
-	// (pass-through), preserving the pre-cache behavior.
-	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider, tvmeta.CacheConfig{}), version)
+	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache), version)
 
 	go func() {
 		stop := make(chan os.Signal, 1)

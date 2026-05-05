@@ -31,6 +31,45 @@ tmdb:
 	assert.Equal(t, 7*time.Second, cfg.LazySoapConfig.ReadTimeout)
 	assert.Equal(t, "secret-key", cfg.TMDBConfig.APIKey)
 	assert.Equal(t, 3*time.Second, cfg.TMDBConfig.RequestTimeout)
+
+	// tvmeta.cache defaults come from env-default tags, since the YAML body
+	// above has no `tvmeta:` section. Documents the safe-by-default cache
+	// behavior: zero-config builds get the documented sizes/TTLs.
+	assert.Equal(t, 1024, cfg.TVMeta.Cache.DetailsSize)
+	assert.Equal(t, 6*time.Hour, cfg.TVMeta.Cache.DetailsTTL)
+	assert.Equal(t, 4096, cfg.TVMeta.Cache.EpisodesSize)
+	assert.Equal(t, 6*time.Hour, cfg.TVMeta.Cache.EpisodesTTL)
+	assert.Equal(t, 256, cfg.TVMeta.Cache.SearchSize)
+	assert.Equal(t, 30*time.Minute, cfg.TVMeta.Cache.SearchTTL)
+}
+
+func TestParseConfig_TVMetaCacheOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	body := []byte(`
+tmdb:
+  api_key: "k"
+tvmeta:
+  cache:
+    details_size: 2
+    details_ttl: 1m
+    episodes_size: 4
+    episodes_ttl: 2m
+    search_size: 8
+    search_ttl: 3m
+`)
+	require.NoError(t, os.WriteFile(path, body, 0o600))
+
+	cfg, err := ParseConfig(path)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+
+	assert.Equal(t, 2, cfg.TVMeta.Cache.DetailsSize)
+	assert.Equal(t, time.Minute, cfg.TVMeta.Cache.DetailsTTL)
+	assert.Equal(t, 4, cfg.TVMeta.Cache.EpisodesSize)
+	assert.Equal(t, 2*time.Minute, cfg.TVMeta.Cache.EpisodesTTL)
+	assert.Equal(t, 8, cfg.TVMeta.Cache.SearchSize)
+	assert.Equal(t, 3*time.Minute, cfg.TVMeta.Cache.SearchTTL)
 }
 
 func TestParseConfig_MissingFile(t *testing.T) {

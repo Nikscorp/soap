@@ -141,7 +141,7 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 6: `tvmeta.CacheConfig` plumbing
-- [ ] add `CacheConfig` struct to `internal/pkg/tvmeta/cache.go` (or a new `config.go`) with fields per cached method:
+- [x] add `CacheConfig` struct to `internal/pkg/tvmeta/cache.go` (or a new `config.go`) with fields per cached method:
   ```go
   type CacheConfig struct {
       DetailsSize     int           `env:"TVMETA_CACHE_DETAILS_SIZE"      env-default:"1024" yaml:"details_size"`
@@ -152,14 +152,14 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
       SearchTTL       time.Duration `env:"TVMETA_CACHE_SEARCH_TTL"        env-default:"30m"  yaml:"search_ttl"`
   }
   ```
-- [ ] change `tvmeta.New` signature to `New(client tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *Client` (or accept a functional-options `Option` to keep backward compat — pick one and document; the codebase uses plain configs, so the explicit param fits the style)
-- [ ] update `cmd/lazysoap/main.go` to read `cfg.TVMeta.Cache` and pass to `tvmeta.New`
-- [ ] add a top-level `TVMeta` struct in `internal/pkg/config/config.go` with a `Cache CacheConfig` field, wired into the existing `Config` tree
-- [ ] update `config/config.yaml.dist` with a `tvmeta:` block mirroring the defaults
-- [ ] update tests:
+- [x] change `tvmeta.New` signature to `New(client tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *Client` (already in place from Task 3; main.go now reads cfg.TVMeta.Cache instead of passing a zero value)
+- [x] update `cmd/lazysoap/main.go` to read `cfg.TVMeta.Cache` and pass to `tvmeta.New`
+- [x] add a top-level `TVMeta` struct in `internal/pkg/config/config.go` with a `Cache CacheConfig` field, wired into the existing `Config` tree (introduced as `tvmeta.Config { Cache CacheConfig }` to match the package-owned config pattern used by lazysoap/tmdb/imdbratings)
+- [x] update `config/config.yaml.dist` with a `tvmeta:` block mirroring the defaults
+- [x] update tests:
   - existing `New(...)` callers in tests pass a zero `CacheConfig{}` (which yields disabled-cache pass-through behavior — keeps existing tests deterministic without cache interference)
-  - add a config-parsing test if `internal/pkg/config/config.go` already has one (check first; if yes, extend it)
-- [ ] run `make test` and `make lint` — both must pass before next task
+  - add a config-parsing test if `internal/pkg/config/config.go` already has one (check first; if yes, extend it) — extended `config_test.go` with `TestParseConfig_TVMetaCacheOverrides` and added env-default assertions to `TestParseConfig_OK`
+- [x] run `make test` and `make lint` — both must pass before next task
 
 ### Task 7: Cache observability (Prometheus counters)
 - [ ] add three counter vectors in `internal/pkg/tvmeta/cache.go`, labeled by `method` (one of `details|episodes|search`): `tvmeta_cache_hits_total`, `tvmeta_cache_misses_total`, `tvmeta_cache_errors_total`

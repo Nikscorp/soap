@@ -10,28 +10,29 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// CacheConfig configures the per-method TMDB response caches. Zero values
-// disable a cache (size <= 0 or ttl <= 0 yields a pass-through that calls the
-// fetch function on every request — see newResponseCache). The full set of
-// cache knobs is filled in across the tmdb-response-cache plan tasks; fields
-// that are not yet wired in are added by their owning task and remain zero
-// until then. Final env/yaml plumbing lands in Task 6.
+// CacheConfig configures the per-method TMDB response caches. A zero value
+// (no env / yaml overrides) disables every cache: size <= 0 or ttl <= 0
+// yields a pass-through that calls the fetch function on every request — see
+// newResponseCache. Defaults set via env-default tags only kick in when the
+// struct is populated through cleanenv (i.e. via ParseConfig); manual
+// `tvmeta.CacheConfig{}` literals in tests stay at the zero value, which keeps
+// pre-cache call counts deterministic.
 type CacheConfig struct {
 	// DetailsSize is the maximum number of cached *TvShowDetails entries.
-	DetailsSize int
+	DetailsSize int `env:"TVMETA_CACHE_DETAILS_SIZE" env-default:"1024" yaml:"details_size"`
 	// DetailsTTL is the per-entry expiry for *TvShowDetails.
-	DetailsTTL time.Duration
+	DetailsTTL time.Duration `env:"TVMETA_CACHE_DETAILS_TTL" env-default:"6h" yaml:"details_ttl"`
 	// EpisodesSize is the maximum number of cached *TVShowSeasonEpisodes entries.
-	EpisodesSize int
+	EpisodesSize int `env:"TVMETA_CACHE_EPISODES_SIZE" env-default:"4096" yaml:"episodes_size"`
 	// EpisodesTTL is the per-entry expiry for *TVShowSeasonEpisodes.
-	EpisodesTTL time.Duration
+	EpisodesTTL time.Duration `env:"TVMETA_CACHE_EPISODES_TTL" env-default:"6h" yaml:"episodes_ttl"`
 	// SearchSize is the maximum number of cached raw *TVShows entries
 	// (pre-override search results, keyed by query + resolved language tag).
-	SearchSize int
+	SearchSize int `env:"TVMETA_CACHE_SEARCH_SIZE" env-default:"256" yaml:"search_size"`
 	// SearchTTL is the per-entry expiry for raw *TVShows search results.
 	// Bounded short relative to details/episodes because IMDb-overlay ratings
 	// are recomputed per call from a snapshot that itself refreshes daily.
-	SearchTTL time.Duration
+	SearchTTL time.Duration `env:"TVMETA_CACHE_SEARCH_TTL" env-default:"30m" yaml:"search_ttl"`
 }
 
 // errCacheTypeAssert is returned by responseCache.GetOrFetch when the value
