@@ -25,6 +25,13 @@ type CacheConfig struct {
 	EpisodesSize int
 	// EpisodesTTL is the per-entry expiry for *TVShowSeasonEpisodes.
 	EpisodesTTL time.Duration
+	// SearchSize is the maximum number of cached raw *TVShows entries
+	// (pre-override search results, keyed by query + resolved language tag).
+	SearchSize int
+	// SearchTTL is the per-entry expiry for raw *TVShows search results.
+	// Bounded short relative to details/episodes because IMDb-overlay ratings
+	// are recomputed per call from a snapshot that itself refreshes daily.
+	SearchTTL time.Duration
 }
 
 // errCacheTypeAssert is returned by responseCache.GetOrFetch when the value

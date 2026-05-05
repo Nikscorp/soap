@@ -22,6 +22,7 @@ type Client struct {
 	imdbIDCache   sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
 	detailsCache  *responseCache[detailsKey, *TvShowDetails]
 	episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]
+	searchCache   *responseCache[searchKey, *TVShows]
 }
 
 // detailsKey is the cache key for TVShowDetails. Two requests collide iff
@@ -38,6 +39,14 @@ type episodesKey struct {
 	id     int
 	season int
 	lang   string
+}
+
+// searchKey is the cache key for the raw (pre-override) SearchTVShows result.
+// lang is the resolved IETF tag from languageTag(query), not the raw input,
+// so two queries that route to the same TMDB language share a key.
+type searchKey struct {
+	query string
+	lang  string
 }
 
 type tmdbClient interface {
@@ -65,6 +74,7 @@ func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *
 		ratings:       ratings,
 		detailsCache:  newResponseCache[detailsKey, *TvShowDetails](cacheCfg.DetailsSize, cacheCfg.DetailsTTL),
 		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes](cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL),
+		searchCache:   newResponseCache[searchKey, *TVShows](cacheCfg.SearchSize, cacheCfg.SearchTTL),
 	}
 }
 

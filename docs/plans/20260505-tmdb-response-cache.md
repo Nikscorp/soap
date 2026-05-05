@@ -129,16 +129,16 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 5: Cache `SearchTVShows` (split raw + override)
-- [ ] extract a private `(c *Client) searchTVShowsRaw(ctx context.Context, query string) (*TVShows, error)` containing the current TMDB call + parse + popularity sort, **without** calling `overrideSeriesRatings`
-- [ ] make `SearchTVShows` call `searchTVShowsRaw` via a `searchCache *responseCache[searchKey, *TVShows]` (`searchKey` = `{ query, lang string }` — note: `languageTag(query)` is currently derived from the query, so the lang component is the resolved tag, not the input)
-- [ ] after fetching from cache (or computing), produce a per-call deep copy of the `[]*TVShow` slice (and pointed-to structs) before calling `overrideSeriesRatings` on it; assemble a fresh `*TVShows` to return. This preserves the rule that cached pointers stay read-only AND keeps callers seeing the freshest IMDb-overridden ratings on every call.
-- [ ] alternative considered: snapshot the ratings provider's "ready / dataset version" into the cache key — rejected because the IMDb provider doesn't expose a version stamp today, and adding one for this is scope creep.
-- [ ] update tests in `internal/pkg/tvmeta/search_test.go`:
+- [x] extract a private `(c *Client) searchTVShowsRaw(ctx context.Context, query string) (*TVShows, error)` containing the current TMDB call + parse + popularity sort, **without** calling `overrideSeriesRatings`
+- [x] make `SearchTVShows` call `searchTVShowsRaw` via a `searchCache *responseCache[searchKey, *TVShows]` (`searchKey` = `{ query, lang string }` — note: `languageTag(query)` is currently derived from the query, so the lang component is the resolved tag, not the input)
+- [x] after fetching from cache (or computing), produce a per-call deep copy of the `[]*TVShow` slice (and pointed-to structs) before calling `overrideSeriesRatings` on it; assemble a fresh `*TVShows` to return. This preserves the rule that cached pointers stay read-only AND keeps callers seeing the freshest IMDb-overridden ratings on every call.
+- [x] alternative considered: snapshot the ratings provider's "ready / dataset version" into the cache key — rejected because the IMDb provider doesn't expose a version stamp today, and adding one for this is scope creep.
+- [x] update tests in `internal/pkg/tvmeta/search_test.go`:
   - same query + ratings-provider state: TMDB called once, override called twice (override is per-call by design)
   - simulated ratings change between two calls: second response reflects new ratings even though TMDB was hit only once (asserts override-runs-on-cached-data semantics)
   - error not cached
   - different query strings do not collide
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 6: `tvmeta.CacheConfig` plumbing
 - [ ] add `CacheConfig` struct to `internal/pkg/tvmeta/cache.go` (or a new `config.go`) with fields per cached method:
