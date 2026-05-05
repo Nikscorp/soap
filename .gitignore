@@ -2,3 +2,4 @@
 bin/
 test.http
 config/config.yaml
+var/

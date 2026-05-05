@@ -21,12 +21,14 @@ func NewTMDB(cfg Config) (*tmdb.Client, error) {
 		return nil, err
 	}
 
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConns = cfg.MaxIdleConns
+	transport.MaxIdleConnsPerHost = cfg.MaxIdleConns
+	transport.IdleConnTimeout = cfg.IdleConnTimeout
+
 	httpClient := http.Client{
-		Timeout: cfg.RequestTimeout,
-		Transport: &http.Transport{
-			MaxIdleConns:    cfg.MaxIdleConns,
-			IdleConnTimeout: cfg.IdleConnTimeout,
-		},
+		Timeout:   cfg.RequestTimeout,
+		Transport: transport,
 	}
 	tmdbClient.SetClientConfig(httpClient)
 	if cfg.EnableAutoRetry {

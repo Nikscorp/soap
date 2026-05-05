@@ -154,6 +154,6 @@ func (p *Provider) refresh(ctx context.Context) {
 	logger.Info(ctx, "imdb dataset loaded",
 		"titles", len(snap.titles),
 		"series", len(snap.episodes),
-		"elapsed", time.Since(start),
+		"elapsed", time.Since(start).String(),
 	)
 }

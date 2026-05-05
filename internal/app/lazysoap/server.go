@@ -71,6 +71,7 @@ func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
 				}
 				clone := baseTransport.Clone()
 				clone.MaxIdleConns = config.ImgClient.MaxIdleConns
+				clone.MaxIdleConnsPerHost = config.ImgClient.MaxIdleConns
 				clone.IdleConnTimeout = config.ImgClient.IdleConnTimeout
 				return clone
 			}(),
