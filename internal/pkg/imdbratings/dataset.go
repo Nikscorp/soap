@@ -193,8 +193,7 @@ const tconstDigitBase = 10
 // consumer of titles is SeriesRating(seriesTconst), so the dropped entries —
 // movies, individual episodes, shorts, video games, etc. — are pure
 // retained-memory waste. On 2026 IMDb data this drops the map from ~1.66M
-// down to ~45k entries; together with the tconst-string objects it roots,
-// it frees roughly 80 MB of resident heap.
+// down to ~45k entries before the published snapshot is built.
 //
 // Edge case (intentional): series that are rated in title.ratings.tsv.gz but
 // have no rated episodes in title.episode.tsv.gz lose their series-level

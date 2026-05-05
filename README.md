@@ -111,7 +111,7 @@ The numeric `rating` field on every endpoint that returns one (`/search/{query}`
 
 Selecting `imdb` adds two startup characteristics to the server:
 
-- The first dataset load pulls roughly 60–90 MB of compressed TSV and parses it into ~35 MB of resident heap (~290 MB RSS during build). The HTTP listener comes up immediately; until the first load completes the server keeps serving TMDB ratings, then atomically swaps to IMDb on completion. Refresh failures keep serving the previously published snapshot — there is no fall-back-to-TMDB on transient dataset-host outages, but the failure is logged at WARN so it's visible in the operator's log pipeline.
+- The first dataset load pulls ~60 MB of compressed TSV (8 MB ratings + 53 MB episodes from the 2026 dumps) and parses it. Measured on the 2026 dataset on a developer-machine local binary: post-build retained heap ~13 MB (`runtime.MemStats.HeapInuse` after `runtime.GC()`, captured by the `BuildSnapshot_Real` bench), peak RSS during build ~80 MB (sampled at ~10 ms intervals via `ps`), build time ~4 s. The HTTP listener comes up immediately; until the first load completes the server keeps serving TMDB ratings, then atomically swaps to IMDb on completion. Refresh failures keep serving the previously published snapshot — there is no fall-back-to-TMDB on transient dataset-host outages, but the failure is logged at WARN so it's visible in the operator's log pipeline.
 - The dataset is cached on disk in `LAZYSOAP_IMDB_CACHE_DIR` (default `./var/imdb`) so container restarts don't re-download. The freshness check runs at startup and on every scheduled refresh: if a cached file's mtime is younger than `LAZYSOAP_IMDB_REFRESH_INTERVAL`, the HTTP fetch is skipped and we re-parse the local copy directly. Setting `LAZYSOAP_IMDB_REFRESH_INTERVAL=0` disables periodic refresh and treats any cached file as authoritative across restarts (re-downloads only happen when the cache directory is empty). Both bundled compose files (`docker-compose.yml`, `docker-compose-remote.yml`) declare an `imdb-cache` named volume mounted at `/var/imdb` so the cache survives `docker compose down`.
 
 > Information courtesy of IMDb (https://www.imdb.com). Used with permission.
@@ -201,6 +201,21 @@ Common workflows are exposed through `make`:
 | `make docker-build` / `make docker-up` | Build/run the full stack with Docker Compose |
 
 The Go side uses [chi](https://github.com/go-chi/chi) for routing, [cleanenv](https://github.com/ilyakaznacheev/cleanenv) for config, and [prometheus/client_golang](https://github.com/prometheus/client_golang) for metrics. Frontend stack and scripts are documented in [`frontend/README.md`](frontend/README.md) — React 19, Vite, TypeScript, Tailwind v4, TanStack Query, and a Playwright smoke test.
+
+## Benchmarks
+
+The IMDb dataset parser (`internal/pkg/imdbratings`) ships a benchmark harness in two flavours. Use it to gate optimization work with [`benchstat`](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat) (`go install golang.org/x/perf/cmd/benchstat@latest` — developer-machine prerequisite, not bundled).
+
+| Target | Purpose |
+| --- | --- |
+| `make bench` | Always-on synthetic suite; data is generated in-memory at bench start with a fixed RNG seed sized to roughly match real shape. Output captured at `bin/bench.txt`. |
+| `make bench-real` | Real-data suite, gated by the `imdbbench` build tag. Reads the live gzipped TSVs from `LAZYSOAP_BENCH_DATA_DIR` (default `var/imdb/`). Output captured at `bin/bench-real.txt`. |
+| `make bench-baseline` / `make bench-real-baseline` | Run the corresponding suite, then copy output to `bin/bench-baseline.txt` / `bin/bench-real-baseline.txt` as a comparison anchor. |
+| `make bench-stat` / `make bench-real-stat` | Diff current output against the saved baseline via `benchstat`. |
+
+Each bench reports `b.ReportAllocs()` plus a custom `MB-heap` metric — `runtime.HeapInuse` measured after `runtime.GC()` — so retained-heap deltas are visible alongside time and bytes-allocated. The real-data suite is the shipping gate; the synthetic suite is a secondary regression signal that runs in any environment without dataset prep.
+
+`bin/` is gitignored — capture the raw output into PR descriptions when an optimization changes behavior.
 
 ## License
 
