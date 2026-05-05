@@ -80,12 +80,12 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 ## Implementation Steps
 
 ### Task 1: Add cache + singleflight dependencies
-- [ ] `go get github.com/hashicorp/golang-lru/v2@latest`
-- [ ] `go get golang.org/x/sync@latest` (for `singleflight`; already used for `errgroup`)
-- [ ] run `make tidy` to update `go.sum` and re-vendor under `vendor/`
-- [ ] verify `make build` and `make lint` still pass with new deps vendored
-- [ ] confirm vendored packages exist: `vendor/github.com/hashicorp/golang-lru/v2/expirable/` and `vendor/golang.org/x/sync/singleflight/`
-- [ ] run `make test` — must pass before next task
+- [x] `go get github.com/hashicorp/golang-lru/v2@latest`
+- [x] `go get golang.org/x/sync@latest` (for `singleflight`; already used for `errgroup`)
+- [x] run `make tidy` to update `go.sum` and re-vendor under `vendor/`
+- [x] verify `make build` and `make lint` still pass with new deps vendored
+- [x] confirm vendored packages exist: `vendor/github.com/hashicorp/golang-lru/v2/expirable/` and `vendor/golang.org/x/sync/singleflight/`
+- [x] run `make test` — must pass before next task
 
 ### Task 2: Generic `responseCache[K, V]` primitive
 - [ ] create `internal/pkg/tvmeta/cache.go` with a typed `responseCache[K comparable, V any]` struct wrapping `expirable.LRU[K, V]` + `singleflight.Group`
