@@ -166,7 +166,7 @@ func TestSeriesIMDbIDCacheHitsOnce(t *testing.T) {
 	tmdbClient := mocks.NewTmdbClientMock(t)
 	tmdbClient.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: fakeIMDbID}, nil)
 
-	client := New(tmdbClient, NoopRatingsProvider{}, CacheConfig{})
+	client := New(tmdbClient, NoopRatingsProvider{}, CacheConfig{}, nil)
 	for range 5 {
 		got := client.seriesIMDbID(context.Background(), 1399)
 		assert.Equal(t, fakeIMDbID, got)

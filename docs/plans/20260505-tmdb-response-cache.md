@@ -162,12 +162,12 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test` and `make lint` — both must pass before next task
 
 ### Task 7: Cache observability (Prometheus counters)
-- [ ] add three counter vectors in `internal/pkg/tvmeta/cache.go`, labeled by `method` (one of `details|episodes|search`): `tvmeta_cache_hits_total`, `tvmeta_cache_misses_total`, `tvmeta_cache_errors_total`
-- [ ] register the metrics with `prometheus.DefaultRegisterer` in a `sync.Once` so multiple `New` calls in tests don't double-register; OR accept a `prometheus.Registerer` parameter (preferred — matches the existing `rest.NewMetrics()` pattern). Pick the latter.
-- [ ] increment counters from `responseCache.GetOrFetch` (label = method name passed in at construction, e.g. `newResponseCache[…]("details", size, ttl, registerer)`)
-- [ ] update tests:
-  - hit/miss counters increment correctly under known sequences (use a `prometheus.NewRegistry` per test for isolation; assert via `testutil.ToFloat64`)
-- [ ] run `make test` — must pass before next task
+- [x] add three counter vectors in `internal/pkg/tvmeta/cache.go`, labeled by `method` (one of `details|episodes|search`): `tvmeta_cache_hits_total`, `tvmeta_cache_misses_total`, `tvmeta_cache_errors_total`
+- [x] register the metrics with `prometheus.DefaultRegisterer` in a `sync.Once` so multiple `New` calls in tests don't double-register; OR accept a `prometheus.Registerer` parameter (preferred — matches the existing `rest.NewMetrics()` pattern). Pick the latter.
+- [x] increment counters from `responseCache.GetOrFetch` (label = method name passed in at construction, e.g. `newResponseCache[…]("details", size, ttl, registerer)`)
+- [x] update tests:
+  - hit/miss counters increment correctly under known sequences (use a `prometheus.NewRegistry` per test for isolation; assert via dto.Metric.Write — testutil isn't vendored; counterValue helper in cache_test.go reads the value directly)
+- [x] run `make test` — must pass before next task
 
 ### Task 8: Update README, CLAUDE.md, OpenAPI
 - [ ] README.md: extend the "Architecture" / "Configuration" section with a paragraph on the new response cache (what is cached, default TTLs, knobs). Be precise about *what's not cached* (popular pool, image proxy). Numbers come from the actual code, not from this plan — re-read `cache.go` defaults before writing.

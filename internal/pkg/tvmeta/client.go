@@ -7,6 +7,7 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
 	tmdb "github.com/cyruzin/golang-tmdb"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var ErrNilResp = errors.New("nil resp error")
@@ -65,16 +66,24 @@ type tmdbClient interface {
 // disables every cache (each method behaves as if caching were never added),
 // which is the safe default for tests and for environments that have not yet
 // opted in via env / yaml. See CacheConfig for the available knobs.
-func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *Client {
+//
+// registerer receives the per-method cache observability counters
+// (tvmeta_cache_hits_total / _misses_total / _errors_total). Pass
+// prometheus.DefaultRegisterer in production to feed the existing /metrics
+// endpoint, or nil in tests that don't need observability — disabling metrics
+// avoids registry collisions when several Clients are constructed in the same
+// test binary.
+func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig, registerer prometheus.Registerer) *Client {
 	if ratings == nil {
 		ratings = NoopRatingsProvider{}
 	}
+	metrics := newCacheMetrics(registerer)
 	return &Client{
 		client:        tmdbClient,
 		ratings:       ratings,
-		detailsCache:  newResponseCache[detailsKey, *TvShowDetails](cacheCfg.DetailsSize, cacheCfg.DetailsTTL),
-		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes](cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL),
-		searchCache:   newResponseCache[searchKey, *TVShows](cacheCfg.SearchSize, cacheCfg.SearchTTL),
+		detailsCache:  newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
+		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes]("episodes", cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL, metrics),
+		searchCache:   newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
 	}
 }
 

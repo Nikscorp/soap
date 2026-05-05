@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Nikscorp/soap/internal/pkg/logger"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -41,6 +43,68 @@ type CacheConfig struct {
 // exists so the assertion can be guarded without minting a dynamic error.
 var errCacheTypeAssert = errors.New("tvmeta: response cache value type mismatch")
 
+// methodLabel is the Prometheus label name distinguishing per-method caches.
+const methodLabel = "method"
+
+// cacheMetrics groups the three counter vectors emitted by every
+// responseCache. A single set of vectors is shared across all caches owned by
+// the same Client and labeled by `method` so that per-method hit/miss/error
+// rates remain comparable on the same Prometheus dashboard.
+//
+// A nil *cacheMetrics is the explicit "metrics disabled" sentinel: every
+// recordHit/recordMiss/recordError becomes a no-op. This keeps tests that
+// don't care about observability free of registry plumbing.
+type cacheMetrics struct {
+	hits   *prometheus.CounterVec
+	misses *prometheus.CounterVec
+	errors *prometheus.CounterVec
+}
+
+// newCacheMetrics constructs and registers the response-cache counter vectors.
+// A nil registerer disables metrics entirely (returns nil); callers that
+// already pass nil because metrics aren't wanted in their environment do not
+// need to nil-check the result — recordHit/recordMiss/recordError are
+// nil-receiver-safe on responseCache.
+//
+// Registration failures (e.g., a test-suite peer registering the same name
+// against the default registerer) are logged at warn and counters keep
+// working — collecting metrics that nobody scrapes is harmless and matches
+// the resilience pattern in rest.NewMetrics.
+func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
+	if registerer == nil {
+		return nil
+	}
+	m := &cacheMetrics{
+		hits: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "tvmeta_cache_hits_total",
+				Help: "Number of TMDB response cache hits, labeled by method (details|episodes|search).",
+			},
+			[]string{methodLabel},
+		),
+		misses: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "tvmeta_cache_misses_total",
+				Help: "Number of TMDB response cache misses, labeled by method (details|episodes|search).",
+			},
+			[]string{methodLabel},
+		),
+		errors: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "tvmeta_cache_errors_total",
+				Help: "Number of TMDB response cache fetch errors, labeled by method (details|episodes|search).",
+			},
+			[]string{methodLabel},
+		),
+	}
+	for _, c := range []prometheus.Collector{m.hits, m.misses, m.errors} {
+		if err := registerer.Register(c); err != nil {
+			logger.Warn(context.Background(), "Can't register prometheus tvmeta cache metric", "err", err)
+		}
+	}
+	return m
+}
+
 // responseCache is a typed, TTL-bounded LRU keyed by an arbitrary comparable
 // key. Concurrent fetches for the same key are deduplicated via singleflight
 // so a thundering herd of identical requests collapses to a single TMDB call.
@@ -49,6 +113,8 @@ var errCacheTypeAssert = errors.New("tvmeta: response cache value type mismatch"
 // pass-through that calls the fetch function on every request. This lets
 // callers disable a specific cache via configuration without branching at
 // every call site, and keeps tests that pass a zero CacheConfig deterministic.
+// Pass-through caches also skip metric emission — disabled means invisible —
+// so an unconfigured deployment doesn't pollute dashboards with all-misses.
 //
 // Cached values are SHARED among all readers and MUST be treated as
 // read-only. Callers that need to mutate (e.g. apply per-request rating
@@ -59,19 +125,31 @@ var errCacheTypeAssert = errors.New("tvmeta: response cache value type mismatch"
 // concurrency budgets (externalIDsConcurrency, featuredExtraIDsConcurrency)
 // remain the right tool for that.
 type responseCache[K comparable, V any] struct {
-	lru *expirable.LRU[K, V]
-	sf  singleflight.Group
+	name string
+	lru  *expirable.LRU[K, V]
+	sf   singleflight.Group
+	m    *cacheMetrics
 }
 
 // newResponseCache returns a typed LRU cache with the given size and TTL.
 // If size <= 0 or ttl <= 0 the returned cache is in pass-through mode:
 // GetOrFetch always invokes the fetch function and never stores the value.
-func newResponseCache[K comparable, V any](size int, ttl time.Duration) *responseCache[K, V] {
+//
+// name is the value used for the `method` Prometheus label. metrics may be
+// nil to disable observability for this cache.
+func newResponseCache[K comparable, V any](
+	name string,
+	size int,
+	ttl time.Duration,
+	metrics *cacheMetrics,
+) *responseCache[K, V] {
 	if size <= 0 || ttl <= 0 {
-		return &responseCache[K, V]{}
+		return &responseCache[K, V]{name: name, m: metrics}
 	}
 	return &responseCache[K, V]{
-		lru: expirable.NewLRU[K, V](size, nil, ttl),
+		name: name,
+		lru:  expirable.NewLRU[K, V](size, nil, ttl),
+		m:    metrics,
 	}
 }
 
@@ -97,8 +175,10 @@ func (c *responseCache[K, V]) GetOrFetch(
 		return fetch(ctx)
 	}
 	if v, ok := c.lru.Get(key); ok {
+		c.recordHit()
 		return v, nil
 	}
+	c.recordMiss()
 	ch := c.sf.DoChan(fmt.Sprint(key), func() (any, error) {
 		fetchCtx := context.WithoutCancel(ctx)
 		v, err := fetch(fetchCtx)
@@ -112,11 +192,13 @@ func (c *responseCache[K, V]) GetOrFetch(
 	select {
 	case res := <-ch:
 		if res.Err != nil {
+			c.recordError()
 			var zero V
 			return zero, res.Err
 		}
 		v, ok := res.Val.(V)
 		if !ok {
+			c.recordError()
 			var zero V
 			return zero, fmt.Errorf("%w (key=%v)", errCacheTypeAssert, key)
 		}
@@ -127,9 +209,35 @@ func (c *responseCache[K, V]) GetOrFetch(
 	}
 }
 
+// recordHit is a nil-safe wrapper around the hits counter.
+func (c *responseCache[K, V]) recordHit() {
+	if c == nil || c.m == nil {
+		return
+	}
+	c.m.hits.WithLabelValues(c.name).Inc()
+}
+
+// recordMiss is a nil-safe wrapper around the misses counter.
+func (c *responseCache[K, V]) recordMiss() {
+	if c == nil || c.m == nil {
+		return
+	}
+	c.m.misses.WithLabelValues(c.name).Inc()
+}
+
+// recordError is a nil-safe wrapper around the errors counter. It is
+// incremented per waiter that observes an error result, so N concurrent
+// waiters on a singleflight slot whose fetch fails see N error increments.
+func (c *responseCache[K, V]) recordError() {
+	if c == nil || c.m == nil {
+		return
+	}
+	c.m.errors.WithLabelValues(c.name).Inc()
+}
+
 // len returns the number of cached entries; 0 for a pass-through cache.
 //
-//nolint:unused // exposed for tests + observability hooks added in Task 7
+//nolint:unused // exposed for tests + observability hooks
 func (c *responseCache[K, V]) len() int {
 	if c == nil || c.lru == nil {
 		return 0

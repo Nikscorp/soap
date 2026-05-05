@@ -9,6 +9,7 @@ import (
 
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta/mocks"
 	tmdb "github.com/cyruzin/golang-tmdb"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,12 +41,23 @@ func NewClientM(t *testing.T) *ClientM {
 }
 
 // NewClientMCfg is NewClientM with an explicit CacheConfig, for tests that
-// exercise the per-method response caches.
+// exercise the per-method response caches. Metrics are disabled (nil
+// registerer) so existing tests don't have to manage Prometheus registry
+// state. Tests that assert on cache observability should call
+// NewClientMCfgRegisterer with a fresh prometheus.NewRegistry.
 func NewClientMCfg(t *testing.T, cacheCfg CacheConfig) *ClientM {
+	return NewClientMCfgRegisterer(t, cacheCfg, nil)
+}
+
+// NewClientMCfgRegisterer is NewClientMCfg with an explicit prometheus
+// registerer. Tests that need to assert on tvmeta_cache_*_total counters
+// should pass a per-test prometheus.NewRegistry and gather from it for
+// isolation from other tests in the suite.
+func NewClientMCfgRegisterer(t *testing.T, cacheCfg CacheConfig, registerer prometheus.Registerer) *ClientM {
 	tmdbClient := mocks.NewTmdbClientMock(t)
 	ratings := mocks.NewRatingsProviderMock(t)
 	ratings.ReadyMock.Return(false)
-	client := New(tmdbClient, ratings, cacheCfg)
+	client := New(tmdbClient, ratings, cacheCfg, registerer)
 	return &ClientM{
 		client:        client,
 		mockedTMDB:    tmdbClient,

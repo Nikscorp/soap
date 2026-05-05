@@ -8,11 +8,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 )
 
+// counterValue reads the current value of a label set on a CounterVec by
+// writing into a dto.Metric. Returns 0 for label combinations that have not
+// yet been incremented (Prometheus auto-creates the child on first Inc, so
+// pre-Inc values are 0 and there is no need to special-case "missing").
+func counterValue(t *testing.T, vec *prometheus.CounterVec, label string) float64 {
+	t.Helper()
+	c, err := vec.GetMetricWithLabelValues(label)
+	require.NoError(t, err)
+	var m dto.Metric
+	require.NoError(t, c.Write(&m))
+	return m.GetCounter().GetValue()
+}
+
 func TestResponseCacheHitDoesNotRefetch(t *testing.T) {
-	c := newResponseCache[int, string](16, time.Hour)
+	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
 
 	var calls atomic.Int32
 	fetch := func(ctx context.Context) (string, error) {
@@ -33,7 +48,7 @@ func TestResponseCacheHitDoesNotRefetch(t *testing.T) {
 }
 
 func TestResponseCacheTTLExpiryRefetches(t *testing.T) {
-	c := newResponseCache[int, int](16, 50*time.Millisecond)
+	c := newResponseCache[int, int]("test", 16, 50*time.Millisecond, nil)
 
 	var calls atomic.Int32
 	fetch := func(ctx context.Context) (int, error) {
@@ -55,7 +70,7 @@ func TestResponseCacheTTLExpiryRefetches(t *testing.T) {
 }
 
 func TestResponseCacheErrorNotCached(t *testing.T) {
-	c := newResponseCache[int, string](16, time.Hour)
+	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
 
 	boom := errors.New("boom")
 	var calls atomic.Int32
@@ -75,7 +90,7 @@ func TestResponseCacheErrorNotCached(t *testing.T) {
 }
 
 func TestResponseCacheDifferentKeysDoNotCollide(t *testing.T) {
-	c := newResponseCache[int, string](16, time.Hour)
+	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
 
 	var calls atomic.Int32
 	fetch := func(want int) func(context.Context) (string, error) {
@@ -95,7 +110,7 @@ func TestResponseCacheDifferentKeysDoNotCollide(t *testing.T) {
 }
 
 func TestResponseCacheConcurrentSingleflight(t *testing.T) {
-	c := newResponseCache[int, string](16, time.Hour)
+	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
 
 	release := make(chan struct{})
 	var calls atomic.Int32
@@ -131,7 +146,7 @@ func TestResponseCacheConcurrentSingleflight(t *testing.T) {
 }
 
 func TestResponseCacheCancelledCallerStillDeliversToOthers(t *testing.T) {
-	c := newResponseCache[int, int](16, time.Hour)
+	c := newResponseCache[int, int]("test", 16, time.Hour, nil)
 
 	fetchStarted := make(chan struct{})
 	releaseFetch := make(chan struct{})
@@ -189,7 +204,7 @@ func TestResponseCacheCancelledCallerStillDeliversToOthers(t *testing.T) {
 }
 
 func TestResponseCacheDisabledBySize(t *testing.T) {
-	c := newResponseCache[int, int](0, time.Hour)
+	c := newResponseCache[int, int]("test", 0, time.Hour, nil)
 
 	var calls atomic.Int32
 	fetch := func(ctx context.Context) (int, error) {
@@ -207,7 +222,7 @@ func TestResponseCacheDisabledBySize(t *testing.T) {
 }
 
 func TestResponseCacheDisabledByTTL(t *testing.T) {
-	c := newResponseCache[int, int](16, 0)
+	c := newResponseCache[int, int]("test", 16, 0, nil)
 
 	var calls atomic.Int32
 	fetch := func(ctx context.Context) (int, error) {
@@ -236,4 +251,103 @@ func TestResponseCacheNilReceiverIsPassThrough(t *testing.T) {
 	require.Equal(t, 99, v)
 	require.Equal(t, int32(1), calls.Load())
 	require.Equal(t, 0, c.len())
+}
+
+// TestResponseCacheMetricsHitMiss exercises the per-method hit / miss
+// counters end-to-end against an isolated registry: a cold key increments
+// misses, the same key on a second call increments hits, and counters across
+// distinct cache names stay independent.
+func TestResponseCacheMetricsHitMiss(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	metrics := newCacheMetrics(reg)
+	require.NotNil(t, metrics)
+
+	c := newResponseCache[int, string]("details", 16, time.Hour, metrics)
+
+	fetch := func(ctx context.Context) (string, error) { return "v", nil }
+
+	_, err := c.GetOrFetch(context.Background(), 1, fetch)
+	require.NoError(t, err)
+	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "details"), 0.001)
+	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "details"), 0.001)
+
+	_, err = c.GetOrFetch(context.Background(), 1, fetch)
+	require.NoError(t, err)
+	require.InDelta(t, 1.0, counterValue(t, metrics.hits, "details"), 0.001)
+	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "details"), 0.001)
+
+	// A different key — still a miss; hits unchanged.
+	_, err = c.GetOrFetch(context.Background(), 2, fetch)
+	require.NoError(t, err)
+	require.InDelta(t, 1.0, counterValue(t, metrics.hits, "details"), 0.001)
+	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "details"), 0.001)
+
+	// A peer cache sharing the same metrics struct increments only its own
+	// label, leaving "details" counters untouched.
+	c2 := newResponseCache[int, string]("episodes", 16, time.Hour, metrics)
+	_, err = c2.GetOrFetch(context.Background(), 1, fetch)
+	require.NoError(t, err)
+	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "episodes"), 0.001)
+	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "episodes"), 0.001)
+	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "details"), 0.001)
+	require.Equal(t, 0.0, counterValue(t, metrics.errors, "details"))
+	require.Equal(t, 0.0, counterValue(t, metrics.errors, "episodes"))
+}
+
+// TestResponseCacheMetricsErrorIncrements verifies the errors counter fires
+// once per waiter that observes a fetch failure, and a miss is still recorded
+// because the lookup did go to the fetch function.
+func TestResponseCacheMetricsErrorIncrements(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	metrics := newCacheMetrics(reg)
+	c := newResponseCache[int, string]("search", 16, time.Hour, metrics)
+
+	boom := errors.New("boom")
+	fetch := func(ctx context.Context) (string, error) { return "", boom }
+
+	_, err := c.GetOrFetch(context.Background(), 1, fetch)
+	require.ErrorIs(t, err, boom)
+	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "search"), 0.001)
+	require.InDelta(t, 1.0, counterValue(t, metrics.errors, "search"), 0.001)
+	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "search"), 0.001)
+
+	// Errors are not cached: a second call must miss + error again.
+	_, err = c.GetOrFetch(context.Background(), 1, fetch)
+	require.ErrorIs(t, err, boom)
+	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "search"), 0.001)
+	require.InDelta(t, 2.0, counterValue(t, metrics.errors, "search"), 0.001)
+}
+
+// TestResponseCacheMetricsDisabledCacheNoOp confirms that a pass-through
+// cache (size <= 0 or ttl <= 0) still constructs without metric churn: it
+// should not record hits or misses, since "disabled means invisible" — an
+// unconfigured deployment must not pollute dashboards with all-misses.
+func TestResponseCacheMetricsDisabledCacheNoOp(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	metrics := newCacheMetrics(reg)
+	c := newResponseCache[int, string]("details", 0, time.Hour, metrics)
+
+	fetch := func(ctx context.Context) (string, error) { return "v", nil }
+	for range 3 {
+		_, err := c.GetOrFetch(context.Background(), 1, fetch)
+		require.NoError(t, err)
+	}
+	require.Equal(t, 0.0, counterValue(t, metrics.hits, "details"))
+	require.Equal(t, 0.0, counterValue(t, metrics.misses, "details"))
+	require.Equal(t, 0.0, counterValue(t, metrics.errors, "details"))
+}
+
+// TestNewCacheMetricsNilRegistererDisabled ensures that a nil registerer
+// yields a nil *cacheMetrics, and that recordHit/recordMiss/recordError on a
+// cache with nil metrics is a no-op (no panic, no allocation churn).
+func TestNewCacheMetricsNilRegistererDisabled(t *testing.T) {
+	require.Nil(t, newCacheMetrics(nil))
+
+	c := newResponseCache[int, string]("details", 16, time.Hour, nil)
+	fetch := func(ctx context.Context) (string, error) { return "v", nil }
+
+	_, err := c.GetOrFetch(context.Background(), 1, fetch)
+	require.NoError(t, err)
+	_, err = c.GetOrFetch(context.Background(), 1, fetch)
+	require.NoError(t, err)
 }
