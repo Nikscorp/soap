@@ -13,7 +13,7 @@ func (c *Client) PopularTVShows(_ context.Context, language string) ([]*TVShow, 
 	}
 
 	resp, err := c.client.GetTVPopular(map[string]string{
-		"language": language,
+		langOptKey: language,
 		"page":     "1",
 	})
 	if err != nil {

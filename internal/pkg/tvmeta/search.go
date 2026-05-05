@@ -30,7 +30,7 @@ type TVShows struct {
 func (c *Client) SearchTVShows(ctx context.Context, query string) (*TVShows, error) {
 	tag := languageTag(query)
 	resp, err := c.client.GetSearchTVShow(query, map[string]string{
-		"language": tag,
+		langOptKey: tag,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("search TV Shows: %w", err)

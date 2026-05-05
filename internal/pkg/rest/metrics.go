@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const pathLabel = "path"
+
 type Metrics struct {
 	totalRequests  *prometheus.CounterVec
 	responseStatus *prometheus.CounterVec
@@ -25,7 +27,7 @@ func NewMetrics() *Metrics {
 			Name: "http_requests_total",
 			Help: "Number of incoming requests.",
 		},
-		[]string{"path"},
+		[]string{pathLabel},
 	)
 
 	res.responseStatus = prometheus.NewCounterVec(
@@ -33,14 +35,14 @@ func NewMetrics() *Metrics {
 			Name: "response_status",
 			Help: "Status of HTTP responses.",
 		},
-		[]string{"path", "status"},
+		[]string{pathLabel, "status"},
 	)
 
 	res.httpDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "http_response_time_seconds",
 		Help:    "Duration of HTTP requests.",
 		Buckets: []float64{0.005, 0.01, 0.1, 0.5, 1, 2, 3, 5},
-	}, []string{"path", "status"})
+	}, []string{pathLabel, "status"})
 
 	if err := prometheus.Register(res.totalRequests); err != nil {
 		logger.Warn(context.Background(), "Can't register prometheus totalRequests", "err", err)

@@ -24,7 +24,7 @@ func (c *Client) TVShowEpisodesBySeason(_ context.Context, id int, seasonNumber 
 	}
 
 	resp, err := c.client.GetTVSeasonDetails(id, seasonNumber, map[string]string{
-		"language": language,
+		langOptKey: language,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get TV Season Details: %w", err)

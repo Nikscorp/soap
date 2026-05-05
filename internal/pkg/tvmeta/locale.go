@@ -10,6 +10,8 @@ const (
 	defaultLangTag = "en"
 	enLangTag      = "en"
 	ruLangTag      = "ru"
+
+	langOptKey = "language"
 )
 
 type tag struct {

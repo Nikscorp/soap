@@ -17,7 +17,7 @@ type TvShowDetails struct {
 func (c *Client) TVShowDetails(_ context.Context, id int, language string) (*TvShowDetails, error) {
 	var opts map[string]string
 	if language != "" {
-		opts = map[string]string{"language": language}
+		opts = map[string]string{langOptKey: language}
 	}
 	resp, err := c.client.GetTVDetails(id, opts)
 	if err != nil {
