@@ -10,12 +10,23 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
+// CacheConfig configures the per-method TMDB response caches. Zero values
+// disable a cache (size <= 0 or ttl <= 0 yields a pass-through that calls the
+// fetch function on every request — see newResponseCache). The full set of
+// cache knobs is filled in across the tmdb-response-cache plan tasks; fields
+// that are not yet wired in are added by their owning task and remain zero
+// until then. Final env/yaml plumbing lands in Task 6.
+type CacheConfig struct {
+	// DetailsSize is the maximum number of cached *TvShowDetails entries.
+	DetailsSize int
+	// DetailsTTL is the per-entry expiry for *TvShowDetails.
+	DetailsTTL time.Duration
+}
+
 // errCacheTypeAssert is returned by responseCache.GetOrFetch when the value
 // stored in singleflight cannot be asserted back to V. Unreachable in
 // practice: the inner closure always returns V on success. The sentinel
 // exists so the assertion can be guarded without minting a dynamic error.
-//
-//nolint:unused // referenced from GetOrFetch, which is also nolinted until wired in
 var errCacheTypeAssert = errors.New("tvmeta: response cache value type mismatch")
 
 // responseCache is a typed, TTL-bounded LRU keyed by an arbitrary comparable
@@ -35,8 +46,6 @@ var errCacheTypeAssert = errors.New("tvmeta: response cache value type mismatch"
 // does not act as a global rate limiter against TMDB's 50 req/s cap. Existing
 // concurrency budgets (externalIDsConcurrency, featuredExtraIDsConcurrency)
 // remain the right tool for that.
-//
-//nolint:unused // wired into Client in subsequent tasks (3–6 of the tmdb-response-cache plan)
 type responseCache[K comparable, V any] struct {
 	lru *expirable.LRU[K, V]
 	sf  singleflight.Group
@@ -45,8 +54,6 @@ type responseCache[K comparable, V any] struct {
 // newResponseCache returns a typed LRU cache with the given size and TTL.
 // If size <= 0 or ttl <= 0 the returned cache is in pass-through mode:
 // GetOrFetch always invokes the fetch function and never stores the value.
-//
-//nolint:unused // wired into Client in subsequent tasks (3–6 of the tmdb-response-cache plan)
 func newResponseCache[K comparable, V any](size int, ttl time.Duration) *responseCache[K, V] {
 	if size <= 0 || ttl <= 0 {
 		return &responseCache[K, V]{}
@@ -68,7 +75,7 @@ func newResponseCache[K comparable, V any](size int, ttl time.Duration) *respons
 // Errors are NEVER cached; transient TMDB failures are retried on the next
 // call.
 //
-//nolint:unused,ireturn // wired into Client in subsequent tasks; ireturn does not apply to generic type parameters
+//nolint:ireturn // ireturn does not apply to generic type parameters
 func (c *responseCache[K, V]) GetOrFetch(
 	ctx context.Context,
 	key K,
@@ -110,7 +117,7 @@ func (c *responseCache[K, V]) GetOrFetch(
 
 // len returns the number of cached entries; 0 for a pass-through cache.
 //
-//nolint:unused // exposed for tests + observability hooks added in subsequent tasks
+//nolint:unused // exposed for tests + observability hooks added in Task 7
 func (c *responseCache[K, V]) len() int {
 	if c == nil || c.lru == nil {
 		return 0

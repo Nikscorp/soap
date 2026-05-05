@@ -21,11 +21,21 @@ type ClientM struct {
 // observe the legacy TMDB-only path without any extra setup). Tests that
 // exercise the IMDb-overlay path can call .Ready/.SeriesRating/.EpisodeRating
 // expectations on m.mockedRatings.
+//
+// The Client is constructed with a zero CacheConfig, which disables every
+// per-method cache (pass-through) — keeps existing tests deterministic. Tests
+// that exercise caching behavior should use NewClientMCfg.
 func NewClientM(t *testing.T) *ClientM {
+	return NewClientMCfg(t, CacheConfig{})
+}
+
+// NewClientMCfg is NewClientM with an explicit CacheConfig, for tests that
+// exercise the per-method response caches.
+func NewClientMCfg(t *testing.T, cacheCfg CacheConfig) *ClientM {
 	tmdbClient := mocks.NewTmdbClientMock(t)
 	ratings := mocks.NewRatingsProviderMock(t)
 	ratings.ReadyMock.Return(false)
-	client := New(tmdbClient, ratings)
+	client := New(tmdbClient, ratings, cacheCfg)
 	return &ClientM{
 		client:        client,
 		mockedTMDB:    tmdbClient,

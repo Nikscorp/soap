@@ -17,9 +17,17 @@ var ErrNilResp = errors.New("nil resp error")
 const externalIDsConcurrency = 8
 
 type Client struct {
-	client      tmdbClient
-	ratings     RatingsProvider
-	imdbIDCache sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	client       tmdbClient
+	ratings      RatingsProvider
+	imdbIDCache  sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	detailsCache *responseCache[detailsKey, *TvShowDetails]
+}
+
+// detailsKey is the cache key for TVShowDetails. Two requests collide iff
+// they target the same TMDB series ID and the same language tag.
+type detailsKey struct {
+	id   int
+	lang string
 }
 
 type tmdbClient interface {
@@ -33,13 +41,19 @@ type tmdbClient interface {
 // New constructs a tvmeta client. ratings can be NoopRatingsProvider{} to keep
 // the legacy TMDB-only behavior; pass a real provider (e.g. *imdbratings.Provider)
 // to enable IMDb rating overrides on top of TMDB metadata.
-func New(tmdbClient tmdbClient, ratings RatingsProvider) *Client {
+//
+// cacheCfg configures the per-method TMDB response caches. A zero CacheConfig
+// disables every cache (each method behaves as if caching were never added),
+// which is the safe default for tests and for environments that have not yet
+// opted in via env / yaml. See CacheConfig for the available knobs.
+func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *Client {
 	if ratings == nil {
 		ratings = NoopRatingsProvider{}
 	}
 	return &Client{
-		client:  tmdbClient,
-		ratings: ratings,
+		client:       tmdbClient,
+		ratings:      ratings,
+		detailsCache: newResponseCache[detailsKey, *TvShowDetails](cacheCfg.DetailsSize, cacheCfg.DetailsTTL),
 	}
 }
 

@@ -104,16 +104,16 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 3: Cache `TVShowDetails`
-- [ ] add `detailsCache *responseCache[detailsKey, *TvShowDetails]` field to `Client` (where `detailsKey` is a comparable struct `{ id int; lang string }`)
-- [ ] initialize from `Config.Cache.Details{Size,TTL}` in `New`
-- [ ] in `TVShowDetails`: build the key, call `detailsCache.GetOrFetch`; the fetch fn does the existing `c.client.GetTVDetails` + parse path
-- [ ] document on the method that the returned `*TvShowDetails` is shared and read-only (callers must not mutate)
-- [ ] update tests in `internal/pkg/tvmeta/details_test.go`:
+- [x] add `detailsCache *responseCache[detailsKey, *TvShowDetails]` field to `Client` (where `detailsKey` is a comparable struct `{ id int; lang string }`)
+- [x] initialize from `Config.Cache.Details{Size,TTL}` in `New`
+- [x] in `TVShowDetails`: build the key, call `detailsCache.GetOrFetch`; the fetch fn does the existing `c.client.GetTVDetails` + parse path
+- [x] document on the method that the returned `*TvShowDetails` is shared and read-only (callers must not mutate)
+- [x] update tests in `internal/pkg/tvmeta/details_test.go`:
   - existing happy / error tests still pass with cache enabled
   - new test: two calls with same (id, lang) hit TMDB exactly once (assert mock `GetTVDetails` called once via minimock counter)
   - new test: different `lang` keys do NOT collide
   - new test: error from TMDB is returned and is not cached (mock expects 2 calls for 2 errored requests)
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 4: Cache `TVShowEpisodesBySeason` (the biggest win)
 - [ ] add `episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]` field to `Client` (`episodesKey` = `{ id, season int; lang string }`)
