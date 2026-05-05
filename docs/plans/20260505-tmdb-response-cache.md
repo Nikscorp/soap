@@ -170,11 +170,11 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test` — must pass before next task
 
 ### Task 8: Update README, CLAUDE.md, OpenAPI
-- [ ] README.md: extend the "Architecture" / "Configuration" section with a paragraph on the new response cache (what is cached, default TTLs, knobs). Be precise about *what's not cached* (popular pool, image proxy). Numbers come from the actual code, not from this plan — re-read `cache.go` defaults before writing.
-- [ ] README.md: do NOT promise specific latency numbers until Task 9 measures them. Leave a `TODO: measure` placeholder if needed; remove after Task 9.
-- [ ] CLAUDE.md: append a sub-bullet to the "Two pieces of non-obvious behavior" list (which becomes three) describing the response cache, with the same shared-read-only warning that the existing `featuredExtras.view()` bullet uses. Document the deep-copy-before-mutate requirement for the episodes/search code paths.
-- [ ] `api/openapi.yaml`: this change does not alter the public API contract (response shapes unchanged, no new endpoints) — confirm no edits needed; if the spec mentions caching behavior in prose, sync it.
-- [ ] no new tests for docs, but verify `make lint` / `make test` still pass — must pass before next task
+- [x] README.md: extend the "Architecture" / "Configuration" section with a paragraph on the new response cache (what is cached, default TTLs, knobs). Be precise about *what's not cached* (popular pool, image proxy). Numbers come from the actual code, not from this plan — re-read `cache.go` defaults before writing.
+- [x] README.md: do NOT promise specific latency numbers until Task 9 measures them. Leave a `TODO: measure` placeholder if needed; remove after Task 9.
+- [x] CLAUDE.md: append a sub-bullet to the "Two pieces of non-obvious behavior" list (which becomes three) describing the response cache, with the same shared-read-only warning that the existing `featuredExtras.view()` bullet uses. Document the deep-copy-before-mutate requirement for the episodes/search code paths.
+- [x] `api/openapi.yaml`: this change does not alter the public API contract (response shapes unchanged, no new endpoints) — confirm no edits needed; if the spec mentions caching behavior in prose, sync it. Verified: existing cache prose ("featured-extras in-memory cache", `/featured` Cache-Control: no-store, `/meta` browser-cacheable) is unrelated to the new tvmeta layer and stays accurate. No edits.
+- [x] no new tests for docs, but verify `make lint` / `make test` still pass — must pass before next task
 
 ### Task 9: Verify acceptance criteria
 - [ ] verify all goals from Overview are implemented:
