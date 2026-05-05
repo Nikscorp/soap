@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strconv"
 	"time"
 
@@ -524,13 +523,17 @@ func fillEpisodesByParent(rows []parsedEpisode, counts map[uint32]int) map[uint3
 // EpisodeRating's two-level binary search has a deterministic inner order.
 // Pulled out of parseEpisodes purely to keep that function under the
 // project's cyclomatic-complexity budget.
+//
+// slices.SortFunc over sort.Slice drops the closure-interface allocation that
+// sort.Slice incurs on every call. Across ~45k series that's ~45k allocations
+// avoided per build.
 func sortEpisodesByAirOrder(out map[uint32][]EpisodeScore) {
 	for _, eps := range out {
-		sort.Slice(eps, func(i, j int) bool {
-			if eps[i].Season != eps[j].Season {
-				return eps[i].Season < eps[j].Season
+		slices.SortFunc(eps, func(a, b EpisodeScore) int {
+			if a.Season != b.Season {
+				return cmp.Compare(a.Season, b.Season)
 			}
-			return eps[i].Episode < eps[j].Episode
+			return cmp.Compare(a.Episode, b.Episode)
 		})
 	}
 }

@@ -567,6 +567,35 @@ func TestParseEpisodesPreallocatesPerParentSlices(t *testing.T) {
 	}
 }
 
+// TestSortEpisodesByAirOrder asserts the per-series sort orders by Season
+// first, then Episode within the same season, regardless of the order rows
+// were emitted by the parser. Exercises both branches of the comparator
+// (season-differing and episode-differing) so a regression in either branch
+// fails the test.
+func TestSortEpisodesByAirOrder(t *testing.T) {
+	out := map[uint32][]EpisodeScore{
+		1: {
+			{Season: 2, Episode: 1, Rating: 7.0},
+			{Season: 1, Episode: 3, Rating: 8.0},
+			{Season: 1, Episode: 1, Rating: 9.0},
+			{Season: 3, Episode: 5, Rating: 6.5},
+			{Season: 1, Episode: 2, Rating: 8.5},
+			{Season: 2, Episode: 2, Rating: 7.5},
+		},
+	}
+	sortEpisodesByAirOrder(out)
+
+	want := []EpisodeScore{
+		{Season: 1, Episode: 1, Rating: 9.0},
+		{Season: 1, Episode: 2, Rating: 8.5},
+		{Season: 1, Episode: 3, Rating: 8.0},
+		{Season: 2, Episode: 1, Rating: 7.0},
+		{Season: 2, Episode: 2, Rating: 7.5},
+		{Season: 3, Episode: 5, Rating: 6.5},
+	}
+	assert.Equal(t, want, out[1])
+}
+
 // TestParseRatingsHandlesTrailingNewlinesAndCRLF — defensive coverage for
 // CRLF-terminated lines and stray blank lines. bufio.Reader.ReadSlice does
 // not strip trailing \r, so the parser does it explicitly via trimLineEnd;
