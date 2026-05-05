@@ -190,9 +190,9 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] `docker compose down`
 
 ### Task 10: [Final] Plan & doc cleanup
-- [ ] confirm README.md, CLAUDE.md, and `config/config.yaml.dist` all reflect final defaults and numbers
-- [ ] confirm `api/openapi.yaml` is unchanged (or updated if any wording referenced prior cache state)
-- [ ] confirm `go.mod` / `go.sum` / `vendor/` are tidy (`make tidy` is a no-op)
+- [x] confirm README.md, CLAUDE.md, and `config/config.yaml.dist` all reflect final defaults and numbers (cache.go env-default tags, config.yaml.dist tvmeta block, and README's TVMETA_CACHE_* table all match: 1024/6h, 4096/6h, 256/30m; CLAUDE.md describes cache shape without numeric promises)
+- [x] confirm `api/openapi.yaml` is unchanged (or updated if any wording referenced prior cache state) — only pre-existing cache prose remains (featured-extras in-memory cache, `/featured` `Cache-Control: no-store`, `/meta` browser-cacheable); none reference the new tvmeta response cache, so no edits required
+- [x] confirm `go.mod` / `go.sum` / `vendor/` are tidy (`make tidy` is a no-op) — verified clean `git status` after `make tidy`
 
 *Note: ralphex automatically moves completed plans to `docs/plans/completed/`.*
 
