@@ -177,27 +177,17 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] no new tests for docs, but verify `make lint` / `make test` still pass — must pass before next task
 
 ### Task 9: Verify acceptance criteria
-- [ ] verify all goals from Overview are implemented:
-  - `/id/{id}` warm-hit issues zero TMDB calls for `details` + `episodes` (verified at unit-test layer in Tasks 3–4; spot-check via TMDB request log on the running container)
-  - global TMDB call volume drops measurably for repeated requests (same)
-- [ ] run `make lint` — all issues must be fixed
-- [ ] run `make test-race ./...` — no races, all green
-- [ ] run `make test-cov` — coverage on new files (`cache.go`) at or above project standard (project doesn't pin a target; aim ≥80% on new code)
-- [ ] build and run the full stack:
-  ```sh
-  make docker-build
-  docker compose up -d
-  until curl -fsS http://127.0.0.1:8202/ping >/dev/null; do sleep 1; done
-  ```
-- [ ] measure cold vs warm latency on `/id/{id}` for a many-season show (e.g. Game of Thrones id=1399, 8 seasons):
-  ```sh
-  curl -fsS -o /dev/null -w "cold: %{time_total}s\n" 'http://127.0.0.1:8202/id/1399?language=en'
-  curl -fsS -o /dev/null -w "warm: %{time_total}s\n" 'http://127.0.0.1:8202/id/1399?language=en'
-  curl -fsS -o /dev/null -w "warm: %{time_total}s\n" 'http://127.0.0.1:8202/id/1399?language=en'
-  ```
-- [ ] capture the actual numbers and update README/CLAUDE.md if any prose claims a specific factor improvement (per CLAUDE.md "Performance numbers come from measurement")
-- [ ] also exercise `/id/1399?language=ru` once (different lang key) to confirm localization keys do not collide
-- [ ] `docker compose down`
+- [x] verify all goals from Overview are implemented:
+  - `/id/{id}` warm-hit issues zero TMDB calls for `details` + `episodes` (confirmed via `/metrics`: 4 warm `/id/1399?language=en` calls produced 32 episode hits = 8 seasons × 4 calls, with no additional misses; 3 details hits matched the same)
+  - global TMDB call volume drops measurably for repeated requests (warm path served entirely from cache)
+- [x] run `make lint` — 0 issues
+- [x] run `make test-race ./...` — green; tvmeta package finishes in ~3.5s with race enabled
+- [x] run `make test-cov` — `cache.go` coverage well above 80% (newCacheMetrics 85.7%, GetOrFetch 88.9%, all other functions 100%); package overall 93.0%
+- [x] build and run the full stack (`make docker-build`, `docker compose up -d`, `/ping` ready)
+- [x] measure cold vs warm latency on `/id/1399?language=en`: cold=0.888s, warm=0.008s, warm=0.004s — ≈100×–200× faster on warm hits
+- [x] no specific latency factor claimed in README/CLAUDE.md prose, so no doc edits needed for measured numbers; the existing prose already describes cache shape without numeric promises (per CLAUDE.md "no `TODO: measure` placeholders to remove")
+- [x] exercised `/id/1399?language=ru` once (different lang key): ru-cold=0.715s, ru-warm=0.005s, then `/id/1399?language=en` warm still 0.005s — confirms language keys do NOT collide (ru fetch did not invalidate the en cache entries)
+- [x] `docker compose down`
 
 ### Task 10: [Final] Plan & doc cleanup
 - [ ] confirm README.md, CLAUDE.md, and `config/config.yaml.dist` all reflect final defaults and numbers
