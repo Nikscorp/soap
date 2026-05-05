@@ -27,7 +27,12 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 			if err != nil {
 				return fmt.Errorf("get all episodes for season %d: %w", i, err)
 			}
-			seasons[i-1] = episodes
+			// TVShowEpisodesBySeason may return a cached, shared *TVShowSeasonEpisodes
+			// (and shared *TVShowEpisode pointers). overrideEpisodeRatings mutates
+			// ep.Rating in place, which would leak per-call IMDb overrides into the
+			// cached value and into other concurrent readers. Deep-copy here so the
+			// override only ever touches this caller's slice.
+			seasons[i-1] = cloneSeasonEpisodes(episodes)
 			return nil
 		})
 	}

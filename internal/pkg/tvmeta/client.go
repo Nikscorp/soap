@@ -17,10 +17,11 @@ var ErrNilResp = errors.New("nil resp error")
 const externalIDsConcurrency = 8
 
 type Client struct {
-	client       tmdbClient
-	ratings      RatingsProvider
-	imdbIDCache  sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
-	detailsCache *responseCache[detailsKey, *TvShowDetails]
+	client        tmdbClient
+	ratings       RatingsProvider
+	imdbIDCache   sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	detailsCache  *responseCache[detailsKey, *TvShowDetails]
+	episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]
 }
 
 // detailsKey is the cache key for TVShowDetails. Two requests collide iff
@@ -28,6 +29,15 @@ type Client struct {
 type detailsKey struct {
 	id   int
 	lang string
+}
+
+// episodesKey is the cache key for TVShowEpisodesBySeason. Requests collide
+// iff they target the same TMDB series ID, the same season number, and the
+// same language tag.
+type episodesKey struct {
+	id     int
+	season int
+	lang   string
 }
 
 type tmdbClient interface {
@@ -51,9 +61,10 @@ func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig) *
 		ratings = NoopRatingsProvider{}
 	}
 	return &Client{
-		client:       tmdbClient,
-		ratings:      ratings,
-		detailsCache: newResponseCache[detailsKey, *TvShowDetails](cacheCfg.DetailsSize, cacheCfg.DetailsTTL),
+		client:        tmdbClient,
+		ratings:       ratings,
+		detailsCache:  newResponseCache[detailsKey, *TvShowDetails](cacheCfg.DetailsSize, cacheCfg.DetailsTTL),
+		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes](cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL),
 	}
 }
 

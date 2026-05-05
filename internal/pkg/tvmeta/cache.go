@@ -21,6 +21,10 @@ type CacheConfig struct {
 	DetailsSize int
 	// DetailsTTL is the per-entry expiry for *TvShowDetails.
 	DetailsTTL time.Duration
+	// EpisodesSize is the maximum number of cached *TVShowSeasonEpisodes entries.
+	EpisodesSize int
+	// EpisodesTTL is the per-entry expiry for *TVShowSeasonEpisodes.
+	EpisodesTTL time.Duration
 }
 
 // errCacheTypeAssert is returned by responseCache.GetOrFetch when the value

@@ -116,17 +116,17 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 4: Cache `TVShowEpisodesBySeason` (the biggest win)
-- [ ] add `episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]` field to `Client` (`episodesKey` = `{ id, season int; lang string }`)
-- [ ] initialize from `Config.Cache.Episodes{Size,TTL}` in `New`
-- [ ] in `TVShowEpisodesBySeason`: build key, call `episodesCache.GetOrFetch`; fetch fn = existing `c.client.GetTVSeasonDetails` + parse loop
-- [ ] document shared-read-only contract on the returned `*TVShowSeasonEpisodes`. Important: `TVShowAllSeasonsWithDetails` later applies `overrideEpisodeRatings` which **mutates `ep.Rating`**. Cached pointer must therefore be deep-copied before mutation, OR overrides must be applied to a per-call copy of the episodes slice. Choose: deep-copy in `TVShowAllSeasonsWithDetails` after gathering seasons, before override (1 small alloc per season; clean separation).
-- [ ] update `TVShowAllSeasonsWithDetails` to deep-copy episodes from each cached season pointer before passing them to `overrideEpisodeRatings`. Add a brief comment explaining why (cached value, override mutates).
-- [ ] update tests in `internal/pkg/tvmeta/episodes_test.go` and `all_seasons_with_detail_test.go`:
+- [x] add `episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]` field to `Client` (`episodesKey` = `{ id, season int; lang string }`)
+- [x] initialize from `Config.Cache.Episodes{Size,TTL}` in `New`
+- [x] in `TVShowEpisodesBySeason`: build key, call `episodesCache.GetOrFetch`; fetch fn = existing `c.client.GetTVSeasonDetails` + parse loop
+- [x] document shared-read-only contract on the returned `*TVShowSeasonEpisodes`. Important: `TVShowAllSeasonsWithDetails` later applies `overrideEpisodeRatings` which **mutates `ep.Rating`**. Cached pointer must therefore be deep-copied before mutation, OR overrides must be applied to a per-call copy of the episodes slice. Choose: deep-copy in `TVShowAllSeasonsWithDetails` after gathering seasons, before override (1 small alloc per season; clean separation).
+- [x] update `TVShowAllSeasonsWithDetails` to deep-copy episodes from each cached season pointer before passing them to `overrideEpisodeRatings`. Add a brief comment explaining why (cached value, override mutates).
+- [x] update tests in `internal/pkg/tvmeta/episodes_test.go` and `all_seasons_with_detail_test.go`:
   - same-key cache hit verified
   - cached episodes are isolated from override mutation (call `TVShowAllSeasonsWithDetails` twice with a ratings provider returning different ratings — cached side must not carry first call's overrides)
   - different (id, season, lang) tuples do not collide
   - error not cached
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 5: Cache `SearchTVShows` (split raw + override)
 - [ ] extract a private `(c *Client) searchTVShowsRaw(ctx context.Context, query string) (*TVShows, error)` containing the current TMDB call + parse + popularity sort, **without** calling `overrideSeriesRatings`
