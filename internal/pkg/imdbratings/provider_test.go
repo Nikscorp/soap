@@ -525,6 +525,48 @@ func TestParseEpisodesSkipsMalformedRows(t *testing.T) {
 	require.Len(t, got, 2, "only the two well-formed rows must join through")
 }
 
+// TestParseEpisodesPreallocatesPerParentSlices — Opt 5 asserts that each
+// per-parent slice in the parsed output has capacity exactly equal to its
+// length. The two-phase parser counts rows per parent on the streaming pass,
+// then pre-allocates each per-parent slice to its exact final size and fills
+// it. Any future regression that re-introduces append doublings would push
+// cap above len here.
+func TestParseEpisodesPreallocatesPerParentSlices(t *testing.T) {
+	// Use a wider sample so several parents have multiple episodes — that's
+	// the case where append-doublings used to leave trailing slack.
+	const ratings = "tconst\taverageRating\tnumVotes\n" +
+		"tt100\t8.0\t1000\n" +
+		"tt101\t8.1\t1000\n" +
+		"tt102\t8.2\t1000\n" +
+		"tt103\t8.3\t1000\n" +
+		"tt104\t8.4\t1000\n" +
+		"tt200\t9.0\t2000\n" +
+		"tt201\t9.1\t2000\n" +
+		"tt202\t9.2\t2000\n"
+	const episodes = "tconst\tparentTconst\tseasonNumber\tepisodeNumber\n" +
+		"tt100\ttt900\t1\t1\n" +
+		"tt101\ttt900\t1\t2\n" +
+		"tt102\ttt900\t1\t3\n" +
+		"tt103\ttt900\t2\t1\n" +
+		"tt104\ttt900\t2\t2\n" +
+		"tt200\ttt901\t1\t1\n" +
+		"tt201\ttt901\t1\t2\n" +
+		"tt202\ttt901\t1\t3\n"
+
+	titles, err := parseRatings(bytes.NewReader(gzipBytes(t, ratings)))
+	require.NoError(t, err)
+	out, err := parseEpisodes(bytes.NewReader(gzipBytes(t, episodes)), titles)
+	require.NoError(t, err)
+
+	require.Len(t, out[mustParseTconst(t, "tt900")], 5)
+	require.Len(t, out[mustParseTconst(t, "tt901")], 3)
+	for parent, eps := range out {
+		assert.Equal(t, len(eps), cap(eps),
+			"per-parent slice for parent=%d must be pre-sized: len=%d cap=%d",
+			parent, len(eps), cap(eps))
+	}
+}
+
 // TestParseRatingsHandlesTrailingNewlinesAndCRLF — defensive coverage for
 // CRLF-terminated lines and stray blank lines. bufio.Reader.ReadSlice does
 // not strip trailing \r, so the parser does it explicitly via trimLineEnd;

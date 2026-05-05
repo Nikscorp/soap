@@ -45,6 +45,13 @@ const (
 	initialTitlesCapacity   = 1_500_000
 	initialEpisodesCapacity = 250_000
 
+	// initialJoinedEpisodesCapacity hints the size of the transient flat
+	// slice the episode parser collects before building per-parent slices
+	// from exact counts. Real 2026 IMDb data joins ~3.0M rows; 3.5M leaves
+	// headroom without inflating the up-front allocation. The slice is
+	// freed before the snapshot is published.
+	initialJoinedEpisodesCapacity = 3_500_000
+
 	// bufio.Reader buffer size for the parsers. Default 4 KB is fine for
 	// IMDb's ~50-100-byte rows, but a larger buffer reduces syscall count
 	// against the gzip reader and trivially absorbs any pathological row
@@ -424,15 +431,27 @@ func parseEpisodesFile(path string, titles map[uint32]Score) (map[uint32][]Episo
 	return parseEpisodes(f, titles)
 }
 
+// parsedEpisode is the transient (parent, score) tuple buffered during the
+// counting pass of parseEpisodes. We keep it local to the parser since
+// nothing outside this file needs the shape.
+type parsedEpisode struct {
+	parent uint32
+	score  EpisodeScore
+}
+
 // parseEpisodes streams a gzipped IMDb episode TSV and joins each row against
 // the titles map (keyed by numeric episode tconst), accumulating per-series
-// sorted slices. Rows with missing fields, no rating in titles, or
-// out-of-range season/episode numbers are dropped.
+// slices sorted by air order. Rows with missing fields, no rating in titles,
+// or out-of-range season/episode numbers are dropped.
 //
-// Implementation matches parseRatings: bufio.Reader.ReadSlice + bytes-level
-// field splits, so the per-row sc.Text() allocation is gone. Episode parse
-// is the larger of the two passes (~9M rows in 2026) so this is where the
-// allocation savings show up most.
+// Two-phase build: a counting pass collects valid joined rows into a flat
+// slice and tallies per-parent counts; a fill pass pre-allocates each
+// per-parent slice to its exact final length and copies the rows in. This
+// removes the O(log N) per-parent slice doublings that the original
+// `out[parent] = append(...)` loop did across ~45k series, and crucially
+// removes the trailing append-doubling slack (~50% on average) that the
+// published snapshot used to retain. The flat slice is freed before the
+// snapshot is published.
 //
 // Schema: tconst \t parentTconst \t seasonNumber \t episodeNumber.
 func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeScore, error) {
@@ -444,32 +463,61 @@ func parseEpisodes(r io.Reader, titles map[uint32]Score) (map[uint32][]EpisodeSc
 
 	br := bufio.NewReaderSize(gz, readerBufferBytes)
 
-	out := make(map[uint32][]EpisodeScore, initialEpisodesCapacity)
-
 	if err := skipHeaderLine(br); err != nil {
 		if errors.Is(err, io.EOF) {
-			return out, nil
+			return make(map[uint32][]EpisodeScore), nil
 		}
 		return nil, fmt.Errorf("read episodes header: %w", err)
 	}
 
+	rows, counts, err := collectEpisodeRows(br, titles)
+	if err != nil {
+		return nil, err
+	}
+
+	out := fillEpisodesByParent(rows, counts)
+	sortEpisodesByAirOrder(out)
+	return out, nil
+}
+
+// collectEpisodeRows is the streaming counting pass: it parses each row,
+// drops anything that doesn't join, and emits both a flat slice of joined
+// rows and a per-parent count. Pulled out of parseEpisodes purely to keep
+// that function under the project's cyclomatic-complexity budget.
+func collectEpisodeRows(br *bufio.Reader, titles map[uint32]Score) ([]parsedEpisode, map[uint32]int, error) {
+	rows := make([]parsedEpisode, 0, initialJoinedEpisodesCapacity)
+	counts := make(map[uint32]int, initialEpisodesCapacity)
 	for {
 		line, err := br.ReadSlice('\n')
 		if len(line) > 0 {
 			if parent, score, ok := parseEpisodeRow(trimLineEnd(line), titles); ok {
-				out[parent] = append(out[parent], score)
+				rows = append(rows, parsedEpisode{parent: parent, score: score})
+				counts[parent]++
 			}
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				break
+				return rows, counts, nil
 			}
-			return nil, fmt.Errorf("read episodes: %w", err)
+			return nil, nil, fmt.Errorf("read episodes: %w", err)
 		}
 	}
+}
 
-	sortEpisodesByAirOrder(out)
-	return out, nil
+// fillEpisodesByParent is the fill pass: pre-allocates each per-parent slice
+// to the exact length tallied during the counting pass, then walks the flat
+// row buffer in order. Append never grows past the initial capacity, so the
+// published snapshot retains no doubling slack.
+func fillEpisodesByParent(rows []parsedEpisode, counts map[uint32]int) map[uint32][]EpisodeScore {
+	out := make(map[uint32][]EpisodeScore, len(counts))
+	for parent, n := range counts {
+		out[parent] = make([]EpisodeScore, 0, n)
+	}
+	for i := range rows {
+		e := &rows[i]
+		out[e.parent] = append(out[e.parent], e.score)
+	}
+	return out
 }
 
 // sortEpisodesByAirOrder sorts each per-series slice by (Season, Episode) so
