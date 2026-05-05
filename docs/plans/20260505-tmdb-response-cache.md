@@ -88,20 +88,20 @@ The cache stores already-parsed domain structs (`*TvShowDetails`, `*TVShowSeason
 - [x] run `make test` — must pass before next task
 
 ### Task 2: Generic `responseCache[K, V]` primitive
-- [ ] create `internal/pkg/tvmeta/cache.go` with a typed `responseCache[K comparable, V any]` struct wrapping `expirable.LRU[K, V]` + `singleflight.Group`
-- [ ] implement `(*responseCache).GetOrFetch(ctx, key, fetch func(context.Context) (V, error)) (V, error)`:
+- [x] create `internal/pkg/tvmeta/cache.go` with a typed `responseCache[K comparable, V any]` struct wrapping `expirable.LRU[K, V]` + `singleflight.Group`
+- [x] implement `(*responseCache).GetOrFetch(ctx, key, fetch func(context.Context) (V, error)) (V, error)`:
   - on hit: return cached value, no fetch call
-  - on miss: dedupe via `singleflight.Do` (key = stringified cache key); fetch fn receives a context detached from caller cancellation (`context.WithoutCancel(ctx)`) so a cancelled waiter doesn't kill the fetch for other waiters
+  - on miss: dedupe via `singleflight.DoChan` (key = stringified cache key); fetch fn receives a context detached from caller cancellation (`context.WithoutCancel(ctx)`) so a cancelled waiter doesn't kill the fetch for other waiters
   - errors: do NOT cache (transient TMDB failures must not poison the cache); return error to all waiters of the same singleflight slot
-- [ ] expose `(*responseCache).len() int` and a constructor `newResponseCache[K, V](size int, ttl time.Duration) *responseCache[K, V]` (size <= 0 or ttl <= 0 returns a no-op pass-through cache so config can disable per-method caching)
-- [ ] write tests in `internal/pkg/tvmeta/cache_test.go`:
+- [x] expose `(*responseCache).len() int` and a constructor `newResponseCache[K, V](size int, ttl time.Duration) *responseCache[K, V]` (size <= 0 or ttl <= 0 returns a no-op pass-through cache so config can disable per-method caching)
+- [x] write tests in `internal/pkg/tvmeta/cache_test.go`:
   - hit returns cached value, fetch fn not called second time (use a counter)
   - miss after TTL re-fetches (use synthetic clock or short TTL with `time.Sleep` — prefer real time, ttl=50ms)
   - error from fetch is returned, not cached (next call re-tries fetch)
   - concurrent N callers with same key trigger fetch fn exactly once (singleflight verification)
-  - cancelled caller context: result still delivered if fetch succeeds before cancellation; cancelled caller observes its own ctx error otherwise (define & test the chosen semantics — recommended: caller-ctx cancellation cancels the *wait*, not the fetch; other waiters still get the value)
+  - cancelled caller context: result still delivered if fetch succeeds before cancellation; cancelled caller observes its own ctx error otherwise (chosen semantics: caller-ctx cancellation cancels the *wait*, not the fetch; other waiters still get the value)
   - disabled cache (size=0 or ttl=0) calls fetch fn every time
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 3: Cache `TVShowDetails`
 - [ ] add `detailsCache *responseCache[detailsKey, *TvShowDetails]` field to `Client` (where `detailsKey` is a comparable struct `{ id int; lang string }`)
