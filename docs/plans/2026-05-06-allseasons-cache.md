@@ -417,28 +417,28 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 9: Update README and CLAUDE.md
 
-- [ ] README.md: in the env-var table, replace the `TVMETA_CACHE_EPISODES_*`
+- [x] README.md: in the env-var table, replace the `TVMETA_CACHE_EPISODES_*`
   row with `TVMETA_CACHE_ALLSEASONS_*` (`1024` / `6h`, prose: "LRU bound and
   per-entry TTL for cached fully-assembled `/id/{id}` responses (the dominant
   `/id/{id}` cost)")
-- [ ] README.md: re-read the surrounding "Caching" prose for any episodes-cache
+- [x] README.md: re-read the surrounding "Caching" prose for any episodes-cache
   references and rewrite to describe the new layer accurately. Numbers must
   come from `cache.go` defaults, not from this plan
-- [ ] README.md: re-read the `/search/{q}` API tour section. If the prose
+- [x] README.md: re-read the `/search/{q}` API tour section. If the prose
   describes the `rating` field as IMDb-overridden, update it to say the
   rating comes from TMDB's `VoteAverage` (series-level). The episode-level
   IMDb override on `/id/{id}` stays — be explicit about that distinction
   so the JSON examples don't read as contradictory
-- [ ] CLAUDE.md: rewrite the "TMDB response cache (`internal/pkg/tvmeta/cache.go`)"
+- [x] CLAUDE.md: rewrite the "TMDB response cache (`internal/pkg/tvmeta/cache.go`)"
   bullet to list the new set of cached methods (`TVShowDetails`,
   `TVShowAllSeasonsWithDetails`, `SearchTVShows`). Drop the deep-copy /
   override-mutation paragraph (no longer applies — `SearchTVShows` no
   longer overrides; `TVShowAllSeasonsWithDetails` caches the post-override
   value). Keep the shared-read-only contract sentence
-- [ ] `api/openapi.yaml`: re-read. The shapes are unchanged, but if the
+- [x] `api/openapi.yaml`: re-read. The shapes are unchanged, but if the
   schema's `rating` description on the search endpoint mentions IMDb,
   update it to TMDB. Otherwise no edits
-- [ ] no new tests; `make lint` and `make test` must still pass before next task
+- [x] no new tests; `make lint` and `make test` must still pass before next task
 
 ### Task 10: Verify acceptance criteria
 

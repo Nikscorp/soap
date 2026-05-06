@@ -102,12 +102,12 @@ Each request reshuffles, so refreshing the home page surfaces different shows. T
 
 ### Rating source
 
-The numeric `rating` field on every endpoint that returns one (`/search/{query}`, `/id/{id}`) reflects whichever rating source the server is configured for. The wire shape of the response does not change — only the source of the number.
+The per-episode `rating` field on `/id/{id}` reflects whichever rating source the server is configured for. Series-level `rating` on `/search/{query}` always comes from TMDB's `vote_average` regardless of the configured source — IMDb's granularity advantage is at the episode level, where users actually drill in. The wire shape of the response does not change — only the source of the number.
 
-| `LAZYSOAP_RATINGS_SOURCE` | Where ratings come from |
+| `LAZYSOAP_RATINGS_SOURCE` | Where `/id/{id}` episode ratings come from |
 | --- | --- |
 | `tmdb` *(default)* | TMDB `vote_average`, identical to historical behavior. |
-| `imdb` | IMDb's non-commercial dataset dumps (`title.ratings.tsv.gz` + `title.episode.tsv.gz` from [datasets.imdbws.com](https://datasets.imdbws.com/)), refreshed daily by a background goroutine. The series-level resolution path makes one extra TMDB `external_ids` call per series (cached in-process). When IMDb has no entry for a particular episode (e.g. brand-new episodes IMDb hasn't ingested yet) the server transparently falls back to that episode's TMDB rating. |
+| `imdb` | IMDb's non-commercial dataset dumps (`title.ratings.tsv.gz` + `title.episode.tsv.gz` from [datasets.imdbws.com](https://datasets.imdbws.com/)), refreshed daily by a background goroutine. Resolving a TMDB id to its IMDb id makes one extra TMDB `external_ids` call per series (cached in-process). When IMDb has no entry for a particular episode (e.g. brand-new episodes IMDb hasn't ingested yet) the server transparently falls back to that episode's TMDB rating. |
 
 Selecting `imdb` adds two startup characteristics to the server:
 
@@ -185,8 +185,8 @@ Defaults live in `config/config.yaml.dist`. Every field can also be overridden t
 | `TMDB_REQUEST_TIMEOUT` | `10s` | Outbound TMDB request timeout |
 | `TMDB_ENABLE_AUTO_RETRY` | `true` | Retry transient TMDB errors |
 | `TVMETA_CACHE_DETAILS_SIZE` / `TVMETA_CACHE_DETAILS_TTL` | `1024` / `6h` | LRU bound and per-entry TTL for cached `TVShowDetails`. |
-| `TVMETA_CACHE_EPISODES_SIZE` / `TVMETA_CACHE_EPISODES_TTL` | `4096` / `6h` | LRU bound and per-entry TTL for cached per-season episode lists (the dominant `/id/{id}` cost). |
-| `TVMETA_CACHE_SEARCH_SIZE` / `TVMETA_CACHE_SEARCH_TTL` | `256` / `30m` | LRU bound and per-entry TTL for cached raw search results. |
+| `TVMETA_CACHE_ALLSEASONS_SIZE` / `TVMETA_CACHE_ALLSEASONS_TTL` | `1024` / `6h` | LRU bound and per-entry TTL for cached fully-assembled `/id/{id}` responses (the dominant `/id/{id}` cost). |
+| `TVMETA_CACHE_SEARCH_SIZE` / `TVMETA_CACHE_SEARCH_TTL` | `256` / `30m` | LRU bound and per-entry TTL for cached search results. |
 
 See `internal/app/lazysoap/server.go` and `internal/pkg/clients/tmdb/tmdb.go` for the full set of fields and YAML keys.
 
@@ -195,10 +195,10 @@ See `internal/app/lazysoap/server.go` and `internal/pkg/clients/tmdb/tmdb.go` fo
 Three in-process LRU caches inside `internal/pkg/tvmeta` deduplicate TMDB calls behind `/search/{query}` and `/id/{id}`:
 
 - `TVShowDetails` keyed by `(id, language)`.
-- `TVShowEpisodesBySeason` keyed by `(id, season, language)` — the biggest win, because `/id/{id}` fans out one request per season.
-- Raw `SearchTVShows` keyed by `(query, resolved language tag)`. Cached entries hold pre-override TMDB results; IMDb-overlay ratings are recomputed per call from a fresh deep copy, so a `LAZYSOAP_RATINGS_SOURCE=imdb` deployment does not serve stale rating numbers from the cache after a dataset refresh.
+- `TVShowAllSeasonsWithDetails` keyed by `(id, language)` — the dominant `/id/{id}` win: caches the fully-assembled response (series details + per-season episode lists with IMDb episode-rating overrides already applied), so warm hits skip both the season fan-out and the override pass entirely. The 6h TTL bounds rating-snapshot staleness relative to the IMDb provider's daily refresh.
+- `SearchTVShows` keyed by `(query, resolved language tag)`. Holds the TMDB-sourced result popularity-sorted; the cached `*TVShows` is shared and read-only.
 
-Concurrent cache misses for the same key are collapsed into a single TMDB call via `singleflight`. Errors are never cached: a transient TMDB failure is retried on the next request. Production builds populate the defaults shown in the env-var table above via `cleanenv`, so caching is on out of the box; setting any `*_SIZE` or `*_TTL` to zero disables the corresponding cache (the method falls through to plain TMDB calls), which is the mode used by tests that construct `tvmeta.CacheConfig{}` directly. The popular pool behind `/featured` is intentionally not cached here — the request reshuffles per call and the `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` cache already covers the curated extras. Image responses from `/img/{path}` are streamed straight from TMDB and not cached server-side. The cache is in-memory only, lost on restart, and observable via `tvmeta_cache_hits_total` / `_misses_total` / `_errors_total` (label `method=details|episodes|search`) on `/metrics`.
+Concurrent cache misses for the same key are collapsed into a single TMDB call via `singleflight`. Errors are never cached: a transient TMDB failure is retried on the next request. Production builds populate the defaults shown in the env-var table above via `cleanenv`, so caching is on out of the box; setting any `*_SIZE` or `*_TTL` to zero disables the corresponding cache (the method falls through to plain TMDB calls), which is the mode used by tests that construct `tvmeta.CacheConfig{}` directly. The popular pool behind `/featured` is intentionally not cached here — the request reshuffles per call and the `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` cache already covers the curated extras. Image responses from `/img/{path}` are streamed straight from TMDB and not cached server-side. The cache is in-memory only, lost on restart, and observable via `tvmeta_cache_hits_total` / `_misses_total` / `_errors_total` (label `method=details|all_seasons|search`) on `/metrics`.
 
 ## Development
 
