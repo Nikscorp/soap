@@ -225,7 +225,7 @@ Before any production code changes, capture a measured baseline so the
 final benchstat report is comparing apples-to-apples (current code vs.
 post-plan code, same benchmark names, same mock fixtures).
 
-- [ ] add `internal/pkg/tvmeta/bench_test.go` with the following benchmarks,
+- [x] add `internal/pkg/tvmeta/bench_test.go` with the following benchmarks,
   all using the existing minimock `tmdbClient` mock so no network is
   involved:
   - `BenchmarkTVShowAllSeasonsWithDetails_Warm` — construct one `Client`
@@ -243,10 +243,10 @@ post-plan code, same benchmark names, same mock fixtures).
   - `BenchmarkSearchTVShows_Cold` — fresh `Client` each iteration; same
     20-result shape. Today this measures the full external_ids fan-out
     + override.
-- [ ] use `b.ReportAllocs()` in every benchmark so the baseline captures
+- [x] use `b.ReportAllocs()` in every benchmark so the baseline captures
   allocs/op, not just ns/op (the clone/override removal is largely an
   alloc reduction)
-- [ ] add Makefile targets mirroring the imdbratings convention:
+- [x] add Makefile targets mirroring the imdbratings convention:
   ```make
   bench-tvmeta:
   	@mkdir -p bin
@@ -258,15 +258,15 @@ post-plan code, same benchmark names, same mock fixtures).
   bench-tvmeta-stat:
   	benchstat bin/bench-tvmeta-baseline.txt bin/bench-tvmeta.txt
   ```
-- [ ] run `make bench-tvmeta-baseline` to capture
+- [x] run `make bench-tvmeta-baseline` to capture
   `bin/bench-tvmeta-baseline.txt`. Verify the file contains all four
   benchmark names with `count=10` rows
-- [ ] do NOT try to commit the baseline file: `bin/` is gitignored, matching
+- [x] do NOT try to commit the baseline file: `bin/` is gitignored, matching
   the imdbratings precedent. The baseline is a local-only artifact for the
   duration of plan execution; persistence comes via the benchstat output
   pasted into this plan's "Benchmark Results" section in Task 10. The
   bench infra (`bench_test.go` + the new Makefile targets) IS committed.
-- [ ] no functional code touched yet; run `make test` to confirm the bench
+- [x] no functional code touched yet; run `make test` to confirm the bench
   file compiles and existing tests still pass before next task
 
 ### Task 2: Add `allSeasonsCache` field + key + config
