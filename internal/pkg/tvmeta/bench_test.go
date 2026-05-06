@@ -80,7 +80,6 @@ func benchSetupAllSeasonsMocks(tb testing.TB, cfg CacheConfig) (*Client, *mocks.
 	ratings := mocks.NewRatingsProviderMock(tb)
 	ratings.ReadyMock.Return(true)
 	ratings.EpisodeRatingMock.Return(8.5, 50000, true)
-	ratings.SeriesRatingMock.Return(8.5, 50000, true)
 
 	return New(tmdbMock, ratings, cfg, nil), tmdbMock
 }
@@ -89,11 +88,9 @@ func benchSetupSearchMocks(tb testing.TB, cfg CacheConfig) (*Client, *mocks.Tmdb
 	tb.Helper()
 	tmdbMock := mocks.NewTmdbClientMock(tb)
 	tmdbMock.GetSearchTVShowMock.Return(benchSearchResponse(), nil)
-	tmdbMock.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: benchIMDbID}, nil)
 
 	ratings := mocks.NewRatingsProviderMock(tb)
 	ratings.ReadyMock.Return(true)
-	ratings.SeriesRatingMock.Return(8.5, 50000, true)
 	ratings.EpisodeRatingMock.Return(8.5, 50000, true)
 
 	return New(tmdbMock, ratings, cfg, nil), tmdbMock
@@ -133,7 +130,6 @@ func BenchmarkTVShowAllSeasonsWithDetails_Cold(b *testing.B) {
 	ratings := mocks.NewRatingsProviderMock(b)
 	ratings.ReadyMock.Return(true)
 	ratings.EpisodeRatingMock.Return(8.5, 50000, true)
-	ratings.SeriesRatingMock.Return(8.5, 50000, true)
 
 	ctx := context.Background()
 	b.ReportAllocs()
@@ -168,10 +164,8 @@ func BenchmarkSearchTVShows_Cold(b *testing.B) {
 	cfg := benchCacheCfg()
 	tmdbMock := mocks.NewTmdbClientMock(b)
 	tmdbMock.GetSearchTVShowMock.Return(benchSearchResponse(), nil)
-	tmdbMock.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: benchIMDbID}, nil)
 	ratings := mocks.NewRatingsProviderMock(b)
 	ratings.ReadyMock.Return(true)
-	ratings.SeriesRatingMock.Return(8.5, 50000, true)
 	ratings.EpisodeRatingMock.Return(8.5, 50000, true)
 
 	ctx := context.Background()

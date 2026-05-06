@@ -370,36 +370,36 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 7: Drop the IMDb series-level override on search
 
-- [ ] in `internal/pkg/tvmeta/search.go`, collapse `SearchTVShows` /
+- [x] in `internal/pkg/tvmeta/search.go`, collapse `SearchTVShows` /
   `searchTVShowsRaw` into a single function: `SearchTVShows` wraps
   `searchCache.GetOrFetch` and the fetch closure body is the existing
   `searchTVShowsRaw` body verbatim (TMDB call → parse → popularity sort).
   The cached `*TVShows` is returned directly — shared, read-only.
-- [ ] delete `cloneTVShows` and its godoc.
-- [ ] delete `overrideSeriesRatings` and its godoc.
-- [ ] in `internal/pkg/tvmeta/ratings_provider.go`, remove the
+- [x] delete `cloneTVShows` and its godoc.
+- [x] delete `overrideSeriesRatings` and its godoc.
+- [x] in `internal/pkg/tvmeta/ratings_provider.go`, remove the
   `SeriesRating(string) (float32, uint32, bool)` method from the
   `RatingsProvider` interface and from `NoopRatingsProvider`.
-- [ ] reduce `SearchTVShows`'s godoc to ≤2 lines: state what it returns,
+- [x] reduce `SearchTVShows`'s godoc to ≤2 lines: state what it returns,
   state that the returned pointer is shared/read-only. No prose about
   caching layers, override semantics, or the historical clone contract.
-- [ ] run `make generate-mocks` to regenerate
+- [x] run `make generate-mocks` to regenerate
   `internal/pkg/tvmeta/mocks/ratings_provider_mock.go` against the shrunk
   interface.
-- [ ] update `internal/pkg/tvmeta/search_test.go`:
+- [x] update `internal/pkg/tvmeta/search_test.go`:
   - drop tests that asserted on overridden series ratings (anything that
     set `mockedRatings.SeriesRatingMock.Return(...)` and asserted a
     non-TMDB rating value flows through)
   - keep cache-shape tests (cache hits once for N repeats; key isolation
     across query/lang; error not cached) but switch their assertions to
     expect TMDB's `VoteAverage` directly instead of any overridden value
-- [ ] update `internal/pkg/tvmeta/ratings_override_test.go`:
+- [x] update `internal/pkg/tvmeta/ratings_override_test.go`:
   - remove any cases for `overrideSeriesRatings` (function no longer exists)
   - keep cases for `overrideEpisodeRatings`
-- [ ] verify nothing in `tvmeta` still references `c.ratings.SeriesRating`
+- [x] verify nothing in `tvmeta` still references `c.ratings.SeriesRating`
   (`grep -rn 'SeriesRating' internal/pkg/tvmeta` — only the imdbratings
   concrete impl + its tests should remain, both outside `tvmeta/`)
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 8: Plumb the renamed config through
 

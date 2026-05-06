@@ -12,11 +12,6 @@ import (
 
 var ErrNilResp = errors.New("nil resp error")
 
-// Concurrency cap for parallel TMDB external_ids fan-outs (e.g. when
-// resolving every search result's IMDb ID). TMDB's documented rate limit is
-// 50 req/s; 8 leaves comfortable headroom alongside other in-flight work.
-const externalIDsConcurrency = 8
-
 type Client struct {
 	client          tmdbClient
 	ratings         RatingsProvider
