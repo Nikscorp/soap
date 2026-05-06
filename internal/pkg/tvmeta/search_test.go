@@ -30,7 +30,7 @@ type ClientM struct {
 // NewClientM constructs a Client wired to a fresh tmdbClient mock and a
 // RatingsProvider mock that defaults to "not ready" (so existing tests
 // observe the legacy TMDB-only path without any extra setup). Tests that
-// exercise the IMDb-overlay path can call .Ready/.SeriesRating/.EpisodeRating
+// exercise the IMDb-overlay path can call .Ready/.EpisodeRating
 // expectations on m.mockedRatings.
 //
 // The Client is constructed with a zero CacheConfig, which disables every
@@ -255,8 +255,8 @@ func TestSearchTVShowsNilResults(t *testing.T) {
 }
 
 // TestSearchTVShowsCacheHitsOnce verifies the per-(query, lang) search cache:
-// repeated calls with the same query issue exactly one TMDB request, while
-// the per-call ratings override still runs every time.
+// repeated calls with the same query issue exactly one TMDB request and return
+// the cached *TVShows directly (TMDB VoteAverage flows through unchanged).
 func TestSearchTVShowsCacheHitsOnce(t *testing.T) {
 	client := NewClientMCfg(t, searchCacheCfg())
 	client.mockedTMDB.GetSearchTVShowMock.Return(&tmdb.SearchTVShows{
@@ -267,66 +267,17 @@ func TestSearchTVShowsCacheHitsOnce(t *testing.T) {
 		},
 	}, nil)
 
-	// Ratings provider: ready, but never resolves an IMDb ID, so override is
-	// a no-op past the Ready() gate. This isolates the cache-hit assertion
-	// from any external_ids fan-out.
-	client.mockedRatings.ReadyMock.Return(true)
-	client.mockedTMDB.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: ""}, nil)
-
 	for range 5 {
 		resp, err := client.client.SearchTVShows(context.Background(), "Lost")
 		require.NoError(t, err)
 		require.Len(t, resp.TVShows, 1)
 		require.Equal(t, "Lost", resp.TVShows[0].Name)
+		assert.InDelta(t, 7.5, resp.TVShows[0].Rating, 0.001,
+			"rating sources from TMDB VoteAverage; no IMDb override on search")
 	}
 
 	require.Equal(t, uint64(1), client.mockedTMDB.GetSearchTVShowAfterCounter(),
 		"cache must collapse repeated lookups to a single TMDB search call")
-}
-
-// TestSearchTVShowsCacheRatingsRefreshOnHit verifies that the override runs on
-// every call against a per-call deep copy of the cached *TVShows: when the
-// ratings provider's response changes between two calls, the second response
-// reflects the new rating even though TMDB was hit only once.
-func TestSearchTVShowsCacheRatingsRefreshOnHit(t *testing.T) {
-	client := NewClientMCfg(t, searchCacheCfg())
-	const tmdbRating float32 = 7.5
-	client.mockedTMDB.GetSearchTVShowMock.Return(&tmdb.SearchTVShows{
-		SearchTVShowsResults: &tmdb.SearchTVShowsResults{
-			Results: []tmdb.TVShowResult{
-				{ID: 1399, Name: "GoT", VoteMetrics: tmdb.VoteMetrics{VoteAverage: tmdbRating}, Popularity: 100},
-			},
-		},
-	}, nil)
-	client.mockedRatings.ReadyMock.Return(true)
-	client.mockedTMDB.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: fakeIMDbID}, nil)
-
-	// First call: provider returns 9.1.
-	client.mockedRatings.SeriesRatingMock.Return(9.1, 50000, true)
-	resp1, err := client.client.SearchTVShows(context.Background(), "GoT")
-	require.NoError(t, err)
-	require.Len(t, resp1.TVShows, 1)
-	assert.InDelta(t, 9.1, resp1.TVShows[0].Rating, 0.001)
-
-	// Second call: provider returns 8.2 — caller must see 8.2, not the leaked
-	// 9.1 from the first call's override and not the original 7.5 from TMDB.
-	client.mockedRatings.SeriesRatingMock.Return(8.2, 60000, true)
-	resp2, err := client.client.SearchTVShows(context.Background(), "GoT")
-	require.NoError(t, err)
-	require.Len(t, resp2.TVShows, 1)
-	assert.InDelta(t, 8.2, resp2.TVShows[0].Rating, 0.001,
-		"second call must reflect the latest provider rating, not a leaked first-call override")
-
-	// Distinct outer + inner pointers — proves the deep copy actually happened.
-	assert.NotSame(t, resp1, resp2,
-		"cached *TVShows must be deep-copied per call")
-	assert.NotSame(t, resp1.TVShows[0], resp2.TVShows[0],
-		"cached *TVShow pointer must be deep-copied per call")
-
-	// And exactly one TMDB search call total — the cache really did serve
-	// the second request.
-	require.Equal(t, uint64(1), client.mockedTMDB.GetSearchTVShowAfterCounter(),
-		"second call must be served from the search cache")
 }
 
 // TestSearchTVShowsCacheKeyIsolation verifies that distinct query strings (and

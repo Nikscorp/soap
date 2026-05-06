@@ -37,6 +37,16 @@ bench-stat:
 bench-real-stat:
 	benchstat bin/bench-real-baseline.txt bin/bench-real.txt
 
+bench-tvmeta:
+	@mkdir -p bin
+	go test -bench=. -benchmem -count=10 -run=^$$ ./internal/pkg/tvmeta/... | tee bin/bench-tvmeta.txt
+
+bench-tvmeta-baseline: bench-tvmeta
+	@cp bin/bench-tvmeta.txt bin/bench-tvmeta-baseline.txt
+
+bench-tvmeta-stat:
+	benchstat bin/bench-tvmeta-baseline.txt bin/bench-tvmeta.txt
+
 up:
 	./bin/lazysoap
 

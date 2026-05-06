@@ -24,16 +24,20 @@ type CacheConfig struct {
 	DetailsSize int `env:"TVMETA_CACHE_DETAILS_SIZE" env-default:"1024" yaml:"details_size"`
 	// DetailsTTL is the per-entry expiry for *TvShowDetails.
 	DetailsTTL time.Duration `env:"TVMETA_CACHE_DETAILS_TTL" env-default:"6h" yaml:"details_ttl"`
-	// EpisodesSize is the maximum number of cached *TVShowSeasonEpisodes entries.
-	EpisodesSize int `env:"TVMETA_CACHE_EPISODES_SIZE" env-default:"4096" yaml:"episodes_size"`
-	// EpisodesTTL is the per-entry expiry for *TVShowSeasonEpisodes.
-	EpisodesTTL time.Duration `env:"TVMETA_CACHE_EPISODES_TTL" env-default:"6h" yaml:"episodes_ttl"`
-	// SearchSize is the maximum number of cached raw *TVShows entries
-	// (pre-override search results, keyed by query + resolved language tag).
+	// AllSeasonsSize is the maximum number of cached *AllSeasonsWithDetails
+	// entries (post-override fully-assembled /id/{id} responses).
+	AllSeasonsSize int `env:"TVMETA_CACHE_ALLSEASONS_SIZE" env-default:"1024" yaml:"all_seasons_size"`
+	// AllSeasonsTTL is the per-entry expiry for *AllSeasonsWithDetails. Cached
+	// values carry IMDb-overridden ratings, so this TTL also bounds how stale
+	// rating-snapshot data can become relative to the IMDb provider's refresh.
+	AllSeasonsTTL time.Duration `env:"TVMETA_CACHE_ALLSEASONS_TTL" env-default:"6h" yaml:"all_seasons_ttl"`
+	// SearchSize is the maximum number of cached *TVShows entries, keyed by
+	// query + resolved language tag.
 	SearchSize int `env:"TVMETA_CACHE_SEARCH_SIZE" env-default:"256" yaml:"search_size"`
-	// SearchTTL is the per-entry expiry for raw *TVShows search results.
-	// Bounded short relative to details/episodes because IMDb-overlay ratings
-	// are recomputed per call from a snapshot that itself refreshes daily.
+	// SearchTTL is the per-entry expiry for *TVShows search results. Bounded
+	// short relative to details/all_seasons because search responses change as
+	// TMDB popularity shifts, and stale top results are more user-visible than
+	// stale series metadata.
 	SearchTTL time.Duration `env:"TVMETA_CACHE_SEARCH_TTL" env-default:"30m" yaml:"search_ttl"`
 }
 
@@ -80,21 +84,21 @@ func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
 		hits: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_hits_total",
-				Help: "Number of TMDB response cache hits, labeled by method (details|episodes|search).",
+				Help: "Number of TMDB response cache hits, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),
 		misses: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_misses_total",
-				Help: "Number of TMDB response cache misses, labeled by method (details|episodes|search).",
+				Help: "Number of TMDB response cache misses, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),
 		errors: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_errors_total",
-				Help: "Number of TMDB response cache fetch errors, labeled by method (details|episodes|search).",
+				Help: "Number of TMDB response cache fetch errors, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),
@@ -130,9 +134,8 @@ func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
 // overrides on top of a cached *TVShows) must deep-copy first.
 //
 // Singleflight dedupes identical concurrent fetches at the cache layer; it
-// does not act as a global rate limiter against TMDB's 50 req/s cap. Existing
-// concurrency budgets (externalIDsConcurrency, featuredExtraIDsConcurrency)
-// remain the right tool for that.
+// does not act as a global rate limiter against TMDB's 50 req/s cap. The
+// featuredExtraIDsConcurrency budget remains the right tool for that.
 type responseCache[K comparable, V any] struct {
 	name string
 	lru  *expirable.LRU[K, V]

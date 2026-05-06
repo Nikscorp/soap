@@ -12,18 +12,13 @@ import (
 
 var ErrNilResp = errors.New("nil resp error")
 
-// Concurrency cap for parallel TMDB external_ids fan-outs (e.g. when
-// resolving every search result's IMDb ID). TMDB's documented rate limit is
-// 50 req/s; 8 leaves comfortable headroom alongside other in-flight work.
-const externalIDsConcurrency = 8
-
 type Client struct {
-	client        tmdbClient
-	ratings       RatingsProvider
-	imdbIDCache   sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
-	detailsCache  *responseCache[detailsKey, *TvShowDetails]
-	episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]
-	searchCache   *responseCache[searchKey, *TVShows]
+	client          tmdbClient
+	ratings         RatingsProvider
+	imdbIDCache     sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
+	detailsCache    *responseCache[detailsKey, *TvShowDetails]
+	allSeasonsCache *responseCache[allSeasonsKey, *AllSeasonsWithDetails]
+	searchCache     *responseCache[searchKey, *TVShows]
 }
 
 // detailsKey is the cache key for TVShowDetails. Two requests collide iff
@@ -33,13 +28,11 @@ type detailsKey struct {
 	lang string
 }
 
-// episodesKey is the cache key for TVShowEpisodesBySeason. Requests collide
-// iff they target the same TMDB series ID, the same season number, and the
-// same language tag.
-type episodesKey struct {
-	id     int
-	season int
-	lang   string
+// allSeasonsKey is the cache key for TVShowAllSeasonsWithDetails. Requests
+// collide iff they target the same TMDB series ID and the same language tag.
+type allSeasonsKey struct {
+	id   int
+	lang string
 }
 
 // searchKey is the cache key for the raw (pre-override) SearchTVShows result.
@@ -79,11 +72,11 @@ func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig, r
 	}
 	metrics := newCacheMetrics(registerer)
 	return &Client{
-		client:        tmdbClient,
-		ratings:       ratings,
-		detailsCache:  newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
-		episodesCache: newResponseCache[episodesKey, *TVShowSeasonEpisodes]("episodes", cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL, metrics),
-		searchCache:   newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
+		client:          tmdbClient,
+		ratings:         ratings,
+		detailsCache:    newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
+		allSeasonsCache: newResponseCache[allSeasonsKey, *AllSeasonsWithDetails]("all_seasons", cacheCfg.AllSeasonsSize, cacheCfg.AllSeasonsTTL, metrics),
+		searchCache:     newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
 	}
 }
 

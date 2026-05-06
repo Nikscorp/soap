@@ -317,12 +317,11 @@ components:
           type: number
           format: float
           description: |
-            Series rating on a 0–10 scale. Sourced from TMDB by default
-            (`vote_average`); when the server is started with
-            `LAZYSOAP_RATINGS_SOURCE=imdb`, the value is replaced with IMDb's
-            average rating where available, with per-series fallback to TMDB
-            when IMDb has no entry. Source selection is server-wide and
-            opaque to the client.
+            Series rating on a 0–10 scale, always sourced from TMDB
+            `vote_average`. The `LAZYSOAP_RATINGS_SOURCE=imdb` setting only
+            changes the per-episode ratings on `/id/{id}`; series-level
+            ratings stay TMDB-sourced because IMDb's granularity advantage is
+            at the episode level.
           example: 8.3
         description:
           type: string
@@ -445,10 +444,14 @@ components:
         ratingsSource:
           type: string
           description: |
-            Source of the `rating` field on `/search/{query}` and `/id/{id}`
-            responses. `tmdb` means TMDB `vote_average`; `imdb` means IMDb's
-            non-commercial dataset (with per-item TMDB fallback when IMDb has
-            no entry). Server-wide and only changes on restart.
+            Source of the per-episode `rating` field on `/id/{id}` responses.
+            `tmdb` means TMDB `vote_average`; `imdb` means IMDb's
+            non-commercial dataset (with per-episode TMDB fallback when IMDb
+            has no entry). Series-level ratings on `/search/{query}` always
+            come from TMDB regardless of this setting; the SPA reads this
+            field to decide whether to render the IMDb attribution required
+            by IMDb's data usage policy. Server-wide and only changes on
+            restart.
           enum: [tmdb, imdb]
           example: tmdb
     FeaturedSeries:

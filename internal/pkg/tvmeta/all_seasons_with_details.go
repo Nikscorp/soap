@@ -13,7 +13,16 @@ type AllSeasonsWithDetails struct {
 	Seasons []*TVShowSeasonEpisodes
 }
 
+// TVShowAllSeasonsWithDetails returns the series details and per-season
+// episode lists with IMDb rating overrides applied. The returned pointer is
+// shared with concurrent readers and must be treated as read-only.
 func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
+	return c.allSeasonsCache.GetOrFetch(ctx, allSeasonsKey{id: id, lang: language}, func(ctx context.Context) (*AllSeasonsWithDetails, error) {
+		return c.buildAllSeasonsWithDetails(ctx, id, language)
+	})
+}
+
+func (c *Client) buildAllSeasonsWithDetails(ctx context.Context, id int, language string) (*AllSeasonsWithDetails, error) {
 	tvShowDetails, err := c.TVShowDetails(ctx, id, language)
 	if err != nil {
 		return nil, fmt.Errorf("get all episodes: %w", err)
@@ -27,12 +36,7 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 			if err != nil {
 				return fmt.Errorf("get all episodes for season %d: %w", i, err)
 			}
-			// TVShowEpisodesBySeason may return a cached, shared *TVShowSeasonEpisodes
-			// (and shared *TVShowEpisode pointers). overrideEpisodeRatings mutates
-			// ep.Rating in place, which would leak per-call IMDb overrides into the
-			// cached value and into other concurrent readers. Deep-copy here so the
-			// override only ever touches this caller's slice.
-			seasons[i-1] = cloneSeasonEpisodes(episodes)
+			seasons[i-1] = episodes
 			return nil
 		})
 	}
@@ -50,13 +54,7 @@ func (c *Client) TVShowAllSeasonsWithDetails(ctx context.Context, id int, langua
 }
 
 // overrideEpisodeRatings replaces TMDB's per-episode VoteAverage with the
-// configured ratings provider's rating, if any. Each episode is replaced
-// independently — when the provider has no entry, the existing TMDB rating
-// is kept, so partial coverage (new/unaired episodes IMDb hasn't ingested
-// yet) is invisible to the caller.
-//
-// Bails cheaply when the provider isn't ready or has no IMDb ID for the
-// series — we never make the extra TMDB external_ids call we won't use.
+// configured ratings provider's value; bails when the provider isn't ready or has no IMDb ID for the series.
 func (c *Client) overrideEpisodeRatings(ctx context.Context, tmdbID int, seasons []*TVShowSeasonEpisodes) {
 	if !c.ratings.Ready() {
 		return

@@ -115,51 +115,6 @@ func TestAllSeasonsRatingOverrideSkippedOnExternalIDsFailure(t *testing.T) {
 		"ratings must fall back to TMDB on external_ids failure")
 }
 
-// TestSearchTVShowsRatingOverride checks that search results get their
-// per-show ratings replaced when IMDb has them, and that misses fall through
-// to TMDB.
-func TestSearchTVShowsRatingOverride(t *testing.T) {
-	c := NewClientM(t)
-	c.mockedRatings.ReadyMock.Return(true)
-
-	c.mockedTMDB.GetSearchTVShowMock.Return(&tmdb.SearchTVShows{
-		SearchTVShowsResults: &tmdb.SearchTVShowsResults{
-			Results: []tmdb.TVShowResult{
-				{ID: 1399, Name: "GoT", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 8.4}, Popularity: 100},
-				{ID: 1396, Name: "BB", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 8.5}, Popularity: 90},
-			},
-		},
-	}, nil)
-
-	c.mockedTMDB.GetTVExternalIDsMock.Set(func(id int, _ map[string]string) (*tmdb.TVExternalIDs, error) {
-		switch id {
-		case 1399:
-			return &tmdb.TVExternalIDs{IMDbID: "tt0944947"}, nil
-		case 1396:
-			return &tmdb.TVExternalIDs{IMDbID: ""}, nil // no IMDb mapping
-		}
-		return nil, errors.New("unexpected id")
-	})
-
-	c.mockedRatings.SeriesRatingMock.Set(func(imdbID string) (float32, uint32, bool) {
-		if imdbID == "tt0944947" {
-			return 9.2, 2_300_000, true
-		}
-		return 0, 0, false
-	})
-
-	resp, err := c.client.SearchTVShows(context.Background(), "got")
-	require.NoError(t, err)
-	require.Len(t, resp.TVShows, 2)
-
-	// Sorted by popularity desc, so GoT (popularity 100) first.
-	assert.Equal(t, 1399, resp.TVShows[0].ID)
-	assert.InDelta(t, 9.2, resp.TVShows[0].Rating, 0.001, "GoT rating overridden by IMDb")
-
-	assert.Equal(t, 1396, resp.TVShows[1].ID)
-	assert.InDelta(t, 8.5, resp.TVShows[1].Rating, 0.001, "BB has no IMDb id, keeps TMDB rating")
-}
-
 // TestSeriesIMDbIDCacheHitsOnce verifies the in-process TMDB→IMDb-ID cache:
 // repeated lookups for the same series ID issue a single external_ids call.
 func TestSeriesIMDbIDCacheHitsOnce(t *testing.T) {
