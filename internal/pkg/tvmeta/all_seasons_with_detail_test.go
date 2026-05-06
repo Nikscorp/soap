@@ -246,7 +246,8 @@ func TestTVShowAllSeasonsWithDetailsCacheHitsOnce(t *testing.T) {
 
 	require.Equal(t, uint64(1), tvDetailsCalls, "first call must fetch TV details once")
 	require.Equal(t, uint64(2), seasonDetailsCalls, "first call must fetch every season once")
-	require.Greater(t, episodeRatingCalls, uint64(0), "first call must walk the override loop")
+	require.Equal(t, uint64(4), episodeRatingCalls, "first call must walk the override loop for every (season, episode)")
+	require.Equal(t, uint64(1), externalIDsCalls, "first call must resolve the series IMDb id exactly once")
 
 	// Second call: warm hit. No new TMDB or override traffic at all.
 	_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
