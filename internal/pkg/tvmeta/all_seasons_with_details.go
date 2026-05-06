@@ -54,13 +54,7 @@ func (c *Client) buildAllSeasonsWithDetails(ctx context.Context, id int, languag
 }
 
 // overrideEpisodeRatings replaces TMDB's per-episode VoteAverage with the
-// configured ratings provider's rating, if any. Each episode is replaced
-// independently — when the provider has no entry, the existing TMDB rating
-// is kept, so partial coverage (new/unaired episodes IMDb hasn't ingested
-// yet) is invisible to the caller.
-//
-// Bails cheaply when the provider isn't ready or has no IMDb ID for the
-// series — we never make the extra TMDB external_ids call we won't use.
+// configured ratings provider's value; bails when the provider isn't ready or has no IMDb ID for the series.
 func (c *Client) overrideEpisodeRatings(ctx context.Context, tmdbID int, seasons []*TVShowSeasonEpisodes) {
 	if !c.ratings.Ready() {
 		return

@@ -42,16 +42,7 @@ func cloneSeasonEpisodes(season *TVShowSeasonEpisodes) *TVShowSeasonEpisodes {
 }
 
 // TVShowEpisodesBySeason returns the parsed episode list for one season of a
-// TMDB series. When the per-client episodes cache is enabled, identical
-// (id, season, language) requests within the configured TTL hit the cache and
-// skip TMDB entirely; concurrent identical misses collapse to a single
-// underlying call via singleflight.
-//
-// The returned *TVShowSeasonEpisodes (and the *TVShowEpisode pointers inside
-// it) are SHARED with other readers when served from cache and MUST be treated
-// as read-only. Callers that need to mutate per-episode fields (e.g.
-// TVShowAllSeasonsWithDetails applying IMDb rating overrides) MUST deep-copy
-// before mutating.
+// TMDB series.
 func (c *Client) TVShowEpisodesBySeason(ctx context.Context, id int, seasonNumber int, language string) (*TVShowSeasonEpisodes, error) {
 	if language == "" {
 		language = defaultLangTag

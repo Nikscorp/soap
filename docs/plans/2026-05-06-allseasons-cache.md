@@ -308,19 +308,20 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 4: Strip the now-obsolete shared-pointer comment blocks
 
-- [ ] delete the multi-line comment in `all_seasons_with_details.go` above
+- [x] delete the multi-line comment in `all_seasons_with_details.go` above
   the deleted `cloneSeasonEpisodes` call (covered by Task 3 already, but call
   it out as a separate audit pass to ensure no stragglers remain)
-- [ ] reduce `overrideEpisodeRatings`'s godoc to ≤2 lines: state what it does,
+- [x] reduce `overrideEpisodeRatings`'s godoc to ≤2 lines: state what it does,
   state that it bails when the provider isn't ready or has no IMDb mapping.
   Drop the "Bails cheaply" / "we never make the extra TMDB external_ids call"
   rationale paragraphs — the code already shows the early returns.
-- [ ] reduce `TVShowEpisodesBySeason`'s godoc to ≤2 lines: state what it
+- [x] reduce `TVShowEpisodesBySeason`'s godoc to ≤2 lines: state what it
   returns, drop the per-pointer read-only contract paragraph (the cache that
   produced the warning is gone).
-- [ ] no test changes required for this task — pure docs/comment cleanup;
-  re-run `make lint` to confirm nothing broke
-- [ ] run `make test ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] no test changes required for this task — pure docs/comment cleanup;
+  re-run `make lint` to confirm nothing broke (note: pre-existing
+  `cloneSeasonEpisodes` unused warning from Task 3 is resolved in Task 5)
+- [x] run `make test ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 5: Remove `episodesCache` and `cloneSeasonEpisodes`
 
