@@ -271,21 +271,21 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 2: Add `allSeasonsCache` field + key + config
 
-- [ ] add `allSeasonsKey { id int; lang string }` next to the existing key
+- [x] add `allSeasonsKey { id int; lang string }` next to the existing key
   types in `internal/pkg/tvmeta/client.go`
-- [ ] add `allSeasonsCache *responseCache[allSeasonsKey, *AllSeasonsWithDetails]`
+- [x] add `allSeasonsCache *responseCache[allSeasonsKey, *AllSeasonsWithDetails]`
   field to `Client`
-- [ ] add `AllSeasonsSize int` (env `TVMETA_CACHE_ALLSEASONS_SIZE`,
+- [x] add `AllSeasonsSize int` (env `TVMETA_CACHE_ALLSEASONS_SIZE`,
   env-default `1024`, yaml `all_seasons_size`) and `AllSeasonsTTL time.Duration`
   (env `TVMETA_CACHE_ALLSEASONS_TTL`, env-default `6h`, yaml
   `all_seasons_ttl`) to `CacheConfig` in `internal/pkg/tvmeta/cache.go`
-- [ ] initialize `allSeasonsCache` in `New` from
+- [x] initialize `allSeasonsCache` in `New` from
   `cacheCfg.AllSeasonsSize / .AllSeasonsTTL` with metric label `"all_seasons"`
-- [ ] write a thin unit test in `client_test.go` (or extend an existing test)
+- [x] write a thin unit test in `client_test.go` (or extend an existing test)
   asserting that a non-zero `CacheConfig` produces a non-nil
   `allSeasonsCache.lru` and a zero-value `CacheConfig{}` produces a
   pass-through (`lru == nil`)
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 3: Wrap `TVShowAllSeasonsWithDetails` in the cache
 
