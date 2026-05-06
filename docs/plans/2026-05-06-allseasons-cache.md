@@ -478,18 +478,18 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 11: Plan & doc cleanup
 
-- [ ] confirm README.md, CLAUDE.md, and `config/config.yaml.dist` all reflect
+- [x] confirm README.md, CLAUDE.md, and `config/config.yaml.dist` all reflect
   final defaults (cache.go env-default tags, config.yaml.dist tvmeta block,
   and README's `TVMETA_CACHE_*` table all in sync)
-- [ ] confirm `api/openapi.yaml` is unchanged (or updated only for the
+- [x] confirm `api/openapi.yaml` is unchanged (or updated only for the
   search-rating source description, per Task 9)
-- [ ] confirm `go.mod` / `go.sum` / `vendor/` are tidy (`make tidy` is a
+- [x] confirm `go.mod` / `go.sum` / `vendor/` are tidy (`make tidy` is a
   no-op)
-- [ ] confirm no stale references to `episodesCache`, `episodesKey`,
+- [x] confirm no stale references to `episodesCache`, `episodesKey`,
   `cloneSeasonEpisodes`, `EpisodesSize`, `EpisodesTTL`,
   `TVMETA_CACHE_EPISODES_*`, `cloneTVShows`, `overrideSeriesRatings`
   anywhere in the repo (`grep -rn` from repo root)
-- [ ] confirm the "Benchmark Results" section at the bottom of this plan
+- [x] confirm the "Benchmark Results" section at the bottom of this plan
   contains a real benchstat report (not the placeholder)
 
 ### Task 12: [Final] Lint, tests, and vet recheck
