@@ -498,12 +498,12 @@ One more pass over the static checks after every change has landed and
 docs/benchmarks are populated. This is the last gate before the plan is
 moved to `completed/`.
 
-- [ ] run `make lint` — 0 issues
-- [ ] run `make test-race ./...` — green
-- [ ] run `go vet ./...` — clean (note: `golangci-lint` already runs
+- [x] run `make lint` — 0 issues
+- [x] run `make test-race ./...` — green
+- [x] run `go vet ./...` — clean (note: `golangci-lint` already runs
   `govet`, but the user explicitly wanted a separate `go vet` pass too)
-- [ ] if any of the three turns up a finding, fix it and re-run all three
-  before declaring done
+- [x] if any of the three turns up a finding, fix it and re-run all three
+  before declaring done — no findings, all three passed on first run
 
 *Note: ralphex automatically moves completed plans to `docs/plans/completed/`.*
 
