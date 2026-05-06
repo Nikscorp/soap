@@ -24,10 +24,6 @@ type CacheConfig struct {
 	DetailsSize int `env:"TVMETA_CACHE_DETAILS_SIZE" env-default:"1024" yaml:"details_size"`
 	// DetailsTTL is the per-entry expiry for *TvShowDetails.
 	DetailsTTL time.Duration `env:"TVMETA_CACHE_DETAILS_TTL" env-default:"6h" yaml:"details_ttl"`
-	// EpisodesSize is the maximum number of cached *TVShowSeasonEpisodes entries.
-	EpisodesSize int `env:"TVMETA_CACHE_EPISODES_SIZE" env-default:"4096" yaml:"episodes_size"`
-	// EpisodesTTL is the per-entry expiry for *TVShowSeasonEpisodes.
-	EpisodesTTL time.Duration `env:"TVMETA_CACHE_EPISODES_TTL" env-default:"6h" yaml:"episodes_ttl"`
 	// AllSeasonsSize is the maximum number of cached *AllSeasonsWithDetails
 	// entries (post-override fully-assembled /id/{id} responses).
 	AllSeasonsSize int `env:"TVMETA_CACHE_ALLSEASONS_SIZE" env-default:"1024" yaml:"all_seasons_size"`
@@ -87,21 +83,21 @@ func newCacheMetrics(registerer prometheus.Registerer) *cacheMetrics {
 		hits: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_hits_total",
-				Help: "Number of TMDB response cache hits, labeled by method (details|episodes|all_seasons|search).",
+				Help: "Number of TMDB response cache hits, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),
 		misses: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_misses_total",
-				Help: "Number of TMDB response cache misses, labeled by method (details|episodes|all_seasons|search).",
+				Help: "Number of TMDB response cache misses, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),
 		errors: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "tvmeta_cache_errors_total",
-				Help: "Number of TMDB response cache fetch errors, labeled by method (details|episodes|all_seasons|search).",
+				Help: "Number of TMDB response cache fetch errors, labeled by method (details|all_seasons|search).",
 			},
 			[]string{methodLabel},
 		),

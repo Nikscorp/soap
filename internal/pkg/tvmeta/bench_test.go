@@ -21,12 +21,12 @@ const (
 
 func benchCacheCfg() CacheConfig {
 	return CacheConfig{
-		DetailsSize:  64,
-		DetailsTTL:   time.Minute,
-		EpisodesSize: 64,
-		EpisodesTTL:  time.Minute,
-		SearchSize:   64,
-		SearchTTL:    time.Minute,
+		DetailsSize:    64,
+		DetailsTTL:     time.Minute,
+		AllSeasonsSize: 64,
+		AllSeasonsTTL:  time.Minute,
+		SearchSize:     64,
+		SearchTTL:      time.Minute,
 	}
 }
 

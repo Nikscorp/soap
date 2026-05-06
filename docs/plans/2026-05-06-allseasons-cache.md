@@ -325,29 +325,29 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 5: Remove `episodesCache` and `cloneSeasonEpisodes`
 
-- [ ] delete the `episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]`
+- [x] delete the `episodesCache *responseCache[episodesKey, *TVShowSeasonEpisodes]`
   field from `Client`
-- [ ] delete the `episodesKey` struct
-- [ ] in `episodes.go`, replace the `episodesCache.GetOrFetch(...)` wrap in
+- [x] delete the `episodesKey` struct
+- [x] in `episodes.go`, replace the `episodesCache.GetOrFetch(...)` wrap in
   `TVShowEpisodesBySeason` with the direct fetch closure body (the method
   becomes a thin TMDB pass-through again)
-- [ ] delete `cloneSeasonEpisodes` and its godoc from `episodes.go`
-- [ ] delete `EpisodesSize` and `EpisodesTTL` fields (and their env tags) from
+- [x] delete `cloneSeasonEpisodes` and its godoc from `episodes.go`
+- [x] delete `EpisodesSize` and `EpisodesTTL` fields (and their env tags) from
   `CacheConfig` in `cache.go`
-- [ ] delete the corresponding initialization line in `New`
-- [ ] update `internal/pkg/tvmeta/episodes_test.go`:
+- [x] delete the corresponding initialization line in `New`
+- [x] update `internal/pkg/tvmeta/episodes_test.go`:
   - remove `episodesCacheCfg` helper, `TestTVShowEpisodesBySeasonCacheHitsOnce`,
     `TestTVShowEpisodesBySeasonCacheKeyIsolation`,
     `TestTVShowEpisodesBySeasonCacheErrorNotCached`
   - keep the lang table-driven test, error test, nil-resp test
-- [ ] update `internal/pkg/tvmeta/all_seasons_with_detail_test.go`:
+- [x] update `internal/pkg/tvmeta/all_seasons_with_detail_test.go`:
   - remove `allSeasonsCacheCfg` helper that referenced
     `episodesCacheCfg().EpisodesTTL`
   - remove
     `TestTVShowAllSeasonsWithDetailsCachedEpisodesIsolatedFromOverride`
     (the override-isolation contract no longer applies — the cached value
     *is* the post-override snapshot)
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 6: New tests covering the all-seasons cache contract
 

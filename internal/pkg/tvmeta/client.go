@@ -22,7 +22,6 @@ type Client struct {
 	ratings         RatingsProvider
 	imdbIDCache     sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
 	detailsCache    *responseCache[detailsKey, *TvShowDetails]
-	episodesCache   *responseCache[episodesKey, *TVShowSeasonEpisodes]
 	allSeasonsCache *responseCache[allSeasonsKey, *AllSeasonsWithDetails]
 	searchCache     *responseCache[searchKey, *TVShows]
 }
@@ -32,15 +31,6 @@ type Client struct {
 type detailsKey struct {
 	id   int
 	lang string
-}
-
-// episodesKey is the cache key for TVShowEpisodesBySeason. Requests collide
-// iff they target the same TMDB series ID, the same season number, and the
-// same language tag.
-type episodesKey struct {
-	id     int
-	season int
-	lang   string
 }
 
 // allSeasonsKey is the cache key for TVShowAllSeasonsWithDetails. Requests
@@ -90,7 +80,6 @@ func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig, r
 		client:          tmdbClient,
 		ratings:         ratings,
 		detailsCache:    newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
-		episodesCache:   newResponseCache[episodesKey, *TVShowSeasonEpisodes]("episodes", cacheCfg.EpisodesSize, cacheCfg.EpisodesTTL, metrics),
 		allSeasonsCache: newResponseCache[allSeasonsKey, *AllSeasonsWithDetails]("all_seasons", cacheCfg.AllSeasonsSize, cacheCfg.AllSeasonsTTL, metrics),
 		searchCache:     newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
 	}

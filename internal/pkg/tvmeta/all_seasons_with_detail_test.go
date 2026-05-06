@@ -9,17 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// allSeasonsCacheCfg enables both the details and episodes caches at sizes
-// generous enough to keep tests deterministic.
-func allSeasonsCacheCfg() CacheConfig {
-	return CacheConfig{
-		DetailsSize:  64,
-		DetailsTTL:   detailsCacheCfg().DetailsTTL,
-		EpisodesSize: 64,
-		EpisodesTTL:  episodesCacheCfg().EpisodesTTL,
-	}
-}
-
 func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 	client := NewClientM(t)
 
