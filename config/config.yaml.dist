@@ -34,7 +34,7 @@ tvmeta:
   cache:
     details_size: 1024
     details_ttl: 6h
-    episodes_size: 4096
-    episodes_ttl: 6h
+    all_seasons_size: 1024
+    all_seasons_ttl: 6h
     search_size: 256
     search_ttl: 30m

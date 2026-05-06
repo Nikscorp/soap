@@ -403,17 +403,17 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 8: Plumb the renamed config through
 
-- [ ] update `config/config.yaml.dist`: replace the `episodes_size` /
+- [x] update `config/config.yaml.dist`: replace the `episodes_size` /
   `episodes_ttl` lines under `tvmeta.cache` with `all_seasons_size: 1024` /
   `all_seasons_ttl: 6h` (move them between the details and search blocks for
   readable field order)
-- [ ] update `internal/pkg/config/config_test.go` (assertions on the parsed
+- [x] update `internal/pkg/config/config_test.go` (assertions on the parsed
   struct's defaults and on the env-var override path) — replace
   `EpisodesSize` / `EpisodesTTL` references with `AllSeasonsSize` /
   `AllSeasonsTTL`
-- [ ] verify zero `CacheConfig{}` literals in test files still compile (they
+- [x] verify zero `CacheConfig{}` literals in test files still compile (they
   do — removing fields is source-compatible since the literals don't name them)
-- [ ] run `make test ./...` and `make lint` — must pass before next task
+- [x] run `make test ./...` and `make lint` — must pass before next task
 
 ### Task 9: Update README and CLAUDE.md
 
