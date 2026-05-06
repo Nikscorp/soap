@@ -351,22 +351,22 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 6: New tests covering the all-seasons cache contract
 
-- [ ] add `allSeasonsCacheCfg() CacheConfig` test helper in
+- [x] add `allSeasonsCacheCfg() CacheConfig` test helper in
   `all_seasons_with_detail_test.go` enabling
   `AllSeasonsSize: 64, AllSeasonsTTL: time.Minute` (plus `DetailsSize/TTL` so
   the underlying details path also caches deterministically)
-- [ ] add `TestTVShowAllSeasonsWithDetailsCacheHitsOnce`: two consecutive
+- [x] add `TestTVShowAllSeasonsWithDetailsCacheHitsOnce`: two consecutive
   calls with the same `(id, language)` issue exactly one
   `GetTVDetails` and one round of `GetTVSeasonDetails` calls; the second
   call must skip the override (assert via the ratings provider mock's call
   counter staying flat after the first call)
-- [ ] add `TestTVShowAllSeasonsWithDetailsCacheKeyIsolation`: distinct
+- [x] add `TestTVShowAllSeasonsWithDetailsCacheKeyIsolation`: distinct
   `(id, language)` tuples each fetch independently; subsequent identical
   lookups hit the cache
-- [ ] add `TestTVShowAllSeasonsWithDetailsCacheErrorNotCached`: a TMDB error
+- [x] add `TestTVShowAllSeasonsWithDetailsCacheErrorNotCached`: a TMDB error
   during the season fan-out is not cached; a follow-up call re-issues the
   underlying calls
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 7: Drop the IMDb series-level override on search
 

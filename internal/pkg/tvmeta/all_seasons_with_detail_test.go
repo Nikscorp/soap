@@ -3,11 +3,27 @@ package tvmeta
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"github.com/stretchr/testify/require"
 )
+
+// allSeasonsCacheCfg returns a CacheConfig with the all-seasons cache enabled
+// at a generous size and TTL — large enough that no test-grade timing flake can
+// expire entries mid-test. Details-cache knobs are also populated so the inner
+// TVShowDetails path caches deterministically alongside the wrapping
+// allSeasonsCache.
+func allSeasonsCacheCfg() CacheConfig {
+	return CacheConfig{
+		AllSeasonsSize: 64,
+		AllSeasonsTTL:  time.Minute,
+		DetailsSize:    64,
+		DetailsTTL:     time.Minute,
+	}
+}
 
 func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 	client := NewClientM(t)
@@ -190,4 +206,123 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 	require.Equal(t, 3, len(client.mockedTMDB.GetTVSeasonDetailsMock.Calls()))
 
 	require.Equal(t, (*AllSeasonsWithDetails)(nil), resp)
+}
+
+// TestTVShowAllSeasonsWithDetailsCacheHitsOnce verifies that two consecutive
+// calls with the same (id, lang) issue exactly one GetTVDetails and one round
+// of GetTVSeasonDetails calls, and that the second call skips the IMDb
+// override entirely (no per-call EpisodeRating / GetTVExternalIDs traffic).
+func TestTVShowAllSeasonsWithDetailsCacheHitsOnce(t *testing.T) {
+	client := NewClientMCfg(t, allSeasonsCacheCfg())
+
+	client.mockedTMDB.GetTVDetailsMock.Return(&tmdb.TVDetails{
+		Name:            "Lost",
+		NumberOfSeasons: 2,
+	}, nil)
+	client.mockedTMDB.GetTVSeasonDetailsMock.Set(func(_, seasonNumber int, _ map[string]string) (*tmdb.TVSeasonDetails, error) {
+		return &tmdb.TVSeasonDetails{
+			Episodes: []tmdbEpisode{
+				{EpisodeNumber: 1, Name: "ep1", VoteMetrics: tmdb.VoteMetrics{VoteAverage: float32(seasonNumber) + 0.1}},
+				{EpisodeNumber: 2, Name: "ep2", VoteMetrics: tmdb.VoteMetrics{VoteAverage: float32(seasonNumber) + 0.2}},
+			},
+		}, nil
+	})
+
+	// Ratings provider: ready, with a real IMDb mapping, so the override loop
+	// actually walks every episode on a miss. EpisodeRating returns ok=false
+	// to keep the assertion focused on call counts rather than rating values.
+	client.mockedRatings.ReadyMock.Return(true)
+	client.mockedRatings.EpisodeRatingMock.Return(0, 0, false)
+	client.mockedTMDB.GetTVExternalIDsMock.Return(&tmdb.TVExternalIDs{IMDbID: fakeIMDbID}, nil)
+
+	// First call: miss. Fan-out runs, override loop runs.
+	_, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
+	require.NoError(t, err)
+
+	tvDetailsCalls := client.mockedTMDB.GetTVDetailsAfterCounter()
+	seasonDetailsCalls := client.mockedTMDB.GetTVSeasonDetailsAfterCounter()
+	episodeRatingCalls := client.mockedRatings.EpisodeRatingAfterCounter()
+	externalIDsCalls := client.mockedTMDB.GetTVExternalIDsAfterCounter()
+
+	require.Equal(t, uint64(1), tvDetailsCalls, "first call must fetch TV details once")
+	require.Equal(t, uint64(2), seasonDetailsCalls, "first call must fetch every season once")
+	require.Greater(t, episodeRatingCalls, uint64(0), "first call must walk the override loop")
+
+	// Second call: warm hit. No new TMDB or override traffic at all.
+	_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
+	require.NoError(t, err)
+
+	require.Equal(t, tvDetailsCalls, client.mockedTMDB.GetTVDetailsAfterCounter(),
+		"warm hit must not re-fetch TV details")
+	require.Equal(t, seasonDetailsCalls, client.mockedTMDB.GetTVSeasonDetailsAfterCounter(),
+		"warm hit must not re-fetch any season")
+	require.Equal(t, episodeRatingCalls, client.mockedRatings.EpisodeRatingAfterCounter(),
+		"warm hit must skip the override loop entirely")
+	require.Equal(t, externalIDsCalls, client.mockedTMDB.GetTVExternalIDsAfterCounter(),
+		"warm hit must not re-resolve the series IMDb id")
+}
+
+// TestTVShowAllSeasonsWithDetailsCacheKeyIsolation verifies that distinct
+// (id, lang) tuples each fetch independently and that subsequent identical
+// lookups hit the cache.
+func TestTVShowAllSeasonsWithDetailsCacheKeyIsolation(t *testing.T) {
+	client := NewClientMCfg(t, allSeasonsCacheCfg())
+
+	var detailsCalls atomic.Int32
+	client.mockedTMDB.GetTVDetailsMock.Set(func(_ int, _ map[string]string) (*tmdb.TVDetails, error) {
+		detailsCalls.Add(1)
+		return &tmdb.TVDetails{Name: "Lost", NumberOfSeasons: 1}, nil
+	})
+	client.mockedTMDB.GetTVSeasonDetailsMock.Return(&tmdb.TVSeasonDetails{
+		Episodes: []tmdbEpisode{
+			{EpisodeNumber: 1, Name: "ep1", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 8.0}},
+		},
+	}, nil)
+
+	// Three distinct keys: same id with two languages, plus a different id.
+	_, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
+	require.NoError(t, err)
+	_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, ruLangTag)
+	require.NoError(t, err)
+	_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 99, enLangTag)
+	require.NoError(t, err)
+
+	require.Equal(t, int32(3), detailsCalls.Load(),
+		"distinct (id, lang) tuples must each fetch independently")
+
+	// Repeats hit the cache.
+	for range 3 {
+		_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
+		require.NoError(t, err)
+		_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, ruLangTag)
+		require.NoError(t, err)
+		_, err = client.client.TVShowAllSeasonsWithDetails(context.Background(), 99, enLangTag)
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, int32(3), detailsCalls.Load(),
+		"warm repeats of any cached key must not re-fetch")
+}
+
+// TestTVShowAllSeasonsWithDetailsCacheErrorNotCached verifies that a TMDB
+// error during the season fan-out is not cached — a follow-up call re-issues
+// the underlying calls.
+func TestTVShowAllSeasonsWithDetailsCacheErrorNotCached(t *testing.T) {
+	client := NewClientMCfg(t, allSeasonsCacheCfg())
+	wantErr := errors.New("some error")
+
+	client.mockedTMDB.GetTVDetailsMock.Return(&tmdb.TVDetails{
+		Name:            "Lost",
+		NumberOfSeasons: 1,
+	}, nil)
+	client.mockedTMDB.GetTVSeasonDetailsMock.Return(nil, wantErr)
+
+	for range 2 {
+		resp, err := client.client.TVShowAllSeasonsWithDetails(context.Background(), 42, enLangTag)
+		require.ErrorIs(t, err, wantErr)
+		require.Nil(t, resp)
+	}
+
+	require.Equal(t, uint64(2), client.mockedTMDB.GetTVSeasonDetailsAfterCounter(),
+		"errors must not be cached; both calls must re-issue the failing season fetch")
 }
