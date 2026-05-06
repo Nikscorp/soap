@@ -289,22 +289,22 @@ post-plan code, same benchmark names, same mock fixtures).
 
 ### Task 3: Wrap `TVShowAllSeasonsWithDetails` in the cache
 
-- [ ] in `all_seasons_with_details.go`, lift the existing body into a private
+- [x] in `all_seasons_with_details.go`, lift the existing body into a private
   `(c *Client) buildAllSeasonsWithDetails(ctx, id, language)` that does
   `TVShowDetails` + the season fan-out + `overrideEpisodeRatings`, returning
   `(*AllSeasonsWithDetails, error)`
-- [ ] make `TVShowAllSeasonsWithDetails` call
+- [x] make `TVShowAllSeasonsWithDetails` call
   `allSeasonsCache.GetOrFetch(ctx, allSeasonsKey{id, language},
   buildAllSeasonsWithDetails)` and return the result directly (the cached
   pointer is shared and read-only, same contract as other cached pointers)
-- [ ] inside `buildAllSeasonsWithDetails`, drop the `cloneSeasonEpisodes` call
+- [x] inside `buildAllSeasonsWithDetails`, drop the `cloneSeasonEpisodes` call
   on each fan-out leg — the fetcher now produces the canonical post-override
   value, no per-call clone needed
-- [ ] add a single short godoc on `TVShowAllSeasonsWithDetails` noting the
+- [x] add a single short godoc on `TVShowAllSeasonsWithDetails` noting the
   returned pointer is shared/read-only (matches the `featuredExtras.view()`
   convention). No prose explaining the cache layout, the override semantics,
   or the rationale — the code carries the contract.
-- [ ] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
+- [x] run `make test-race ./internal/pkg/tvmeta/...` — must pass before next task
 
 ### Task 4: Strip the now-obsolete shared-pointer comment blocks
 
