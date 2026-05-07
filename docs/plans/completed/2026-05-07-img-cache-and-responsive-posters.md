@@ -262,3 +262,54 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 - Verify `tvmeta_cache_*` Prometheus families still scrape with the same shape after the lrucache extraction — any silent rename would only show up as a blank dashboard panel.
 
 **External system updates:** none — this is a single-image deploy with no consuming projects.
+
+## Post-merge follow-up: pinned shadow tier for featured posters
+
+A code-review pass on the merged PR surfaced a real correctness issue this plan failed to anticipate. Captured here so the next caching plan starts with the lesson built in.
+
+### What was wrong
+
+Tasks 3 + 5 cached every poster — featured (prewarmed) and on-demand (`/id/{id}` browsing) — in **one shared LRU** with `LAZYSOAP_IMG_CACHE_SIZE=512` slots. With ~120 prewarmed featured entries (≈30 unique posters × 4 sizes) plus episode-page traffic touching tens of unique posters per active session, sustained `/id/{id}` use will drive the LRU toward its cap; once full, the LRU evicts the **least-recently-used** slot. Featured-pool entries that haven't been hit since the last refresh are exactly that. So under realistic load mix:
+
+- Prewarmed featured posters silently fall out of cache.
+- The next `/featured` request pays full TMDB latency for those entries.
+- Re-warming only happens on the next 24h refresh tick — featured stays cold for up to a day.
+
+The 168h TTL doesn't save anything: TTL deletes; LRU evicts on capacity. They are independent.
+
+### What was changed
+
+Added an unevictable shadow tier in front of the LRU and rerouted prewarm to populate it directly:
+
+- **`featuredImgCache`** in `internal/app/lazysoap/img_cache.go` — `atomic.Pointer[map[string]ImgCacheEntry]`. No LRU, no TTL, no singleflight, no metrics. Fully replaced by the prewarmer on every refresh tick (all-or-nothing publish; ctx cancellation discards the partial map and preserves the prior pinned set).
+- **`imgProxyHandler`** probes the pinned map first, then falls through to the existing `imgCache.GetOrFetch` on miss. Pinned hits never touch the LRU and never round-trip TMDB.
+- **`prewarmFeaturedImages`** calls `fetchPoster` directly (NOT through the LRU) and atomic-swaps the resulting map into `featuredImgs`. The LRU is never written to by the prewarmer.
+
+Trade-offs accepted: the pinned tier has no metrics (it's a static manifest, not a dynamic cache; hit-rate isn't informative). Memory ceiling is `pool size × 4 sizes × 2 MiB` worst-case (~240 MiB), realistically ~30 MiB.
+
+Tests pin both halves of the contract: a pinned `(path, size)` is served without touching the LRU and without round-tripping TMDB; an unpinned size for the same poster falls through normally; prewarm leaves `imgCache.Len() == 0`.
+
+### How this plan could have surfaced the issue earlier
+
+The plan's reasoning quality was high in lots of places (failure modes, prewarm concurrency bound, `Cache-Control` headers). But the single-LRU choice was never explicitly *made* — it was inherited from "reuse the lrucache harness" (Task 1) and never re-examined when the consumer changed from one homogeneous workload (TMDB JSON, all roughly equal priority) to a mixed-priority one (featured posters >> episode posters). Concrete process changes that would have caught it:
+
+1. **Add a "Cache priority / eviction analysis" subsection under Technical Details whenever a cache is shared by more than one workload.** Force the plan to enumerate, per cached domain, the consequence of eviction. For this PR that table would have been:
+
+   | Workload | Eviction consequence | Recovery |
+   | --- | --- | --- |
+   | Prewarmed featured | Cold `/featured` paint, visible on the home page | Next 24h refresh |
+   | On-demand `/id/{id}` | Cold poster on episode page, one user | Next request, ~80–250 ms |
+
+   Writing that table makes the asymmetry impossible to miss — and the asymmetry is the whole reason a single LRU is wrong here.
+
+2. **Treat "single LRU" vs "tiered (pinned + LRU)" as an explicit design decision, not a default.** The plan's Technical Details section should have an "Alternatives considered" bullet for the storage model, with the trade-offs named. Today the plan jumps to "use the lrucache harness" without ever surfacing that prewarm could write to a separate, smaller, unevictable structure. A two-line "rejected because…" note would have surfaced the priority question at design time.
+
+3. **Replace the "headroom" hand-wave with an eviction-pressure model.** Technical Details says: *"Cap at 512 entries to leave headroom for non-featured posters served on detail/search pages."* That's the load-bearing assumption for correctness, and it isn't quantified. A one-paragraph model — *expected unique posters per active session × concurrent sessions × 4 sizes — and how that compares to (cap − pinned)* — would have shown the headroom is illusory under sustained traffic. Plans that stake correctness on a number should compute the number.
+
+4. **Add an invariant test to Task 9 acceptance.** The acceptance task lists the things to *measure* (cold/warm timing, prewarm summary, /metrics shape). It should also list invariants to *break-test*: e.g. "after prewarm completes and N=600 unique on-demand `/img/random{i}.jpg?size=w500` requests, every prewarmed `(featured-path, prewarm-size)` still resolves without round-tripping TMDB." That test cannot pass under the single-LRU design — it would have forced the split before the PR shipped.
+
+5. **Be explicit about which step is the load-bearing one for which goal.** The plan's Overview says *"TMDB latency disappears from the request path for any poster in the featured pool."* That promise is upheld by **Task 5 (prewarm)** *and* depends on **Task 3's storage choice**. The plan never names that dependency, so a reviewer reading Task 5 in isolation has no reason to interrogate Task 3's LRU sizing. Cross-reference the goal to the steps that uphold it ("invariant: featured posters resolve without round-tripping TMDB. Upheld by: Task 5 (warming) AND Task 3 (storage that survives general load).") and the eviction question is unavoidable.
+
+6. **Decouple "warm" from "store" in the prewarm task spec.** Task 5 says "warm the imgCache" — collapsing the *act* of fetching with the *destination* of storage. Phrasing it as "fetch + insert into [storage X]" forces the plan to name X, which forces the priority question. As written, Task 5 reads as if the LRU is the only plausible destination.
+
+The general lesson, fit for inclusion in any future caching plan: **whenever a cache is shared across workloads of different priority, make the priority asymmetry an explicit, measurable invariant — not a hand-wave about headroom.** Headroom shrinks under load; invariants don't.
