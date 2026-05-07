@@ -178,12 +178,12 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 7: Responsive `srcset` + `sizes` for `SearchResultCard`
 
-- [ ] update `SearchResultCard` (`frontend/src/components/SearchResultCard.tsx:12-62`):
+- [x] update `SearchResultCard` (`frontend/src/components/SearchResultCard.tsx:12-62`):
   - swap the bare `normalizePosterUrl(result.poster)` for an explicit `src="…?size=w185"` plus `srcSet` with w185 + w342 (no need for w500/w780 — the card maxes at ~90px wide).
   - add `sizes="(min-width: 640px) 90px, 80px"` matching Tailwind classes.
   - keep `loading="lazy"` (search results are below the fold by definition).
-- [ ] update / add the Vitest test: `srcset` has both URLs with the correct width descriptors, `sizes` is set, `loading="lazy"` is preserved.
-- [ ] run frontend lint+typecheck+test — must pass before Task 8.
+- [x] update / add the Vitest test: `srcset` has both URLs with the correct width descriptors, `sizes` is set, `loading="lazy"` is preserved.
+- [x] run frontend lint+typecheck+test — must pass before Task 8.
 
 ### Task 8: Responsive `srcset` + `sizes` for `SelectedSeriesCard`
 
