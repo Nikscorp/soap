@@ -144,10 +144,10 @@ describe('useUrlState', () => {
       expect(result.current.seasons).toEqual([1, 2, 3]);
     });
 
-    it('drops non-positive and non-numeric tokens', () => {
+    it('rejects the entire param when any token is invalid', () => {
       setLocation('?seasons=1,abc,-3,0,4');
       const { result } = renderHook(() => useUrlState());
-      expect(result.current.seasons).toEqual([1, 4]);
+      expect(result.current.seasons).toBeNull();
     });
 
     it('treats empty / all-garbage param as null (no filter)', () => {
@@ -158,6 +158,18 @@ describe('useUrlState', () => {
       setLocation('?seasons=abc,-1,0');
       const b = renderHook(() => useUrlState());
       expect(b.result.current.seasons).toBeNull();
+    });
+
+    it('rejects partial-numeric tokens like 1abc', () => {
+      setLocation('?seasons=1abc');
+      const { result } = renderHook(() => useUrlState());
+      expect(result.current.seasons).toBeNull();
+    });
+
+    it('rejects empty tokens from consecutive commas', () => {
+      setLocation('?seasons=1,,2');
+      const { result } = renderHook(() => useUrlState());
+      expect(result.current.seasons).toBeNull();
     });
 
     it('serializes an array as ascending CSV', () => {

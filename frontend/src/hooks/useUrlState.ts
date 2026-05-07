@@ -37,9 +37,9 @@ function parseSeasons(raw: string | null): number[] | null {
   const seen = new Set<number>();
   for (const tok of raw.split(',')) {
     const trimmed = tok.trim();
-    if (trimmed === '') continue;
+    if (trimmed === '' || !/^\d+$/.test(trimmed)) return null;
     const n = Number.parseInt(trimmed, 10);
-    if (!Number.isFinite(n) || n <= 0) continue;
+    if (!Number.isFinite(n) || n <= 0) return null;
     seen.add(n);
   }
   if (seen.size === 0) return null;

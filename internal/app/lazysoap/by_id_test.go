@@ -330,20 +330,23 @@ func TestParseSeasons(t *testing.T) {
 }
 
 func TestIDHandlerInvalidID(t *testing.T) {
-	srv := NewServerM(t)
-	defer srv.server.Close()
+	for _, path := range []string{"/id/bla", "/id/0", "/id/-1"} {
+		t.Run(path, func(t *testing.T) {
+			srv := NewServerM(t)
+			defer srv.server.Close()
 
-	resp, err := http.Get(srv.server.URL + "/id/bla")
+			resp, err := http.Get(srv.server.URL + path)
+			require.NoError(t, err)
+			defer resp.Body.Close()
 
-	require.NoError(t, err)
-	defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
 
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	require.Equal(t, "", string(body))
-	require.Equal(t, 0, len(srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Calls()))
+			require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+			require.Equal(t, "", string(body))
+			require.Equal(t, 0, len(srv.tvMetaClientMock.TVShowAllSeasonsWithDetailsMock.Calls()))
+		})
+	}
 }
 
 func TestIDHandlerTVShowEpisodesBySeasonError(t *testing.T) {

@@ -60,7 +60,7 @@ func (s *Server) idHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	intID, err := strconv.Atoi(id)
-	if err != nil {
+	if err != nil || intID <= 0 {
 		logger.Error(ctx, "Failed to parse id", "err", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
