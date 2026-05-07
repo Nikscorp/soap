@@ -165,16 +165,16 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 6: Responsive `srcset` + `sizes` for `FeaturedCard`
 
-- [ ] add a helper in `frontend/src/lib/api.ts` (next to `normalizePosterUrl`):
+- [x] add a helper in `frontend/src/lib/api.ts` (next to `normalizePosterUrl`):
   - `posterSrcSet(path: string | null, sizes: readonly Size[]): string` — returns a space/comma-separated string like `"/img/foo.jpg?size=w185 185w, /img/foo.jpg?size=w342 342w, …"` using *width* descriptors (not pixel-density) so the `sizes` attribute drives selection.
   - `Size` = `'w185' | 'w342' | 'w500' | 'w780'`.
   - empty/null path → empty string (caller falls back to its existing placeholder).
-- [ ] update `FeaturedCard` (`frontend/src/components/FeaturedSeries.tsx:79-124`):
+- [x] update `FeaturedCard` (`frontend/src/components/FeaturedSeries.tsx:79-124`):
   - replace the existing 1x/2x `srcSet` with a width-descriptor `srcSet` covering w342, w500, w780 (skip w185 — too small for this card even on mobile).
   - add `sizes="(min-width: 1024px) 210px, (min-width: 640px) 190px, 160px"` matching the Tailwind container widths discovered in the map.
   - keep `loading="lazy"` on cards 3+ in the carousel; set `loading="eager"` and `fetchpriority="high"` on the first 1–2 cards (the ones above the fold on a phone). Determine the index threshold from the existing carousel code.
-- [ ] update the matching Vitest test (or create one if absent under `frontend/src/components/`): assert `srcset` contains all four URL/width pairs, `sizes` matches the breakpoint string, and the first card has `fetchpriority="high"`.
-- [ ] run `npm run lint && npm run typecheck && npm run test:ci` (from `frontend/`) — must pass before Task 7.
+- [x] update the matching Vitest test (or create one if absent under `frontend/src/components/`): assert `srcset` contains all four URL/width pairs, `sizes` matches the breakpoint string, and the first card has `fetchpriority="high"`.
+- [x] run `npm run lint && npm run typecheck && npm run test:ci` (from `frontend/`) — must pass before Task 7.
 
 ### Task 7: Responsive `srcset` + `sizes` for `SearchResultCard`
 

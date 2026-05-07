@@ -101,3 +101,31 @@ export function normalizePosterUrl(
   const qs = size ? `?size=${encodeURIComponent(size)}` : '';
   return `${BASE_URL}${path}${qs}`;
 }
+
+// Poster sizes proxied through /img. Mirrors the backend allow-list in
+// internal/pkg/tvmeta/poster.go; pinning here keeps the SPA from asking for
+// a size the server would coerce away.
+export type Size = 'w185' | 'w342' | 'w500' | 'w780';
+
+// posterSrcSet builds a width-descriptor srcset for the /img proxy. Pairs
+// each requested rendition with its TMDB pixel-width so the browser can
+// honor the matching `sizes` attribute and pick the smallest variant that
+// still satisfies layout × DPR. Absolute http(s) poster URLs (rare; only if
+// TMDB ever leaks past the proxy) yield an empty string — width descriptors
+// don't apply when the URL is opaque.
+export function posterSrcSet(
+  poster: string | null | undefined,
+  sizes: readonly Size[],
+): string {
+  if (!poster || sizes.length === 0) return '';
+  if (/^https?:\/\//i.test(poster)) return '';
+  return sizes
+    .map((size) => {
+      const url = normalizePosterUrl(poster, size);
+      if (!url) return '';
+      const width = Number(size.slice(1));
+      return `${url} ${width}w`;
+    })
+    .filter((s) => s !== '')
+    .join(', ');
+}
