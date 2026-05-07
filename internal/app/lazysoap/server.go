@@ -55,13 +55,13 @@ type ImgCacheConfig struct {
 }
 
 type Server struct {
-	config         Config
-	tvMeta         tvMetaClient
-	metrics        *rest.Metrics
-	imgClient      *http.Client
-	imgCache       *imgCache
-	version        string
-	featuredExtras *featuredExtrasCache
+	config       Config
+	tvMeta       tvMetaClient
+	metrics      *rest.Metrics
+	imgClient    *http.Client
+	imgCache     *imgCache
+	version      string
+	featuredPool *featuredPoolCache
 }
 
 type tvMetaClient interface {
@@ -93,9 +93,9 @@ func New(config Config, tvMetaClient tvMetaClient, cache *imgCache, version stri
 				return clone
 			}(),
 		},
-		imgCache:       cache,
-		version:        version,
-		featuredExtras: newFeaturedExtrasCache(),
+		imgCache:     cache,
+		version:      version,
+		featuredPool: newFeaturedPoolCache(),
 	}
 }
 
@@ -109,11 +109,11 @@ func (s *Server) Run(ctx context.Context) error {
 		Handler:           s.newRouter(),
 	}
 
-	// Warm and periodically refresh the featured-extras cache so the request
-	// path doesn't have to round-trip TMDB for static curated IDs. Async on
+	// Warm and periodically refresh the featured pool (popular ∪ curated
+	// extras) so the request path doesn't have to round-trip TMDB. Async on
 	// purpose: a slow / down TMDB at boot must not block the server from
 	// listening (k8s liveness, fast restarts).
-	go s.runFeaturedExtrasRefresh(ctx)
+	go s.runFeaturedPoolRefresh(ctx)
 
 	//nolint:gosec // request-scoped ctx is already cancelled here; we deliberately use a fresh one for graceful shutdown
 	go func() {

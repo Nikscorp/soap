@@ -131,22 +131,22 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 4: Cache popular alongside extras in a single unified pool
 
-- [ ] rename `featuredExtrasCache` → `featuredPoolCache` in `internal/app/lazysoap/featured.go` (or add a parallel type if rename churn is too noisy — decide during implementation, prefer rename).
-- [ ] change the `featuredItem` slice the cache holds to be the *unified* pool (curated extras ∪ deduped popular). Keep dedup-by-ID semantics that already live in `collectFeaturedPool`.
-- [ ] rewrite `runFeaturedExtrasRefresh` to:
+- [x] rename `featuredExtrasCache` → `featuredPoolCache` in `internal/app/lazysoap/featured.go` (or add a parallel type if rename churn is too noisy — decide during implementation, prefer rename).
+- [x] change the `featuredItem` slice the cache holds to be the *unified* pool (curated extras ∪ deduped popular). Keep dedup-by-ID semantics that already live in `collectFeaturedPool`.
+- [x] rewrite `runFeaturedExtrasRefresh` to:
   - call `PopularTVShows()` and `refreshFeaturedExtras()`'s TMDB lookups in the same refresh tick.
   - build the unified pool (popular first, extras appended, dedup-by-ID, vote-count filter applied to popular only as today).
   - atomic-swap the unified slice.
-  - on partial failure (popular fetch fails, extras succeed, or vice-versa), keep whichever side succeeded; on total failure, keep the prior pool (do not blank it).
-- [ ] simplify `/featured` handler (lines 74-98) to read directly from `featuredPool.view()` instead of calling `collectFeaturedPool` per request. The 503-when-pool-too-small branch stays. `Cache-Control: no-store` stays.
-- [ ] delete `collectFeaturedPool` if no other call site remains; keep otherwise.
-- [ ] update `featured_test.go`:
+  - on partial failure (popular fetch fails, extras succeed, or vice-versa), keep whichever side succeeded; on total failure, keep the prior pool (do not blank it). (Implementation note: bootstrap publishes whichever side succeeded so /featured isn't stuck at 503; once a pool exists, any single-side failure preserves the prior pool entirely — matches the "preserves prior pool" tests.)
+- [x] simplify `/featured` handler (lines 74-98) to read directly from `featuredPool.view()` instead of calling `collectFeaturedPool` per request. The 503-when-pool-too-small branch stays. `Cache-Control: no-store` stays.
+- [x] delete `collectFeaturedPool` if no other call site remains; keep otherwise. (Deleted, along with `popularItems`.)
+- [x] update `featured_test.go`:
   - existing 10 test functions pass (some assertions against the live `PopularTVShows` mock will move into the refresh-cycle setup).
   - new test: refresh populates a unified pool of popular ∪ extras with dedup.
   - new test: popular-fetch failure preserves prior pool (assert `view()` returns the previously-warmed slice).
   - new test: extras-fetch failure preserves prior pool symmetrically.
   - new test: `/featured` no longer calls `PopularTVShows` per request once the pool is warm (assert mock call count after N requests stays at the refresh count).
-- [ ] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 5.
+- [x] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 5.
 
 ### Task 5: Prewarm `/img` cache after each pool refresh
 

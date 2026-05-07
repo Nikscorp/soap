@@ -54,7 +54,7 @@ func NewServerWithImgClient(t *testing.T, transport RoundTripFunc) *imgProxyFixt
 		},
 		tvMeta:         tvMetaClientMock,
 		metrics:        rest.NewMetrics(),
-		featuredExtras: newFeaturedExtrasCache(),
+		featuredPool: newFeaturedPoolCache(),
 		imgClient:      NewTestClient(transport),
 		imgCache:       cache,
 	}
