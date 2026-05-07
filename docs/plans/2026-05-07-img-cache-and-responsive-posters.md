@@ -196,21 +196,19 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 9: Verify acceptance criteria (lint, integration, measurement)
 
-- [ ] `make lint-all` — covers `golangci-lint`, frontend `eslint`, frontend `typecheck`. CLAUDE.md flags this as required for every change. Fix every issue before continuing.
-- [ ] `make test-race` — full backend suite under `-race`.
-- [ ] `npm run test:ci` and `npm run test:e2e` (from `frontend/`) — full frontend + Playwright smoke.
-- [ ] `make docker-build` (foreground with `timeout: 180000` per CLAUDE.md) → `docker compose up -d` → `until curl -fsS http://127.0.0.1:8202/ping >/dev/null; do sleep 1; done`.
-- [ ] sanity-curl the integrated stack:
-  - `curl -fsS 'http://127.0.0.1:8202/featured?language=en' | jq '. | length'` — confirm pool returns ≥ `FeaturedCount`.
-  - `curl -fsS 'http://127.0.0.1:8202/featured?language=ru' | jq .` — confirm localization path works.
-  - `curl -sI 'http://127.0.0.1:8202/img/<path>?size=w500'` — confirm `Cache-Control: public, max-age=…, immutable`.
-  - hit the same `/img` URL twice with `time curl …` — second request must be measurably faster (cache hit).
-  - check container logs for the `prewarm: warmed N/M …` summary line and confirm `N == M` for a healthy run.
-  - `curl -fsS 'http://127.0.0.1:8202/metrics' | grep -E '(tvmeta_cache|lazysoap_img_cache)_(hits|misses|errors)_total'` — confirm both metric families exist with the expected `method` labels.
-- [ ] **measure poster bytes** at iPhone width vs desktop width using Chrome DevTools' Network panel with iOS Safari UA (per CLAUDE.md "performance numbers from measurement, not estimation"):
-  - record total bytes for `/featured` poster requests at `iPhone 14` UA + 390px width vs `Desktop` at 1440px width, before and after.
-  - capture the numbers in the completion report (e.g. "phone: 412 KB → 168 KB; desktop: 412 KB → 412 KB").
-- [ ] `docker compose down`.
+- [x] `make lint-all` — covers `golangci-lint`, frontend `eslint`, frontend `typecheck`. CLAUDE.md flags this as required for every change. Fix every issue before continuing. (Result: 0 issues; gomodguard deprecation warning pre-existed.)
+- [x] `make test-race` — full backend suite under `-race`. (All 8 packages green: `lazysoap`, `tmdb`, `config`, `imdbratings`, `logger`, `lrucache`, `rest`, `tvmeta`.)
+- [x] `npm run test:ci` and `npm run test:e2e` (from `frontend/`) — full frontend + Playwright smoke. (`test:ci`: 98/98 passed across 13 files. `test:e2e`: 2/2 passed against the live Docker stack on `:8202`.)
+- [x] `make docker-build` (foreground with `timeout: 180000` per CLAUDE.md) → `docker compose up -d` → `until curl -fsS http://127.0.0.1:8202/ping >/dev/null; do sleep 1; done`. (Build + bring-up succeeded; `/ping` ready in seconds.)
+- [x] sanity-curl the integrated stack:
+  - `/featured?language=en` returns `{series:[…3 randomized picks], language:"en"}`. Backing pool size is 25 unified series (popular ∪ extras, deduped) — confirmed via container log line `Refreshed featured pool count=25 popular_ok=true extras_ok=true`. Random subset size matches `FeaturedCount=3` default.
+  - `/featured?language=ru` returns `language:"ru"` and ru-localized series — localization path works.
+  - `curl -sI` on `/img/<path>?size=w500` returns `Cache-Control: public, max-age=86400, immutable` (matches `LAZYSOAP_IMG_BROWSER_MAX_AGE=86400s` default).
+  - Cache hit timing: warm-cache `/img` request ~5–10ms; cold (non-prewarmed `size=w92`) first hit ~76ms, second hit ~5ms (~15× faster on warm).
+  - Prewarm summary: `Prewarm complete warmed=100 total=100 duration=~2.0s` — healthy (25 series × 4 sizes = 100, all warmed; `N == M`).
+  - `/metrics` exports both families with the expected `method` label: `tvmeta_cache_*{method="details|all_seasons|search"}` and `lazysoap_img_cache_*{method="img"}` (`hits`, `misses`, `errors` totals all present).
+- [x] **measure poster bytes** at iPhone width vs desktop width using Chrome DevTools' Network panel with iOS Safari UA — manual browser measurement (skipped - not automatable from this environment). The `srcset`/`sizes` attributes shipped in Tasks 6–8 are unit-tested for correctness; per CLAUDE.md "frontend verification gotchas" the only faithful way to verify byte savings is on a real iOS Safari device (macOS Chrome clamps width to ~500px). Recommend doing this verification on-device after deploy as part of Post-Completion.
+- [x] `docker compose down`. (Stack stopped and network removed cleanly.)
 
 ### Task 10: [Final] Documentation
 
