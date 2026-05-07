@@ -212,11 +212,11 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 10: [Final] Documentation
 
-- [ ] update `README.md` `/img` section to describe the new server-side cache + `Cache-Control` headers it emits. Re-derive the prose by re-reading the implementation per CLAUDE.md "documentation discipline".
-- [ ] update `README.md` `/featured` section to note that the popular pool is now cached (refreshed on `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL`) rather than fetched per request, and that featured posters are prewarmed.
-- [ ] update `api/openapi.yaml` if any header/parameter description for `/img` or `/featured` changes (no schema changes expected — verify response shapes are byte-identical).
-- [ ] confirm `config/config.yaml.dist` mirrors the three new `LAZYSOAP_IMG_CACHE_*` / `LAZYSOAP_IMG_BROWSER_MAX_AGE` env vars added in Task 3 with comments.
-- [ ] mention the new `internal/pkg/lrucache` package in CLAUDE.md if a one-liner under "Architecture" clarifies the layering — only if it would have helped this session's discovery; otherwise leave alone.
+- [x] update `README.md` `/img` section to describe the new server-side cache + `Cache-Control` headers it emits. Re-derive the prose by re-reading the implementation per CLAUDE.md "documentation discipline". (Re-read `img_proxy.go`, `img_cache.go`, `server.go` `ImgCacheConfig`; documented the LRU+singleflight, `200/image-only` storage rule, 2 MiB cap, 502/404 mapping, `Cache-Control` header value, and `lazysoap_img_cache_*` Prometheus family.)
+- [x] update `README.md` `/featured` section to note that the popular pool is now cached (refreshed on `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL`) rather than fetched per request, and that featured posters are prewarmed. (Re-read `runFeaturedPoolRefresh` and `prewarmFeaturedImages`; documented unified pool, partial-failure handling, and the 4-size prewarm.)
+- [x] update `api/openapi.yaml` if any header/parameter description for `/img` or `/featured` changes (no schema changes expected — verify response shapes are byte-identical). (No schema changes. Updated `/featured` description for unified-pool refresh + prewarm; `/img` description gained the cache contract; added `Cache-Control` and `Content-Type` response headers; renamed the error response from `500` to `502` to match the implementation; clarified `404` body.)
+- [x] confirm `config/config.yaml.dist` mirrors the three new `LAZYSOAP_IMG_CACHE_*` / `LAZYSOAP_IMG_BROWSER_MAX_AGE` env vars added in Task 3 with comments. (Already in place from Task 3 — `lazysoap.img_cache.{size,ttl,browser_max_age}` with explanatory comments; verified env var names + defaults match `ImgCacheConfig` struct tags.)
+- [x] mention the new `internal/pkg/lrucache` package in CLAUDE.md if a one-liner under "Architecture" clarifies the layering — only if it would have helped this session's discovery; otherwise leave alone. (Added a "Cross-cutting" paragraph under Architecture pointing at the shared harness; updated the "Featured-extras cache" bullet → "Featured-pool cache" with current method names + prewarm behavior; added a new "/img bytes cache" bullet alongside the TMDB response cache; added `ImgCache` to the `internal/app/lazysoap/server.go` Configuration entry.)
 
 ## Technical Details
 
