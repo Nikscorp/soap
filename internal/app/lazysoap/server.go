@@ -60,6 +60,7 @@ type Server struct {
 	metrics      *rest.Metrics
 	imgClient    *http.Client
 	imgCache     *imgCache
+	featuredImgs *featuredImgCache
 	version      string
 	featuredPool *featuredPoolCache
 }
@@ -94,6 +95,7 @@ func New(config Config, tvMetaClient tvMetaClient, cache *imgCache, version stri
 			}(),
 		},
 		imgCache:     cache,
+		featuredImgs: newFeaturedImgCache(),
 		version:      version,
 		featuredPool: newFeaturedPoolCache(),
 	}

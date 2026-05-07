@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -187,28 +188,40 @@ func (s *Server) refreshFeaturedPool(ctx context.Context) {
 	go s.prewarmFeaturedImages(ctx, pool)
 }
 
-// prewarmFeaturedImages drives s.imgCache through fetchPoster for every
-// (item, size) pair in the featured pool. The goal is that a cold /featured
-// request on the SPA finds every poster already cached, so the handler never
-// pays TMDB latency on the request path.
+// prewarmFeaturedImages fetches every (item, size) pair in the featured pool
+// directly via fetchPoster and atomically swaps the result into
+// s.featuredImgs. The goal is that a cold /featured request on the SPA finds
+// every poster already pinned in the unevictable shadow tier, so the handler
+// never pays TMDB latency on the request path AND general /id/{id} traffic
+// can never evict a featured entry — featuredImgs has no LRU.
+//
+// fetchPoster is called directly (not through s.imgCache) so prewarming does
+// not touch the LRU at all. The pinned map is the storage. On ctx cancellation
+// the partially-built map is discarded — we publish all-or-nothing so a
+// shutdown mid-prewarm cannot replace a healthy prior pinned set with a
+// truncated one.
 //
 // Failure handling: each per-(path, size) failure is logged and dropped.
 // Returning an error from any goroutine would cancel errgroup's context and
 // short-circuit the rest of the warm — a single bad poster must not stall
 // dozens of healthy ones. The prewarmer never returns an error to its caller.
 //
-// Concurrency: bounded to prewarmConcurrency via errgroup.SetLimit. The
-// underlying lrucache.GetOrFetch dedupes concurrent identical fetches via
-// singleflight, so even a duplicate (path, size) pair across pool entries
-// only round-trips TMDB once.
+// Concurrency: bounded to prewarmConcurrency via errgroup.SetLimit. There is
+// no singleflight here (featuredImgs has none); duplicate (path, size) pairs
+// across pool entries are not expected because buildFeaturedPool dedupes by
+// ID and each item has one poster. If a duplicate did slip in, the only cost
+// is a redundant fetch — both writers would land on the same map key.
 func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem) {
-	if !s.imgCache.IsEnabled() || len(pool) == 0 {
+	if len(pool) == 0 {
 		return
 	}
 
 	start := time.Now()
 	var warmed atomic.Int64
 	var total int
+
+	var mu sync.Mutex
+	entries := make(map[string]ImgCacheEntry, len(pool)*len(prewarmSizes))
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(prewarmConcurrency)
@@ -230,7 +243,7 @@ func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem)
 			// goroutine would cancel errgroup's context and short-circuit
 			// every sibling goroutine, defeating the point of warming the rest.
 			eg.Go(func() error {
-				if s.prewarmOne(egCtx, path, size) {
+				if s.prewarmOne(egCtx, path, size, entries, &mu) {
 					warmed.Add(1)
 				}
 				return nil
@@ -240,29 +253,42 @@ func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem)
 
 	_ = eg.Wait()
 
+	// All-or-nothing publish: if the caller's ctx was canceled mid-prewarm,
+	// `entries` is partial and overwriting featuredImgs with it would drop
+	// healthy posters from the prior pool. Keep the prior pinned set instead.
+	if ctx.Err() != nil {
+		logger.Info(ctx, "Prewarm canceled; preserving prior pinned cache",
+			"warmed", warmed.Load(), "total", total, "duration", time.Since(start))
+		return
+	}
+	s.featuredImgs.replace(entries)
+
 	logger.Info(ctx, "Prewarm complete",
-		"warmed", warmed.Load(), "total", total, "duration", time.Since(start))
+		"warmed", warmed.Load(), "total", total, "pinned", s.featuredImgs.len(), "duration", time.Since(start))
 }
 
-// prewarmOne fetches a single (path, size) pair into the image cache.
-// Returns true if the entry was successfully warmed. Re-checks the context
-// after acquiring a semaphore slot: cancellation between scheduling and
-// execution would otherwise let GetOrFetch start a detached singleflight
-// fetch that outlives the prewarm context.
-func (s *Server) prewarmOne(ctx context.Context, path, size string) bool {
+// prewarmOne fetches a single (path, size) pair and inserts the result into
+// entries under mu. Returns true on a successful insert. Re-checks the
+// context after acquiring an errgroup slot so cancellation between scheduling
+// and execution still skips the upstream call.
+//
+// Errors are logged and swallowed (returning bool, not error) so the caller's
+// errgroup is never canceled by a per-poster failure — see prewarmFeaturedImages.
+func (s *Server) prewarmOne(ctx context.Context, path, size string, entries map[string]ImgCacheEntry, mu *sync.Mutex) bool {
 	if ctx.Err() != nil {
 		return false
 	}
-	_, err := s.imgCache.GetOrFetch(ctx, imgCacheKey(path, size), func(ctx context.Context) (ImgCacheEntry, error) {
-		return s.fetchPoster(ctx, path, size)
-	})
-	if err == nil {
-		return true
+	entry, err := s.fetchPoster(ctx, path, size)
+	if err != nil {
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			logger.Error(ctx, "Failed to prewarm img cache entry", "err", err, "path", path, "size", size)
+		}
+		return false
 	}
-	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-		logger.Error(ctx, "Failed to prewarm img cache entry", "err", err, "path", path, "size", size)
-	}
-	return false
+	mu.Lock()
+	entries[imgCacheKey(path, size)] = entry
+	mu.Unlock()
+	return true
 }
 
 // buildFeaturedPool merges popular shows (filtered by FeaturedMinVoteCount)

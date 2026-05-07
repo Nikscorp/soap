@@ -503,10 +503,15 @@ func TestRunFeaturedPoolRefreshNoExtrasStillFetchesPopular(t *testing.T) {
 	require.Len(t, f.srv.featuredPool.view(), 1)
 }
 
-// newPrewarmServer builds a Server wired with a real imgCache + custom
-// transport so prewarmFeaturedImages can be exercised end-to-end (LRU stores,
-// fetchPoster code path, errgroup bound). The router is not used — tests call
-// prewarmFeaturedImages directly.
+// newPrewarmServer builds a Server wired with the pinned featuredImgs tier +
+// a real imgCache + custom transport so prewarmFeaturedImages can be exercised
+// end-to-end (fetchPoster code path, errgroup bound, atomic swap of the
+// pinned map). The router is not used — tests call prewarmFeaturedImages
+// directly.
+//
+// The imgCache is included so the fixture matches production wiring, but
+// prewarm no longer writes there — assertions about prewarm output should
+// target srv.featuredImgs.
 func newPrewarmServer(t *testing.T, transport RoundTripFunc) (*Server, *imgCache) {
 	t.Helper()
 	cache := lrucache.New[string, ImgCacheEntry]("img", 256, time.Hour, nil)
@@ -517,6 +522,7 @@ func newPrewarmServer(t *testing.T, transport RoundTripFunc) (*Server, *imgCache
 		tvMeta:       mocks.NewTvMetaClientMock(t),
 		metrics:      rest.NewMetrics(),
 		featuredPool: newFeaturedPoolCache(),
+		featuredImgs: newFeaturedImgCache(),
 		imgClient:    NewTestClient(transport),
 		imgCache:     cache,
 	}
@@ -544,8 +550,10 @@ func TestPrewarmFeaturedImagesWarmsAllSizes(t *testing.T) {
 	srv.prewarmFeaturedImages(context.Background(), pool)
 
 	want := len(pool) * len(prewarmSizes)
-	require.Equal(t, want, cache.Len(),
-		"prewarm should populate one entry per (item, size) on the happy path")
+	require.Equal(t, want, srv.featuredImgs.len(),
+		"prewarm should populate one pinned entry per (item, size) on the happy path")
+	require.Equal(t, 0, cache.Len(),
+		"prewarm must NOT touch the LRU — featured images live exclusively in featuredImgs")
 	require.EqualValues(t, want, calls.Load(),
 		"each unique (path, size) must round-trip TMDB exactly once")
 }
@@ -577,11 +585,13 @@ func TestPrewarmFeaturedImagesContinuesOnFailingPoster(t *testing.T) {
 
 	srv.prewarmFeaturedImages(context.Background(), pool)
 
-	// Two healthy posters × len(prewarmSizes) end up cached. The bad one's
-	// per-size 404s are NOT cached (lrucache never stores errors).
-	wantCached := 2 * len(prewarmSizes)
-	require.Equal(t, wantCached, cache.Len(),
+	// Two healthy posters × len(prewarmSizes) end up pinned. The bad one's
+	// per-size 404s are NOT pinned (failed fetches are logged and dropped).
+	wantPinned := 2 * len(prewarmSizes)
+	require.Equal(t, wantPinned, srv.featuredImgs.len(),
 		"failures on one poster must not block warming the rest")
+	require.Equal(t, 0, cache.Len(),
+		"prewarm must NOT touch the LRU — failures or successes")
 	require.EqualValues(t, len(pool)*len(prewarmSizes), calls.Load(),
 		"every (path, size) pair is attempted, even the failing ones")
 }
@@ -607,8 +617,10 @@ func TestPrewarmFeaturedImagesSkipsItemsWithoutPosterPrefix(t *testing.T) {
 
 	srv.prewarmFeaturedImages(context.Background(), pool)
 
-	require.Equal(t, len(prewarmSizes), cache.Len(),
+	require.Equal(t, len(prewarmSizes), srv.featuredImgs.len(),
 		"only the well-formed /img/{path} entry should warm")
+	require.Equal(t, 0, cache.Len(),
+		"prewarm must NOT touch the LRU regardless of input shape")
 	require.EqualValues(t, len(prewarmSizes), calls.Load(),
 		"malformed posters must not produce upstream calls")
 }

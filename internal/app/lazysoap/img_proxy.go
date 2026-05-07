@@ -35,19 +35,29 @@ func (s *Server) imgProxyHandler(w http.ResponseWriter, r *http.Request) {
 	size := tvmeta.NormalizePosterSize(rawSize)
 	ctx := logger.WithAttrs(r.Context(), "path", path, "size", size)
 
-	entry, err := s.imgCache.GetOrFetch(ctx, imgCacheKey(path, size), func(ctx context.Context) (ImgCacheEntry, error) {
-		return s.fetchPoster(ctx, path, size)
-	})
-	if err != nil {
-		if errors.Is(err, errUpstreamNotFound) {
-			w.WriteHeader(http.StatusNotFound)
+	key := imgCacheKey(path, size)
+
+	// Featured posters are pinned in featuredImgs and served without ever
+	// touching imgCache (the LRU). This guarantees that prewarmed featured
+	// entries are never evicted by general /id/{id} traffic — see
+	// featuredImgCache for the rationale and trade-offs.
+	entry, ok := s.featuredImgs.lookup(key)
+	if !ok {
+		var err error
+		entry, err = s.imgCache.GetOrFetch(ctx, key, func(ctx context.Context) (ImgCacheEntry, error) {
+			return s.fetchPoster(ctx, path, size)
+		})
+		if err != nil {
+			if errors.Is(err, errUpstreamNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			// Caller-side cancellation arrives via ctx.Err() from
+			// lrucache.GetOrFetch; the request is already gone, so a 502
+			// status is harmless (client will not see it).
+			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
-		// Caller-side cancellation arrives via ctx.Err() from
-		// lrucache.GetOrFetch; the request is already gone, so a 502 status
-		// is harmless (client will not see it).
-		w.WriteHeader(http.StatusBadGateway)
-		return
 	}
 
 	w.Header().Set("Content-Type", entry.contentType)

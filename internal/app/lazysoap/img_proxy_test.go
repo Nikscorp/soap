@@ -56,11 +56,12 @@ func NewServerWithImgClient(t *testing.T, transport RoundTripFunc) *imgProxyFixt
 				BrowserMaxAge: 24 * time.Hour,
 			},
 		},
-		tvMeta:         tvMetaClientMock,
-		metrics:        rest.NewMetrics(),
+		tvMeta:       tvMetaClientMock,
+		metrics:      rest.NewMetrics(),
 		featuredPool: newFeaturedPoolCache(),
-		imgClient:      NewTestClient(transport),
-		imgCache:       cache,
+		featuredImgs: newFeaturedImgCache(),
+		imgClient:    NewTestClient(transport),
+		imgCache:     cache,
 	}
 	ts := httptest.NewServer(srv.newRouter())
 
@@ -226,6 +227,62 @@ func TestImgProxyCachesAcrossRequests(t *testing.T) {
 		require.Equal(t, "payload", string(body))
 	}
 	require.EqualValues(t, 1, calls.Load(), "5 sequential requests must collapse to 1 upstream call")
+}
+
+// TestImgProxyFeaturedTierServesWithoutLRUOrUpstream is the headline guarantee
+// of the pinned shadow tier: an entry installed in featuredImgs must be served
+// without round-tripping TMDB AND without ever touching the LRU. The whole
+// reason the tier exists is that LRU eviction by general /id/{id} traffic
+// cannot drop featured posters; this test pins down both halves of that
+// contract.
+func TestImgProxyFeaturedTierServesWithoutLRUOrUpstream(t *testing.T) {
+	var calls atomic.Int32
+	transport := func(_ *http.Request) *http.Response {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("upstream-bytes")),
+			Header:     imageHeader(),
+		}
+	}
+	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
+	cache := lrucache.New[string, ImgCacheEntry]("img", 64, time.Hour, nil)
+	pinned := newFeaturedImgCache()
+	pinned.replace(map[string]ImgCacheEntry{
+		imgCacheKey("pinned.jpg", "w342"): {body: []byte("pinned-bytes"), contentType: "image/jpeg"},
+	})
+	srv := &Server{
+		config:       Config{ImgCache: ImgCacheConfig{BrowserMaxAge: time.Hour}},
+		tvMeta:       tvMetaClientMock,
+		metrics:      rest.NewMetrics(),
+		featuredPool: newFeaturedPoolCache(),
+		featuredImgs: pinned,
+		imgClient:    NewTestClient(transport),
+		imgCache:     cache,
+	}
+	ts := httptest.NewServer(srv.newRouter())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/img/pinned.jpg?size=w342")
+	require.NoError(t, err)
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "pinned-bytes", string(body), "pinned tier must short-circuit with its own bytes")
+	require.EqualValues(t, 0, calls.Load(), "pinned hit must not round-trip TMDB")
+	require.Equal(t, 0, cache.Len(), "pinned hit must not write into the LRU")
+
+	// A request for an unpinned (path, size) on the same poster MUST fall
+	// through to the LRU path normally — the tier is read-only and additive.
+	resp2, err := http.Get(ts.URL + "/img/pinned.jpg?size=w500")
+	require.NoError(t, err)
+	body2, _ := io.ReadAll(resp2.Body)
+	_ = resp2.Body.Close()
+	require.Equal(t, http.StatusOK, resp2.StatusCode)
+	require.Equal(t, "upstream-bytes", string(body2), "unpinned size must fall through to upstream")
+	require.EqualValues(t, 1, calls.Load(), "unpinned size triggers exactly one upstream fetch")
+	require.Equal(t, 1, cache.Len(), "unpinned size lands in the LRU as usual")
 }
 
 // TestImgProxySingleflightCollapse exercises the lrucache singleflight path
@@ -441,6 +498,7 @@ func TestImgProxyBrowserMaxAgeZeroEmitsNoStore(t *testing.T) {
 		tvMeta:       tvMetaClientMock,
 		metrics:      rest.NewMetrics(),
 		featuredPool: newFeaturedPoolCache(),
+		featuredImgs: newFeaturedImgCache(),
 		imgClient:    NewTestClient(RoundTripFunc(transport)),
 		imgCache:     cache,
 	}
