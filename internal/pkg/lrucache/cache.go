@@ -240,6 +240,14 @@ func (c *Cache[K, V]) recordError() {
 	c.m.errors.WithLabelValues(c.name).Inc()
 }
 
+// IsEnabled reports whether the cache is in active (non-pass-through) mode.
+// Returns false for a nil receiver or a cache constructed with size <= 0 or
+// ttl <= 0. Use this to skip work that is only useful when caching is active
+// (e.g. prewarm loops).
+func (c *Cache[K, V]) IsEnabled() bool {
+	return c != nil && c.lru != nil
+}
+
 // Len returns the number of cached entries; 0 for a pass-through cache.
 func (c *Cache[K, V]) Len() int {
 	if c == nil || c.lru == nil {

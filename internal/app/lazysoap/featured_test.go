@@ -648,8 +648,8 @@ func TestPrewarmFeaturedImagesContextCancellationReturnsPromptly(t *testing.T) {
 		"expected prewarm to saturate its concurrency limit before cancel")
 
 	cancel()
-	// Unblock the transport so the singleflight inner fetches the eg
-	// goroutines abandoned can finish — otherwise they'd leak past test exit.
+	// Unblock the transport so the in-progress fetches (those that had already
+	// entered GetOrFetch before cancellation) can finish cleanly.
 	close(gate)
 
 	select {

@@ -34,6 +34,28 @@ const samplePayload: FeaturedResponse = {
   ],
 };
 
+describe('<FeaturedSeries /> null states', () => {
+  it('renders nothing on fetch error', async () => {
+    fetchMock.mockResolvedValue(new Response('Service unavailable', { status: 503 }));
+
+    const { container } = renderWithClient(
+      <FeaturedSeries language="en" onSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => expect(container.querySelector('section')).toBeNull());
+  });
+
+  it('renders nothing when the series array is empty', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ language: 'en', series: [] }));
+
+    const { container } = renderWithClient(
+      <FeaturedSeries language="en" onSelect={vi.fn()} />,
+    );
+
+    await waitFor(() => expect(container.querySelector('section')).toBeNull());
+  });
+});
+
 describe('<FeaturedSeries /> poster attributes', () => {
   it('renders width-descriptor srcset and matching sizes for each card', async () => {
     fetchMock.mockResolvedValue(jsonResponse(samplePayload));
@@ -52,6 +74,7 @@ describe('<FeaturedSeries /> poster attributes', () => {
       expect(srcset).toContain('?size=w342 342w');
       expect(srcset).toContain('?size=w500 500w');
       expect(srcset).toContain('?size=w780 780w');
+      expect(srcset).not.toContain('185w');
       expect(img.getAttribute('sizes')).toBe(
         '(min-width: 1024px) 210px, (min-width: 640px) 190px, 160px',
       );

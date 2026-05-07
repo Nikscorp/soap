@@ -21,7 +21,7 @@ Backend (Go ≥ 1.26, run from repo root):
 | `make tidy` | `go mod tidy && go mod vendor` (the repo vendors deps) |
 | `make docker-build` / `make docker-up` | Full stack via `docker-compose.yml` (default bind `127.0.0.1:8202`) |
 
-Run a single Go test: `go test -run TestName$ ./internal/path/...` (use `-race` when touching concurrent code — the featured-extras cache and `TVShowAllSeasonsWithDetails` errgroup are the hot spots).
+Run a single Go test: `go test -run TestName$ ./internal/path/...` (use `-race` when touching concurrent code — the `featuredPoolCache` / `runFeaturedPoolRefresh` and `TVShowAllSeasonsWithDetails` errgroup are the hot spots).
 
 **Docker builds: foreground or `Monitor`, never `sleep` polling.** `make docker-build` takes 60–120s. Run it foreground with `timeout: 180000` on the Bash call, or background it and use the `Monitor` tool to await completion. Never chain `sleep N && tail` — the harness blocks long sleeps and you'll burn a turn on the rejection.
 

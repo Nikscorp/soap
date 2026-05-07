@@ -96,10 +96,6 @@ func (s *Server) fetchPoster(ctx context.Context, path, size string) (ImgCacheEn
 		return ImgCacheEntry{}, fmt.Errorf("%w: non-image content-type=%q", errUpstreamFailed, contentType)
 	}
 
-	if resp.Body == nil {
-		return ImgCacheEntry{}, fmt.Errorf("%w: nil body", errUpstreamFailed)
-	}
-
 	// LimitReader caps the read at maxImgBytes+1 so we can detect overflow:
 	// reading exactly maxImgBytes is fine; reading more means the upstream
 	// is streaming a body larger than our policy allows.

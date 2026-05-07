@@ -191,7 +191,7 @@ Defaults live in `config/config.yaml.dist`. Every field can also be overridden t
 | `LAZYSOAP_FEATURED_COUNT` | `3` | Number of series returned by `/featured` |
 | `LAZYSOAP_FEATURED_MIN_VOTE_COUNT` | `100` | Min `vote_count` an entry from TMDB's popular pool must have to be eligible. Curated extras bypass this. |
 | `LAZYSOAP_FEATURED_EXTRA_IDS` | curated TMDB ids | Comma-separated TMDB ids always eligible for `/featured` (e.g. `1399,1396,1668`). |
-| `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` | `24h` | How often the extras cache is refreshed; `0` means startup-only. |
+| `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` | `24h` | How often the unified featured pool (popular ∪ curated extras) is refreshed; `0` means startup-only (initial fetch at boot, no subsequent ticks). |
 | `LAZYSOAP_RATINGS_SOURCE` | `tmdb` | `tmdb` or `imdb`. See [Rating source](#rating-source). |
 | `LAZYSOAP_IMDB_DATASETS_URL` | `https://datasets.imdbws.com` | IMDb dataset host (only used when `RATINGS_SOURCE=imdb`). |
 | `LAZYSOAP_IMDB_REFRESH_INTERVAL` | `24h` | How often the IMDb dataset is re-downloaded; `0` means startup-only. |

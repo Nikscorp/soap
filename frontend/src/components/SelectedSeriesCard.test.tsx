@@ -25,7 +25,7 @@ describe('<SelectedSeriesCard /> poster attributes', () => {
     expect(img?.getAttribute('sizes')).toBe('(min-width: 640px) 96px, 80px');
     expect(img?.getAttribute('src')).toContain('?size=w185');
     expect(img?.getAttribute('fetchpriority')).toBe('high');
-    expect(img?.getAttribute('loading')).not.toBe('lazy');
+    expect(img?.getAttribute('loading')).toBeNull();
   });
 
   it('renders the placeholder icon when poster is missing', () => {

@@ -2,6 +2,7 @@ package lazysoap
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,12 +20,15 @@ import (
 
 // RoundTripFunc adapts a function to http.RoundTripper for the test
 // transport. Returning a nil *http.Response simulates a transport-level
-// failure (Go's net/http surfaces it as an error from Client.Do).
+// failure.
 type RoundTripFunc func(req *http.Request) *http.Response
 
-// RoundTrip ...
 func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req), nil
+	resp := f(req)
+	if resp == nil {
+		return nil, errors.New("transport error: nil response")
+	}
+	return resp, nil
 }
 
 // NewTestClient returns *http.Client with Transport replaced to avoid making real calls
@@ -100,6 +104,12 @@ func defaultImgTransport(t *testing.T) RoundTripFunc {
 				Body:       nil,
 				Header:     make(http.Header),
 			}
+		case "https://image.tmdb.org/t/p/w92/ok_nil_body.jpg":
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       nil,
+				Header:     imageHeader(),
+			}
 		case "https://image.tmdb.org/t/p/w92/transport_error.jpg":
 			return nil
 		case "https://image.tmdb.org/t/p/w342/i8NA7TqNgnXuAtDeQOF5baX0jI6.jpg":
@@ -150,8 +160,14 @@ func TestCommon(t *testing.T) {
 			wantBody:       "",
 		},
 		{
-			name:           "nil body",
+			name:           "nil body (non-OK status)",
 			reqURL:         "/img/nil_body.jpg",
+			wantStatusCode: http.StatusBadGateway,
+			wantBody:       "",
+		},
+		{
+			name:           "nil body (200 OK with image content-type)",
+			reqURL:         "/img/ok_nil_body.jpg",
 			wantStatusCode: http.StatusBadGateway,
 			wantBody:       "",
 		},
@@ -380,4 +396,61 @@ func TestImgProxyDisallowedSizeSharesCacheSlot(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 	require.EqualValues(t, 1, calls.Load(), "unnormalized + normalized + default must share one entry")
+}
+
+// TestImgProxyEmptyBodyReturns502 verifies that a 200 OK upstream response with
+// a zero-length body is rejected as a 502 and not cached. An empty image body
+// is not a valid poster; caching it would serve a blank body forever until TTL.
+func TestImgProxyEmptyBodyReturns502(t *testing.T) {
+	var calls atomic.Int32
+	transport := func(_ *http.Request) *http.Response {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(nil)),
+			Header:     imageHeader(),
+		}
+	}
+	srv := NewServerWithImgClient(t, transport)
+	defer srv.server.Close()
+
+	for i := 0; i < 2; i++ {
+		resp, err := http.Get(srv.server.URL + "/img/empty.jpg?size=w185")
+		require.NoError(t, err)
+		_, _ = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusBadGateway, resp.StatusCode, "empty body must surface as 502")
+	}
+	require.EqualValues(t, 2, calls.Load(), "empty body must not be cached")
+}
+
+// TestImgProxyBrowserMaxAgeZeroEmitsNoStore verifies that BrowserMaxAge=0
+// produces Cache-Control: no-store rather than max-age=0 or a missing header.
+func TestImgProxyBrowserMaxAgeZeroEmitsNoStore(t *testing.T) {
+	transport := func(_ *http.Request) *http.Response {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("payload")),
+			Header:     imageHeader(),
+		}
+	}
+	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
+	cache := lrucache.New[string, ImgCacheEntry]("img", 64, time.Hour, nil)
+	srv := &Server{
+		config:       Config{ImgCache: ImgCacheConfig{BrowserMaxAge: 0}},
+		tvMeta:       tvMetaClientMock,
+		metrics:      rest.NewMetrics(),
+		featuredPool: newFeaturedPoolCache(),
+		imgClient:    NewTestClient(RoundTripFunc(transport)),
+		imgCache:     cache,
+	}
+	ts := httptest.NewServer(srv.newRouter())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/img/noca.jpg?size=w342")
+	require.NoError(t, err)
+	_, _ = io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
 }

@@ -206,7 +206,7 @@ paths:
         - name: language
           in: query
           required: false
-          description: Optional ISO 639-1 language code forwarded to TMDB for the popular pool.
+          description: Optional ISO 639-1 language code. Echoed back in the response body; the featured pool is pre-built in the server's default language at refresh time and is not re-fetched per request.
           schema:
             type: string
           example: en
@@ -527,7 +527,7 @@ components:
             $ref: "#/components/schemas/FeaturedSeries"
         language:
           type: string
-          description: Language echoed back from the request (defaults to `en`).
+          description: Language query-parameter echoed back from the request; empty string when the caller omits it.
           example: en
     MetaResp:
       type: object

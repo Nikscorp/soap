@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -170,7 +169,7 @@ func (s *Server) refreshFeaturedPool(ctx context.Context) {
 	popularOK := popularErr == nil
 	extrasOK := len(s.config.FeaturedExtraIDs) == 0 || len(extras) > 0
 
-	if (!popularOK || !extrasOK) && s.featuredPool.view() != nil {
+	if (!popularOK || !extrasOK) && len(s.featuredPool.view()) > 0 {
 		logger.Error(ctx, "Featured pool refresh had failures; keeping prior pool",
 			"popular_ok", popularOK, "extras_ok", extrasOK)
 		return
@@ -183,9 +182,9 @@ func (s *Server) refreshFeaturedPool(ctx context.Context) {
 
 	// Prewarm runs in the background so it never blocks the next refresh
 	// tick: a slow TMDB image endpoint must not slow down the next pool
-	// rebuild. The pool slice published via replace() is read-only and
-	// retrieved through view() — safe to share with the goroutine.
-	go s.prewarmFeaturedImages(ctx, s.featuredPool.view())
+	// rebuild. Pass pool directly (not via view()) so the goroutine
+	// always warms the slice we just published, not a potential later swap.
+	go s.prewarmFeaturedImages(ctx, pool)
 }
 
 // prewarmFeaturedImages drives s.imgCache through fetchPoster for every
@@ -203,44 +202,37 @@ func (s *Server) refreshFeaturedPool(ctx context.Context) {
 // singleflight, so even a duplicate (path, size) pair across pool entries
 // only round-trips TMDB once.
 func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem) {
-	if s.imgCache == nil || len(pool) == 0 {
+	if !s.imgCache.IsEnabled() || len(pool) == 0 {
 		return
 	}
 
 	start := time.Now()
 	var warmed atomic.Int64
-	var total atomic.Int64
+	var total int
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(prewarmConcurrency)
 
 	for _, item := range pool {
+		if egCtx.Err() != nil {
+			break
+		}
 		path, ok := strings.CutPrefix(item.Poster, featuredPosterPrefix)
 		if !ok || path == "" {
 			continue
 		}
 		for _, size := range prewarmSizes {
-			total.Add(1)
+			if egCtx.Err() != nil {
+				break
+			}
+			total++
 			// Errors are deliberately swallowed: a non-nil return from any
 			// goroutine would cancel errgroup's context and short-circuit
 			// every sibling goroutine, defeating the point of warming the rest.
-			//
-			//nolint:nilerr // intentional: see comment above
 			eg.Go(func() error {
-				if egCtx.Err() != nil {
-					return nil
+				if s.prewarmOne(egCtx, path, size) {
+					warmed.Add(1)
 				}
-				_, err := s.imgCache.GetOrFetch(egCtx, imgCacheKey(path, size), func(ctx context.Context) (ImgCacheEntry, error) {
-					return s.fetchPoster(ctx, path, size)
-				})
-				if err != nil {
-					if !errors.Is(err, context.Canceled) {
-						logger.Error(egCtx, "Failed to prewarm img cache entry",
-							"err", err, "path", path, "size", size)
-					}
-					return nil
-				}
-				warmed.Add(1)
 				return nil
 			})
 		}
@@ -249,7 +241,28 @@ func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem)
 	_ = eg.Wait()
 
 	logger.Info(ctx, "Prewarm complete",
-		"warmed", warmed.Load(), "total", total.Load(), "duration", time.Since(start))
+		"warmed", warmed.Load(), "total", total, "duration", time.Since(start))
+}
+
+// prewarmOne fetches a single (path, size) pair into the image cache.
+// Returns true if the entry was successfully warmed. Re-checks the context
+// after acquiring a semaphore slot: cancellation between scheduling and
+// execution would otherwise let GetOrFetch start a detached singleflight
+// fetch that outlives the prewarm context.
+func (s *Server) prewarmOne(ctx context.Context, path, size string) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	_, err := s.imgCache.GetOrFetch(ctx, imgCacheKey(path, size), func(ctx context.Context) (ImgCacheEntry, error) {
+		return s.fetchPoster(ctx, path, size)
+	})
+	if err == nil {
+		return true
+	}
+	if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		logger.Error(ctx, "Failed to prewarm img cache entry", "err", err, "path", path, "size", size)
+	}
+	return false
 }
 
 // buildFeaturedPool merges popular shows (filtered by FeaturedMinVoteCount)
@@ -290,7 +303,6 @@ func (s *Server) fetchExtraDetails(ctx context.Context, ids []int) []featuredIte
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(featuredExtraIDsConcurrency)
-	var mu sync.Mutex
 
 	for i, id := range ids {
 		eg.Go(func() error {
@@ -299,10 +311,15 @@ func (s *Server) fetchExtraDetails(ctx context.Context, ids []int) []featuredIte
 				logger.Error(egCtx, "Failed to fetch featured extra details", "err", err, "id", id)
 				return nil
 			}
-			mu.Lock()
-			results[i] = toFeaturedItem(details)
+			// Each goroutine writes to a unique index; eg.Wait() is the
+			// happens-before barrier that makes writes visible to the reader.
+			item := toFeaturedItem(details)
+			if item.ID == 0 {
+				logger.Error(egCtx, "Featured extra returned zero ID; skipping", "id", id)
+				return nil
+			}
+			results[i] = item
 			ok[i] = true
-			mu.Unlock()
 			return nil
 		})
 	}
