@@ -93,15 +93,15 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 2: `imgCache` type + entry shape (thin layer on `lrucache.Cache`)
 
-- [ ] create `internal/app/lazysoap/img_cache.go`:
+- [x] create `internal/app/lazysoap/img_cache.go`:
   - `type imgCacheEntry struct { body []byte; contentType string }` (immutable after store; comment that `body` is shared with all readers and MUST NOT be mutated — same contract as `lrucache.Cache` values, called out at the use site).
   - `type imgCache = *lrucache.Cache[string, imgCacheEntry]` (type alias — no wrapper struct unless ergonomic helpers are needed).
   - helper `imgCacheKey(path, size string) string` returning `path + "|" + size`. Document that `size` MUST be the post-allow-list-normalization value so `?size=garbage` and the default share a slot.
-- [ ] tests in `internal/app/lazysoap/img_cache_test.go`:
+- [x] tests in `internal/app/lazysoap/img_cache_test.go`:
   - keep these focused on the *wiring*, since cache mechanics are already covered upstream in `internal/pkg/lrucache/cache_test.go`.
   - `imgCacheKey` round-trips and is collision-free across plausible inputs (paths starting with `/`, sizes from the allow-list).
   - constructing the cache via `lrucache.New[string, imgCacheEntry]` with a real `lrucache.Metrics` produces the expected Prometheus family name (`lazysoap_img_cache_hits_total`).
-- [ ] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 3.
+- [x] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 3.
 
 ### Task 3: Wire `imgCache` into the `/img` proxy + add `Cache-Control`
 
