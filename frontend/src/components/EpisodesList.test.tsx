@@ -442,11 +442,10 @@ describe('<EpisodesList />', () => {
     fireEvent.change(slider, { target: { value: '6' } });
     await waitFor(() => expect(slider).toHaveAttribute('aria-valuenow', '6'));
 
-    // Toggle S2 off via the chip — leaves [1] selected, which normalizes to
-    // an explicit array, not null.
+    // Click S1 from all-mode — selects only [1].
     const group = screen.getByRole('group', { name: /filter seasons/i });
-    const s2 = within(group).getByRole('button', { name: 'S2' });
-    fireEvent.click(s2);
+    const s1 = within(group).getByRole('button', { name: 'S1' });
+    fireEvent.click(s1);
 
     expect(onSeasonsChange).toHaveBeenCalledTimes(1);
     expect(onSeasonsChange).toHaveBeenCalledWith([1]);
@@ -548,12 +547,12 @@ describe('<EpisodesList />', () => {
       expect(calls.some((u) => u.includes('limit=5'))).toBe(true);
     });
 
-    // Now toggle S2 off → the next request should have seasons=1 but NOT
-    // carry the previous fetchLimit=5; otherwise the smaller filtered pool
-    // would still be requested with the stale max.
+    // Now click S1 → the next request should have seasons=1 but NOT carry
+    // the previous fetchLimit=5; otherwise the smaller filtered pool would
+    // still be requested with the stale max.
     const group = screen.getByRole('group', { name: /filter seasons/i });
-    const s2 = within(group).getByRole('button', { name: 'S2' });
-    fireEvent.click(s2);
+    const s1 = within(group).getByRole('button', { name: 'S1' });
+    fireEvent.click(s1);
 
     await waitFor(() => {
       const seasonsCalls = fetchMock.mock.calls

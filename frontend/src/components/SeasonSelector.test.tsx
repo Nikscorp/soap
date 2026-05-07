@@ -12,12 +12,12 @@ describe('<SeasonSelector />', () => {
     expect(screen.getByRole('button', { name: 'S3' })).toBeInTheDocument();
   });
 
-  it('marks every chip pressed when selected is null (all selected)', () => {
+  it('marks only the "All" chip pressed when selected is null (season chips render unpressed)', () => {
     render(<SeasonSelector available={[1, 2, 3]} selected={null} onChange={() => undefined} />);
     expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'S1' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'S2' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'S3' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'S1' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'S2' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'S3' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('marks only the selected season chips pressed when selected is an explicit list', () => {
@@ -28,12 +28,12 @@ describe('<SeasonSelector />', () => {
     expect(screen.getByRole('button', { name: 'S3' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('toggling off a single chip while in "all" mode emits the available list minus that season', () => {
+  it('clicking a chip while in "all" mode selects only that season', () => {
     const onChange = vi.fn();
     render(<SeasonSelector available={[1, 2, 3]} selected={null} onChange={onChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'S2' }));
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenCalledWith([1, 3]);
+    expect(onChange).toHaveBeenCalledWith([2]);
   });
 
   it('toggling off the last selected chip emits null (collapses back to all-seasons)', () => {
@@ -106,11 +106,11 @@ describe('<SeasonSelector />', () => {
     const s2 = screen.getByRole('button', { name: 'S2' });
     s2.focus();
     await user.keyboard('{Enter}');
-    expect(onChange).toHaveBeenLastCalledWith([1, 3]);
+    expect(onChange).toHaveBeenLastCalledWith([2]);
 
     onChange.mockClear();
     s2.focus();
     await user.keyboard(' ');
-    expect(onChange).toHaveBeenLastCalledWith([1, 3]);
+    expect(onChange).toHaveBeenLastCalledWith([2]);
   });
 });

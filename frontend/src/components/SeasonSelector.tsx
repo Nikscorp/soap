@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { clsx } from '@/lib/clsx';
 
 interface Props {
@@ -8,8 +9,10 @@ interface Props {
 
 // SeasonSelector renders a chip row for filtering "best episodes" by season.
 // `selected === null` is the "all seasons" sentinel (mirrors the URL/API
-// contract where an absent `seasons` param means no filter). Toggling any
-// single chip moves into an explicit list; toggling "All" goes back to null.
+// contract where an absent `seasons` param means no filter). Clicking a
+// season chip from all-mode selects ONLY that season — the common
+// "give me episodes from S3 only" path used to require N-1 clicks. From an
+// explicit list, clicking a chip toggles it; clicking "All" returns to null.
 // When the explicit list happens to cover every available season we
 // normalize back to null so the URL stays clean.
 export function SeasonSelector({ available, selected, onChange }: Props) {
@@ -32,7 +35,9 @@ export function SeasonSelector({ available, selected, onChange }: Props) {
       : sanitizedSelected;
   const allSelected = effectiveSelected === null;
   const selectedSet = allSelected ? null : new Set(effectiveSelected);
-  const isPressed = (season: number) => allSelected || (selectedSet?.has(season) ?? false);
+  // In all-mode only the "All" chip renders pressed. Showing every season
+  // chip pressed would contradict the "click chip = select only" behavior.
+  const isPressed = (season: number) => selectedSet?.has(season) ?? false;
 
   const toggleAll = () => {
     if (allSelected) return;
@@ -42,7 +47,7 @@ export function SeasonSelector({ available, selected, onChange }: Props) {
   const toggleSeason = (season: number) => {
     let next: number[];
     if (allSelected) {
-      next = available.filter((s) => s !== season);
+      next = [season];
     } else {
       const current = effectiveSelected ?? [];
       next = current.includes(season)
@@ -89,12 +94,13 @@ function Chip({ pressed, onClick, label }: ChipProps) {
       aria-pressed={pressed}
       onClick={onClick}
       className={clsx(
-        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         pressed
-          ? 'border-accent bg-accent text-white'
+          ? 'border-slate-900 bg-slate-900 text-white'
           : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900',
       )}
     >
+      {pressed && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
       {label}
     </button>
   );

@@ -60,17 +60,17 @@ test('season selector filters episodes and restores on "All"', async ({ page }) 
   const group = page.getByRole('group', { name: /filter seasons/i });
   await expect(group).toBeVisible({ timeout: 5_000 });
 
-  // Toggle the first non-"All" chip; capture which season it is.
+  // Click the first non-"All" chip; in all-mode this selects ONLY that season.
   const seasonChips = group.getByRole('button').filter({ hasText: /^S\d+$/ });
   await expect(seasonChips.first()).toBeVisible({ timeout: 5_000 });
   const firstSeasonLabel = ((await seasonChips.first().textContent()) ?? '').trim();
   const seasonMatch = /^S(\d+)$/.exec(firstSeasonLabel);
   expect(seasonMatch, `chip label "${firstSeasonLabel}" was not "S<n>"`).not.toBeNull();
-  const toggledSeason = Number(seasonMatch![1]);
+  const selectedSeason = Number(seasonMatch![1]);
 
   await seasonChips.first().click();
-  await expect(seasonChips.first()).toHaveAttribute('aria-pressed', 'false');
-  await expect(page).toHaveURL(/seasons=/);
+  await expect(seasonChips.first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(new RegExp(`seasons=${selectedSeason}(?:&|$)`));
 
   // After refetch, the slider's "Y" should drop because totalEpisodes is
   // recomputed over the filtered subset.
@@ -78,20 +78,20 @@ test('season selector filters episodes and restores on "All"', async ({ page }) 
     .poll(() => readSliderTotal(page), { timeout: 15_000 })
     .toBeLessThan(originalTotal);
 
-  // No rendered episode row should reference the toggled-off season.
+  // Every rendered episode row should belong to the selected season.
   const list = page.getByRole('list').last();
   const items = list.getByRole('listitem');
   await expect(items.first()).toBeVisible({ timeout: 5_000 });
   const codes = await items.allInnerTexts();
   expect(codes.length).toBeGreaterThan(0);
-  const toggledCodeRe = new RegExp(`\\bS${toggledSeason}E\\d+\\b`);
+  const selectedCodeRe = new RegExp(`\\bS${selectedSeason}E\\d+\\b`);
   for (const code of codes) {
-    expect(code, `episode row referenced toggled-off season ${toggledSeason}`).not.toMatch(
-      toggledCodeRe,
+    expect(code, `episode row was not from selected season ${selectedSeason}`).toMatch(
+      selectedCodeRe,
     );
   }
 
-  // Toggle "All" — original total returns, seasons param drops, every chip pressed.
+  // Click "All" — original total returns, seasons param drops, "All" chip pressed.
   const allChip = group.getByRole('button', { name: /^all$/i });
   await allChip.click();
   await expect(allChip).toHaveAttribute('aria-pressed', 'true');
