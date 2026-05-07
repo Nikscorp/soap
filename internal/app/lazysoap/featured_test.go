@@ -1,6 +1,7 @@
 package lazysoap
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,11 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Nikscorp/soap/internal/app/lazysoap/mocks"
+	"github.com/Nikscorp/soap/internal/pkg/lrucache"
+	"github.com/Nikscorp/soap/internal/pkg/rest"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/stretchr/testify/require"
 )
@@ -497,6 +501,162 @@ func TestRunFeaturedPoolRefreshNoExtrasStillFetchesPopular(t *testing.T) {
 	require.Equal(t, int32(1), popularCalls.Load())
 	// Pool was published.
 	require.Len(t, f.srv.featuredPool.view(), 1)
+}
+
+// newPrewarmServer builds a Server wired with a real imgCache + custom
+// transport so prewarmFeaturedImages can be exercised end-to-end (LRU stores,
+// fetchPoster code path, errgroup bound). The router is not used — tests call
+// prewarmFeaturedImages directly.
+func newPrewarmServer(t *testing.T, transport RoundTripFunc) (*Server, *imgCache) {
+	t.Helper()
+	cache := lrucache.New[string, ImgCacheEntry]("img", 256, time.Hour, nil)
+	srv := &Server{
+		config: Config{
+			ImgCache: ImgCacheConfig{BrowserMaxAge: time.Hour},
+		},
+		tvMeta:       mocks.NewTvMetaClientMock(t),
+		metrics:      rest.NewMetrics(),
+		featuredPool: newFeaturedPoolCache(),
+		imgClient:    NewTestClient(transport),
+		imgCache:     cache,
+	}
+	return srv, cache
+}
+
+func TestPrewarmFeaturedImagesWarmsAllSizes(t *testing.T) {
+	var calls atomic.Int32
+	transport := func(_ *http.Request) *http.Response {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("payload")),
+			Header:     imageHeader(),
+		}
+	}
+	srv, cache := newPrewarmServer(t, transport)
+
+	pool := []featuredItem{
+		{ID: 1, Poster: "/img/p1.jpg"},
+		{ID: 2, Poster: "/img/p2.jpg"},
+		{ID: 3, Poster: "/img/p3.jpg"},
+	}
+
+	srv.prewarmFeaturedImages(context.Background(), pool)
+
+	want := len(pool) * len(prewarmSizes)
+	require.Equal(t, want, cache.Len(),
+		"prewarm should populate one entry per (item, size) on the happy path")
+	require.EqualValues(t, want, calls.Load(),
+		"each unique (path, size) must round-trip TMDB exactly once")
+}
+
+func TestPrewarmFeaturedImagesContinuesOnFailingPoster(t *testing.T) {
+	var calls atomic.Int32
+	transport := func(req *http.Request) *http.Response {
+		calls.Add(1)
+		if strings.Contains(req.URL.Path, "bad.jpg") {
+			return &http.Response{
+				StatusCode: http.StatusNotFound,
+				Body:       io.NopCloser(bytes.NewBufferString("")),
+				Header:     make(http.Header),
+			}
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("payload")),
+			Header:     imageHeader(),
+		}
+	}
+	srv, cache := newPrewarmServer(t, transport)
+
+	pool := []featuredItem{
+		{ID: 1, Poster: "/img/good1.jpg"},
+		{ID: 2, Poster: "/img/bad.jpg"},
+		{ID: 3, Poster: "/img/good2.jpg"},
+	}
+
+	srv.prewarmFeaturedImages(context.Background(), pool)
+
+	// Two healthy posters × len(prewarmSizes) end up cached. The bad one's
+	// per-size 404s are NOT cached (lrucache never stores errors).
+	wantCached := 2 * len(prewarmSizes)
+	require.Equal(t, wantCached, cache.Len(),
+		"failures on one poster must not block warming the rest")
+	require.EqualValues(t, len(pool)*len(prewarmSizes), calls.Load(),
+		"every (path, size) pair is attempted, even the failing ones")
+}
+
+func TestPrewarmFeaturedImagesSkipsItemsWithoutPosterPrefix(t *testing.T) {
+	var calls atomic.Int32
+	transport := func(_ *http.Request) *http.Response {
+		calls.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("payload")),
+			Header:     imageHeader(),
+		}
+	}
+	srv, cache := newPrewarmServer(t, transport)
+
+	pool := []featuredItem{
+		{ID: 1, Poster: ""},                 // no poster at all
+		{ID: 2, Poster: "/img/"},            // empty trailing path
+		{ID: 3, Poster: "https://x/y.jpg"},  // unexpected shape
+		{ID: 4, Poster: "/img/healthy.jpg"}, // only this one is warmable
+	}
+
+	srv.prewarmFeaturedImages(context.Background(), pool)
+
+	require.Equal(t, len(prewarmSizes), cache.Len(),
+		"only the well-formed /img/{path} entry should warm")
+	require.EqualValues(t, len(prewarmSizes), calls.Load(),
+		"malformed posters must not produce upstream calls")
+}
+
+func TestPrewarmFeaturedImagesContextCancellationReturnsPromptly(t *testing.T) {
+	gate := make(chan struct{})
+	var inflight atomic.Int32
+	transport := func(_ *http.Request) *http.Response {
+		inflight.Add(1)
+		<-gate
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("payload")),
+			Header:     imageHeader(),
+		}
+	}
+	srv, _ := newPrewarmServer(t, transport)
+
+	// Big enough to saturate prewarmConcurrency several times over so the
+	// loop is forced to wait on errgroup slots.
+	pool := make([]featuredItem, prewarmConcurrency*4)
+	for i := range pool {
+		pool[i] = featuredItem{ID: i + 1, Poster: "/img/p" + strings.Repeat("x", i+1) + ".jpg"}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		srv.prewarmFeaturedImages(ctx, pool)
+		close(done)
+	}()
+
+	// Wait until the transport actually has goroutines parked so the cancel
+	// happens after the bounded loop fills its slots.
+	require.Eventually(t, func() bool { return inflight.Load() >= int32(prewarmConcurrency) },
+		1*time.Second, 5*time.Millisecond,
+		"expected prewarm to saturate its concurrency limit before cancel")
+
+	cancel()
+	// Unblock the transport so the singleflight inner fetches the eg
+	// goroutines abandoned can finish — otherwise they'd leak past test exit.
+	close(gate)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("prewarmFeaturedImages did not return promptly after ctx cancellation")
+	}
 }
 
 func uniqueInts(ints []int) []int {

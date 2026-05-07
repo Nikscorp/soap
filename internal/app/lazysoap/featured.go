@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +17,28 @@ import (
 )
 
 const featuredExtraIDsConcurrency = 4
+
+// prewarmConcurrency caps parallel poster fetches during prewarm so a refresh
+// cycle that touches every (item, size) pair can't open hundreds of sockets to
+// TMDB at once.
+const prewarmConcurrency = 8
+
+// featuredPosterPrefix is the leading segment posterToInternalPath (in
+// internal/pkg/tvmeta) prepends to every TMDB poster path before storing it
+// on TVShow.PosterLink / TvShowDetails.PosterLink. The prewarmer needs the
+// trailing path component (the chi {path} URL param the live /img handler
+// sees) so it strips this prefix before calling fetchPoster.
+const featuredPosterPrefix = "/img/"
+
+// prewarmSizes is the fixed list of poster renditions the prewarmer warms for
+// every featured-pool item, matching the renditions the SPA's responsive
+// <img srcset> declares for FeaturedCard / SearchResultCard / SelectedSeriesCard.
+// Kept as an unexported var instead of a config knob: a wider list bloats
+// memory + TMDB egress for no UX win, and a narrower list defeats the prewarm
+// (a phone request for w185 would still pay TMDB latency on first paint).
+//
+//nolint:gochecknoglobals // immutable lookup; []string cannot be const
+var prewarmSizes = []string{"w185", "w342", "w500", "w780"}
 
 var errFeaturedPoolTooSmall = errors.New("featured pool smaller than configured count")
 
@@ -157,6 +180,76 @@ func (s *Server) refreshFeaturedPool(ctx context.Context) {
 	s.featuredPool.replace(pool)
 	logger.Info(ctx, "Refreshed featured pool",
 		"count", len(pool), "popular_ok", popularOK, "extras_ok", extrasOK)
+
+	// Prewarm runs in the background so it never blocks the next refresh
+	// tick: a slow TMDB image endpoint must not slow down the next pool
+	// rebuild. The pool slice published via replace() is read-only and
+	// retrieved through view() — safe to share with the goroutine.
+	go s.prewarmFeaturedImages(ctx, s.featuredPool.view())
+}
+
+// prewarmFeaturedImages drives s.imgCache through fetchPoster for every
+// (item, size) pair in the featured pool. The goal is that a cold /featured
+// request on the SPA finds every poster already cached, so the handler never
+// pays TMDB latency on the request path.
+//
+// Failure handling: each per-(path, size) failure is logged and dropped.
+// Returning an error from any goroutine would cancel errgroup's context and
+// short-circuit the rest of the warm — a single bad poster must not stall
+// dozens of healthy ones. The prewarmer never returns an error to its caller.
+//
+// Concurrency: bounded to prewarmConcurrency via errgroup.SetLimit. The
+// underlying lrucache.GetOrFetch dedupes concurrent identical fetches via
+// singleflight, so even a duplicate (path, size) pair across pool entries
+// only round-trips TMDB once.
+func (s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem) {
+	if s.imgCache == nil || len(pool) == 0 {
+		return
+	}
+
+	start := time.Now()
+	var warmed atomic.Int64
+	var total atomic.Int64
+
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(prewarmConcurrency)
+
+	for _, item := range pool {
+		path, ok := strings.CutPrefix(item.Poster, featuredPosterPrefix)
+		if !ok || path == "" {
+			continue
+		}
+		for _, size := range prewarmSizes {
+			total.Add(1)
+			// Errors are deliberately swallowed: a non-nil return from any
+			// goroutine would cancel errgroup's context and short-circuit
+			// every sibling goroutine, defeating the point of warming the rest.
+			//
+			//nolint:nilerr // intentional: see comment above
+			eg.Go(func() error {
+				if egCtx.Err() != nil {
+					return nil
+				}
+				_, err := s.imgCache.GetOrFetch(egCtx, imgCacheKey(path, size), func(ctx context.Context) (ImgCacheEntry, error) {
+					return s.fetchPoster(ctx, path, size)
+				})
+				if err != nil {
+					if !errors.Is(err, context.Canceled) {
+						logger.Error(egCtx, "Failed to prewarm img cache entry",
+							"err", err, "path", path, "size", size)
+					}
+					return nil
+				}
+				warmed.Add(1)
+				return nil
+			})
+		}
+	}
+
+	_ = eg.Wait()
+
+	logger.Info(ctx, "Prewarm complete",
+		"warmed", warmed.Load(), "total", total.Load(), "duration", time.Since(start))
 }
 
 // buildFeaturedPool merges popular shows (filtered by FeaturedMinVoteCount)

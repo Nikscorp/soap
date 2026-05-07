@@ -150,18 +150,18 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 5: Prewarm `/img` cache after each pool refresh
 
-- [ ] add `prewarmSizes = []string{"w185", "w342", "w500", "w780"}` as an unexported `var` near the top of `featured.go` (fixed list per planning decision; if you find a need to make this configurable, raise it as a ➕ task instead of expanding scope silently).
-- [ ] add a method `(s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem)` that:
-  - for each `(item, size)` pair where `item.Poster != ""`, calls `imgCache.GetOrFetch(ctx, imgCacheKey(path, size), s.fetchPosterBytes)` to warm the cache through the same code path the live handler uses (extract a private `fetchPosterBytes(ctx, path, size)` helper from `imgProxyHandler` so prewarmer and handler share one fetch closure).
+- [x] add `prewarmSizes = []string{"w185", "w342", "w500", "w780"}` as an unexported `var` near the top of `featured.go` (fixed list per planning decision; if you find a need to make this configurable, raise it as a ➕ task instead of expanding scope silently).
+- [x] add a method `(s *Server) prewarmFeaturedImages(ctx context.Context, pool []featuredItem)` that:
+  - for each `(item, size)` pair where `item.Poster != ""`, calls `imgCache.GetOrFetch(ctx, imgCacheKey(path, size), s.fetchPosterBytes)` to warm the cache through the same code path the live handler uses (extract a private `fetchPosterBytes(ctx, path, size)` helper from `imgProxyHandler` so prewarmer and handler share one fetch closure). (Re-used the existing `s.fetchPoster(ctx, path, size)` introduced in Task 3 — same closure shape, no new helper needed.)
   - bounds concurrency with `errgroup.SetLimit(8)` to avoid slamming TMDB.
   - logs one summary line at the end (`prewarm: warmed N/M entries in T`).
   - never returns an error to the caller — individual failures are logged and swallowed; one bad poster must not block the rest.
-- [ ] hook the prewarmer into the refresh loop: after every successful pool swap (initial + each tick), kick off `go s.prewarmFeaturedImages(ctx, pool)` so it doesn't block the next tick.
-- [ ] write tests in `featured_test.go`:
+- [x] hook the prewarmer into the refresh loop: after every successful pool swap (initial + each tick), kick off `go s.prewarmFeaturedImages(ctx, pool)` so it doesn't block the next tick.
+- [x] write tests in `featured_test.go`:
   - prewarm populates the `imgCache` with `len(pool) * len(prewarmSizes)` entries on the happy path (use the existing `TvMetaClientMock` to return curated items + a stub HTTP roundtripper for the proxy fetch). Assert `cache.Len() == expected`.
   - prewarm with one TMDB-failing poster still warms the rest.
   - prewarm respects `ctx` cancellation (cancel mid-warm, assert it returns promptly).
-- [ ] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 6.
+- [x] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 6.
 
 ### Task 6: Responsive `srcset` + `sizes` for `FeaturedCard`
 
