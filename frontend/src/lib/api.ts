@@ -43,14 +43,29 @@ export function getEpisodesById(
   id: number,
   language: string,
   limit?: number,
+  seasons?: number[] | null,
   signal?: AbortSignal,
 ): Promise<EpisodesResponse> {
   const lang = encodeURIComponent(language || 'en');
   const limitQs = limit && limit > 0 ? `&limit=${encodeURIComponent(String(limit))}` : '';
+  const seasonsQs = buildSeasonsQs(seasons);
   return request<EpisodesResponse>(
-    `/id/${encodeURIComponent(String(id))}?language=${lang}${limitQs}`,
+    `/id/${encodeURIComponent(String(id))}?language=${lang}${limitQs}${seasonsQs}`,
     signal,
   );
+}
+
+function buildSeasonsQs(seasons: number[] | null | undefined): string {
+  if (!seasons || seasons.length === 0) return '';
+  const cleaned = Array.from(
+    new Set(
+      seasons
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .map((n) => Math.trunc(n)),
+    ),
+  ).sort((a, b) => a - b);
+  if (cleaned.length === 0) return '';
+  return `&seasons=${cleaned.join(',')}`;
 }
 
 export function getFeaturedSeries(

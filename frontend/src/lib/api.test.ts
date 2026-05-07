@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { normalizePosterUrl } from './api';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getEpisodesById, normalizePosterUrl } from './api';
+import type { EpisodesResponse } from './types';
 
 describe('normalizePosterUrl', () => {
   it('passes through absolute http(s) urls untouched', () => {
@@ -38,5 +39,79 @@ describe('normalizePosterUrl', () => {
     expect(normalizePosterUrl('https://image.tmdb.org/t/p/w92/abc.jpg', 'w500')).toBe(
       'https://image.tmdb.org/t/p/w92/abc.jpg',
     );
+  });
+});
+
+describe('getEpisodesById URL composition', () => {
+  const fetchMock = vi.fn();
+  const okResponse: EpisodesResponse = {
+    episodes: [],
+    title: '',
+    poster: '',
+    firstAirDate: '',
+    defaultBest: 0,
+    totalEpisodes: 0,
+    availableSeasons: [],
+  };
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(okResponse), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function calledUrl(): string {
+    const arg = fetchMock.mock.calls[0]?.[0];
+    return typeof arg === 'string' ? arg : (arg as URL).toString();
+  }
+
+  it('omits limit and seasons when neither is provided', async () => {
+    await getEpisodesById(42, 'en');
+    expect(calledUrl()).toBe('/id/42?language=en');
+  });
+
+  it('appends limit when provided', async () => {
+    await getEpisodesById(42, 'en', 5);
+    expect(calledUrl()).toBe('/id/42?language=en&limit=5');
+  });
+
+  it('omits seasons when null, undefined, or empty', async () => {
+    await getEpisodesById(42, 'en', undefined, null);
+    expect(calledUrl()).toBe('/id/42?language=en');
+    fetchMock.mockClear();
+    await getEpisodesById(42, 'en', undefined, undefined);
+    expect(calledUrl()).toBe('/id/42?language=en');
+    fetchMock.mockClear();
+    await getEpisodesById(42, 'en', undefined, []);
+    expect(calledUrl()).toBe('/id/42?language=en');
+  });
+
+  it('appends seasons as ascending CSV', async () => {
+    await getEpisodesById(42, 'en', undefined, [1]);
+    expect(calledUrl()).toBe('/id/42?language=en&seasons=1');
+    fetchMock.mockClear();
+    await getEpisodesById(42, 'en', undefined, [3, 1, 2]);
+    expect(calledUrl()).toBe('/id/42?language=en&seasons=1,2,3');
+  });
+
+  it('dedupes and drops invalid season values before serializing', async () => {
+    await getEpisodesById(42, 'en', undefined, [2, 2, 1, 0, -3, Number.NaN, 3]);
+    expect(calledUrl()).toBe('/id/42?language=en&seasons=1,2,3');
+  });
+
+  it('places seasons after limit in the query string', async () => {
+    await getEpisodesById(42, 'en', 7, [1, 3]);
+    expect(calledUrl()).toBe('/id/42?language=en&limit=7&seasons=1,3');
   });
 });

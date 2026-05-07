@@ -17,7 +17,7 @@ interface SeriesHint {
 }
 
 export default function App() {
-  const { q, id, lang, best, setUrlState } = useUrlState();
+  const { q, id, lang, best, seasons, setUrlState } = useUrlState();
   // Hint carries the user's clicked SearchResult so SelectedSeriesCard can
   // render instantly without waiting for /id/{id}. Tagged with `id` so a stale
   // hint (after back/forward or a direct URL hit) is filtered out at render.
@@ -38,21 +38,21 @@ export default function App() {
       poster: series.poster,
       firstAirDate: series.firstAirDate,
     });
-    setUrlState({ id: series.id, lang: language, best: null });
+    setUrlState({ id: series.id, lang: language, best: null, seasons: null });
   };
 
   const handleSubmit = (query: string) => {
-    setUrlState({ q: query, id: null, lang: '', best: null });
+    setUrlState({ q: query, id: null, lang: '', best: null, seasons: null });
   };
 
   const handleBack = () => {
-    setUrlState({ id: null, lang: '', best: null });
+    setUrlState({ id: null, lang: '', best: null, seasons: null });
   };
 
   const handleHome = () => {
     setHint(null);
     setComboboxResetKey((k) => k + 1);
-    setUrlState({ q: '', id: null, lang: '', best: null });
+    setUrlState({ q: '', id: null, lang: '', best: null, seasons: null });
   };
 
   return (
@@ -92,8 +92,10 @@ export default function App() {
               seriesId={id}
               language={lang}
               best={best}
+              selectedSeasons={seasons}
               hint={activeHint}
               onBestChange={(next) => setUrlState({ best: next }, { replace: true })}
+              onSeasonsChange={(next) => setUrlState({ seasons: next, best: null }, { replace: true })}
             />
           </>
         )}

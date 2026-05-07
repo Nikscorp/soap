@@ -31,6 +31,7 @@ export interface EpisodesResponse {
   description?: string;
   defaultBest: number;
   totalEpisodes: number;
+  availableSeasons: number[];
 }
 
 export interface FeaturedSeries {
