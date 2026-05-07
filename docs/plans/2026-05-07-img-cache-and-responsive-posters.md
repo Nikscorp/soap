@@ -105,28 +105,29 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 3: Wire `imgCache` into the `/img` proxy + add `Cache-Control`
 
-- [ ] add `ImgCacheConfig` struct to `server.go` next to `ImgClientConfig`:
+- [x] add `ImgCacheConfig` struct to `server.go` next to `ImgClientConfig`:
   - `Size int` env `LAZYSOAP_IMG_CACHE_SIZE` env-default `512` yaml `size`.
   - `TTL time.Duration` env `LAZYSOAP_IMG_CACHE_TTL` env-default `168h` yaml `ttl` (TMDB image paths are content-addressed, so a long TTL is safe; cap exists so a moved/dead path eventually rotates out).
   - `BrowserMaxAge time.Duration` env `LAZYSOAP_IMG_BROWSER_MAX_AGE` env-default `86400s` yaml `browser_max_age` (controls the `Cache-Control: public, max-age=…, immutable` we send to the SPA).
-- [ ] add `ImgCache ImgCacheConfig` field on the top-level `Config` struct in `cmd/lazysoap/main.go` (or wherever the top-level struct lives — confirm during implementation).
-- [ ] in `cmd/lazysoap/main.go`, build a single `*lrucache.Metrics` for the img family via `lrucache.NewMetrics(reg, "lazysoap_img_cache", "image bytes cache")`, then construct the `imgCache` via `lrucache.New[string, imgCacheEntry]("img", cfg.ImgCache.Size, cfg.ImgCache.TTL, imgMetrics)`. Pass it into `lazysoap.New()`; store on `Server`.
-- [ ] mirror the new fields in `config/config.yaml.dist` with comments.
-- [ ] modify `imgProxyHandler` (`internal/app/lazysoap/img_proxy.go`):
-  - normalize size to the allow-list *before* the cache lookup (use the existing `tvmeta.GetURLByPosterPathWithSize` normalization logic — extract into a helper if it isn't already exported).
-  - use `imgCache.GetOrFetch(ctx, imgCacheKey(path, size), func(ctx) (imgCacheEntry, error) { … })` so concurrent misses for the same poster collapse to one TMDB fetch (singleflight comes free with `lrucache`).
-  - inside the fetch closure: hit TMDB via the existing `s.imgClient`, `io.ReadAll` the body (size-bounded — refuse > 2 MB; w780 caps near 250 KB so 2 MB is generous; oversized → return an error so the closure aborts without populating the cache).
-  - only return an `imgCacheEntry` (i.e., populate the cache) on `200 OK` with `Content-Type: image/*` and a non-empty body. Anything else returns an error from the fetch closure — `lrucache` does not cache errors (`responseCache` already enforces this; carry the contract over verbatim).
-  - on success path: write `Content-Type` from the entry, `Cache-Control: public, max-age={BrowserMaxAge.Seconds()}, immutable`, then the body. Same headers on hit and miss-success.
-  - on error path: map the cache fetch error back to the appropriate HTTP status (404 if upstream returned 404, 502 if upstream errored, 502 for oversized/non-image).
-- [ ] update `internal/app/lazysoap/img_proxy_test.go`:
-  - existing 7 cases stay green (some will need a non-zero `imgCache` injected via the `Server` test fixture; pass an enabled `lrucache.New` instance with no metrics).
-  - new test: second request for the same `(path, size)` does not hit the upstream (assert mock-roundtripper call count == 1 across two sequential requests).
-  - new test: concurrent requests for the same key collapse to one upstream call (singleflight verification — N goroutines, assert call count == 1).
-  - new test: oversized-body upstream produces a 502, no cache write (re-request must fetch again).
-  - new test: non-image content-type from upstream is not cached.
-  - new test: `Cache-Control: public, max-age=…, immutable` is present on both hits and misses.
-- [ ] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 4.
+- [x] add `ImgCache ImgCacheConfig` field on the top-level `Config` struct in `cmd/lazysoap/main.go` (or wherever the top-level struct lives — confirm during implementation). (Lives on `lazysoap.Config`, which is the embedded struct in `config.Config.LazySoapConfig` — no separate top-level wiring needed.)
+- [x] in `cmd/lazysoap/main.go`, build a single `*lrucache.Metrics` for the img family via `lrucache.NewMetrics(reg, "lazysoap_img_cache", "image bytes cache")`, then construct the `imgCache` via `lrucache.New[string, ImgCacheEntry]("img", cfg.ImgCache.Size, cfg.ImgCache.TTL, imgMetrics)`. Pass it into `lazysoap.New()`; store on `Server`. (Entry struct exported as `ImgCacheEntry` so cmd can name it as the type parameter; fields stay unexported.)
+- [x] mirror the new fields in `config/config.yaml.dist` with comments.
+- [x] modify `imgProxyHandler` (`internal/app/lazysoap/img_proxy.go`):
+  - normalize size to the allow-list *before* the cache lookup via new exported `tvmeta.NormalizePosterSize` (extracted from `GetURLByPosterPathWithSize`).
+  - use `imgCache.GetOrFetch(ctx, imgCacheKey(path, size), func(ctx) (ImgCacheEntry, error) { … })` so concurrent misses for the same poster collapse to one TMDB fetch (singleflight comes free with `lrucache`).
+  - inside the fetch closure (`fetchPoster`): hit TMDB via the existing `s.imgClient`, `io.ReadAll` via `LimitReader(maxImgBytes+1)` so oversize is detectable; refuse > 2 MB.
+  - only return an `ImgCacheEntry` on `200 OK` with `Content-Type: image/*` and a non-empty body. Anything else returns `errUpstreamNotFound` (for upstream 404) or `errUpstreamFailed` so `lrucache` does not cache it.
+  - on success path: write `Content-Type` from the entry, `Cache-Control: public, max-age={BrowserMaxAge.Seconds()}, immutable` via `browserCacheControl()`, then the body. Same headers on hit and miss-success.
+  - on error path: 404 if upstream returned 404; 502 otherwise (transport, non-200/non-404, oversized, non-image).
+- [x] update `internal/app/lazysoap/img_proxy_test.go`:
+  - existing 7 cases stay green; success-path fixtures now set `Content-Type: image/jpeg` (cache requires it); error fixtures map to 502 not the upstream's 5XX, per the new error contract.
+  - new test `TestImgProxyCachesAcrossRequests`: 5 sequential requests for the same `(path, size)` collapse to 1 upstream call.
+  - new test `TestImgProxySingleflightCollapse`: 16 concurrent requests for the same key with the upstream gated; asserts call count is bounded (≤ 2) instead of fanning out to 16.
+  - new test `TestImgProxyOversizedBodyNotCached`: bodies past `maxImgBytes` produce 502 and are not cached (re-request hits upstream again).
+  - new test `TestImgProxyNonImageContentTypeNotCached`: `Content-Type: text/html` from upstream is rejected and not cached.
+  - new test `TestImgProxyEmitsCacheControlHeader`: `public, max-age=86400, immutable` present on both first (miss-then-cache) and second (hit) request.
+  - new test `TestImgProxyDisallowedSizeSharesCacheSlot`: `?size=garbage`, `?size=w92`, and the bare path all share one cache slot (normalization works).
+- [x] run `go test -race ./internal/app/lazysoap/...` — must pass before Task 4.
 
 ### Task 4: Cache popular alongside extras in a single unified pool
 

@@ -33,6 +33,7 @@ type Config struct {
 	FeaturedExtrasRefreshInterval time.Duration   `env:"LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL" env-default:"24h"                                                 yaml:"featured_extras_refresh_interval"`
 	RatingsSource                 string          `env:"LAZYSOAP_RATINGS_SOURCE"                   env-default:"tmdb"                                                yaml:"ratings_source"`
 	ImgClient                     ImgClientConfig `yaml:"img_client"`
+	ImgCache                      ImgCacheConfig  `yaml:"img_cache"`
 }
 
 type ImgClientConfig struct {
@@ -41,11 +42,24 @@ type ImgClientConfig struct {
 	IdleConnTimeout time.Duration `env:"LAZYSOAP_IMG_CLIENT_IDLE_CONN_TIMEOUT" env-default:"60s" yaml:"idle_conn_timeout"`
 }
 
+// ImgCacheConfig configures the in-process bytes cache for /img. A zero value
+// (size <= 0 or ttl <= 0) leaves the cache in pass-through mode — every
+// request hits TMDB. BrowserMaxAge controls only the Cache-Control header
+// emitted on /img responses; it is independent of the server-side TTL because
+// TMDB poster paths are content-addressed in practice (a long browser cache
+// is safe even if the server-side entry has rotated out).
+type ImgCacheConfig struct {
+	Size          int           `env:"LAZYSOAP_IMG_CACHE_SIZE"      env-default:"512"    yaml:"size"`
+	TTL           time.Duration `env:"LAZYSOAP_IMG_CACHE_TTL"       env-default:"168h"   yaml:"ttl"`
+	BrowserMaxAge time.Duration `env:"LAZYSOAP_IMG_BROWSER_MAX_AGE" env-default:"86400s" yaml:"browser_max_age"`
+}
+
 type Server struct {
 	config         Config
 	tvMeta         tvMetaClient
 	metrics        *rest.Metrics
 	imgClient      *http.Client
+	imgCache       *imgCache
 	version        string
 	featuredExtras *featuredExtrasCache
 }
@@ -57,7 +71,10 @@ type tvMetaClient interface {
 	TVShowDetails(ctx context.Context, id int, language string) (*tvmeta.TvShowDetails, error)
 }
 
-func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
+// New constructs the Server. cache may be nil — a nil *imgCache behaves as
+// the pass-through sentinel (every /img request goes upstream), which is the
+// shape unit tests use to keep mock-roundtripper call counts deterministic.
+func New(config Config, tvMetaClient tvMetaClient, cache *imgCache, version string) *Server {
 	return &Server{
 		config:  config,
 		tvMeta:  tvMetaClient,
@@ -76,6 +93,7 @@ func New(config Config, tvMetaClient tvMetaClient, version string) *Server {
 				return clone
 			}(),
 		},
+		imgCache:       cache,
 		version:        version,
 		featuredExtras: newFeaturedExtrasCache(),
 	}

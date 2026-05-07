@@ -69,13 +69,13 @@ func TestImgCacheNewProducesExpectedMetricFamily(t *testing.T) {
 	metrics := lrucache.NewMetrics(reg, "lazysoap_img_cache", "image bytes cache")
 	require.NotNil(t, metrics)
 
-	cache := lrucache.New[string, imgCacheEntry]("img", 16, time.Hour, metrics)
+	cache := lrucache.New[string, ImgCacheEntry]("img", 16, time.Hour, metrics)
 	require.NotNil(t, cache)
 
 	// Drive a miss + a hit + an error so all three CounterVecs surface a
 	// child in Gather (CounterVecs without observed children are omitted).
-	entry := imgCacheEntry{body: []byte("payload"), contentType: "image/jpeg"}
-	fetch := func(_ context.Context) (imgCacheEntry, error) { return entry, nil }
+	entry := ImgCacheEntry{body: []byte("payload"), contentType: "image/jpeg"}
+	fetch := func(_ context.Context) (ImgCacheEntry, error) { return entry, nil }
 	got, err := cache.GetOrFetch(context.Background(), imgCacheKey("p.jpg", "w185"), fetch)
 	require.NoError(t, err)
 	require.Equal(t, entry, got)
@@ -85,8 +85,8 @@ func TestImgCacheNewProducesExpectedMetricFamily(t *testing.T) {
 	require.Equal(t, entry, got)
 
 	boom := errors.New("fake upstream failure")
-	_, err = cache.GetOrFetch(context.Background(), imgCacheKey("p.jpg", "w342"), func(_ context.Context) (imgCacheEntry, error) {
-		return imgCacheEntry{}, boom
+	_, err = cache.GetOrFetch(context.Background(), imgCacheKey("p.jpg", "w342"), func(_ context.Context) (ImgCacheEntry, error) {
+		return ImgCacheEntry{}, boom
 	})
 	require.ErrorIs(t, err, boom)
 

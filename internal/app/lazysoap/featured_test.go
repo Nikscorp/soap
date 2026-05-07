@@ -35,7 +35,7 @@ func (f *featuredFixture) warmExtras(t *testing.T) {
 
 func newFeaturedFixture(t *testing.T, cfg Config) *featuredFixture {
 	tvMetaClientMock := mocks.NewTvMetaClientMock(t)
-	srv := New(cfg, tvMetaClientMock, "")
+	srv := New(cfg, tvMetaClientMock, nil, "")
 	ts := httptest.NewServer(srv.newRouter())
 	return &featuredFixture{server: ts, srv: srv, mock: tvMetaClientMock}
 }
