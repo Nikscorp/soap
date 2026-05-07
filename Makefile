@@ -7,6 +7,11 @@ build:
 lint:
 	golangci-lint run ./...
 
+lint-frontend:
+	cd frontend && npm run lint && npm run typecheck
+
+lint-all: lint lint-frontend
+
 test:
 	go test -count=1 -v ./...
 

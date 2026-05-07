@@ -40,9 +40,13 @@ A full OpenAPI 3 spec lives at [`api/openapi.yaml`](api/openapi.yaml). Four endp
 
 Posters are returned as relative `/img/{path}` references that resolve through the proxy below — the same image is reachable at multiple sizes via `?size=`.
 
-### `GET /id/{id}?language=&limit=` — best episodes for a series
+### `GET /id/{id}?language=&limit=&seasons=` — best episodes for a series
 
-`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating is at or above the series average. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display. Episodes carry an optional `still` (a `/img/{path}` reference to the TMDB still frame). `description` is the series synopsis from TMDB (localized via `language`); it can be an empty string when TMDB has no overview for the series in the requested language.
+`language` is an optional ISO 639-1 code forwarded to TMDB. `limit` is an optional positive integer that caps the response to the top-`limit` episodes by rating. When `limit` is omitted (or invalid), the response falls back to `defaultBest` — the count of episodes whose rating strictly exceeds the configured quantile of all ratings (default `0.9`), raised to a minimum-episode floor (default `3`) when fewer episodes clear the threshold. The returned slice is selected by rating but ordered chronologically by `(season, number)` for display. Episodes carry an optional `still` (a `/img/{path}` reference to the TMDB still frame). `description` is the series synopsis from TMDB (localized via `language`); it can be an empty string when TMDB has no overview for the series in the requested language.
+
+`seasons` is an optional comma-separated list of positive season numbers (`seasons=1,3,5`). When provided, the considered episode pool is restricted to those seasons; `defaultBest` and `totalEpisodes` are then computed over the filtered subset. Order and surrounding whitespace don't matter; duplicates are dropped. Season numbers that aren't in `availableSeasons` are silently ignored — the server responds 400 only when the filter resolves to no episodes (the intersection with `availableSeasons` is fully empty), so a saved link survives a series losing a season in TMDB. Malformed input — non-integer tokens, empty tokens (`1,,2`), trailing commas, or non-positive numbers — also returns 400. Param absent or empty → all seasons (the historical behaviour).
+
+`availableSeasons` is the ascending list of season numbers that have at least one episode in the series payload, regardless of `seasons` — clients use it as the source of truth for rendering a season selector even under a filter. Empty TMDB placeholder seasons (e.g. announced-but-unaired upcoming seasons) are excluded so a chip never resolves to an empty filter.
 
 ```json
 {
@@ -52,6 +56,7 @@ Posters are returned as relative `/img/{path}` references that resolve through t
   "description": "A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.",
   "defaultBest": 3,
   "totalEpisodes": 27,
+  "availableSeasons": [1, 2, 3, 4, 5, 6],
   "episodes": [
     {
       "title": "The National Anthem",
@@ -64,6 +69,14 @@ Posters are returned as relative `/img/{path}` references that resolve through t
   ]
 }
 ```
+
+Filtering example — limit the pool to seasons 1 and 2:
+
+```sh
+curl -fsS 'https://soap.nivoynov.dev/id/42009?language=en&seasons=1,2' | jq .
+```
+
+In the filtered response, `totalEpisodes` is the episode count across seasons 1 and 2 only and `defaultBest` is recomputed over that subset; `availableSeasons` still lists every season the series has with at least one episode.
 
 ### `GET /featured?language=` — random featured series for the home screen
 
