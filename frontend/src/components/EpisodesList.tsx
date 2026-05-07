@@ -79,7 +79,8 @@ export function EpisodesList({
   const fetchedLenRef = useRef(0);
   // Survives a 400 error so the chip row stays visible and users can toggle
   // their way back to a valid season combination without using "Show all".
-  const lastAvailableSeasonsRef = useRef<number[]>([]);
+  // State (not a ref) because it's read during render in the error branch.
+  const [lastAvailableSeasons, setLastAvailableSeasons] = useState<number[]>([]);
 
   const [trackedSeasonsKey, setTrackedSeasonsKey] = useState(seasonsKey);
   let effectiveFetchLimit = fetchLimit;
@@ -122,11 +123,9 @@ export function EpisodesList({
   }, [fetchedLen]);
 
   const availableSeasons = query.data?.availableSeasons;
-  useEffect(() => {
-    if (availableSeasons) {
-      lastAvailableSeasonsRef.current = availableSeasons;
-    }
-  }, [availableSeasons]);
+  if (availableSeasons && availableSeasons !== lastAvailableSeasons) {
+    setLastAvailableSeasons(availableSeasons);
+  }
 
   useEffect(() => {
     return () => {
@@ -207,7 +206,7 @@ export function EpisodesList({
           selectedSeasons !== null ? (
             <>
               <SeasonSelector
-                available={lastAvailableSeasonsRef.current}
+                available={lastAvailableSeasons}
                 selected={selectedSeasons}
                 onChange={handleSeasonsChange}
               />
