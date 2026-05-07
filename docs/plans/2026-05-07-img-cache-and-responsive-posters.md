@@ -187,12 +187,12 @@ The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cach
 
 ### Task 8: Responsive `srcset` + `sizes` for `SelectedSeriesCard`
 
-- [ ] update `SelectedSeriesCard` (`frontend/src/components/SelectedSeriesCard.tsx:14-62`):
+- [x] update `SelectedSeriesCard` (`frontend/src/components/SelectedSeriesCard.tsx:14-62`):
   - replace the 1x/2x `srcSet` with width descriptors over w185, w342 (max ~96px wide; w500 is overkill).
   - add `sizes="(min-width: 640px) 96px, 80px"`.
   - drop `loading="lazy"` and add `fetchpriority="high"` — this is the hero poster on the detail page; deprioritizing it costs perceived performance.
-- [ ] update / add the Vitest test: `srcset`, `sizes`, and `fetchpriority="high"` are present; `loading` is *not* `"lazy"`.
-- [ ] run frontend lint+typecheck+test — must pass before Task 9.
+- [x] update / add the Vitest test: `srcset`, `sizes`, and `fetchpriority="high"` are present; `loading` is *not* `"lazy"`.
+- [x] run frontend lint+typecheck+test — must pass before Task 9.
 
 ### Task 9: Verify acceptance criteria (lint, integration, measurement)
 

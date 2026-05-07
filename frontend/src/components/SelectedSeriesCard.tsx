@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageOff } from 'lucide-react';
-import { normalizePosterUrl } from '@/lib/api';
+import { normalizePosterUrl, posterSrcSet, type Size } from '@/lib/api';
 import { yearFromAirDate } from '@/lib/format';
 import { CopyLinkButton } from './CopyLinkButton';
 
@@ -11,13 +11,13 @@ interface Props {
   description?: string;
 }
 
+const selectedSeriesPosterSizes: readonly Size[] = ['w185', 'w342'];
+const selectedSeriesPosterSizesAttr = '(min-width: 640px) 96px, 80px';
+
 export function SelectedSeriesCard({ title, poster, firstAirDate, description }: Props) {
   const [posterFailed, setPosterFailed] = useState(false);
-  // Poster renders at ~80px wide on mobile and ~96px on desktop. w185 covers
-  // the 1x case crisply; w342 is the 2x source for HiDPI / Retina screens.
   const posterUrl = normalizePosterUrl(poster, 'w185');
-  const posterUrl2x = normalizePosterUrl(poster, 'w342');
-  const srcSet = posterUrl && posterUrl2x ? `${posterUrl} 1x, ${posterUrl2x} 2x` : undefined;
+  const srcSet = posterSrcSet(poster, selectedSeriesPosterSizes) || undefined;
   const year = yearFromAirDate(firstAirDate);
 
   return (
@@ -28,8 +28,9 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
             <img
               src={posterUrl}
               srcSet={srcSet}
+              sizes={selectedSeriesPosterSizesAttr}
               alt=""
-              loading="lazy"
+              fetchPriority="high"
               decoding="async"
               className="h-full w-full object-cover"
               onError={() => setPosterFailed(true)}
