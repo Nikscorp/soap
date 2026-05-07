@@ -76,20 +76,20 @@ Net result: featured page bytes drop on phones (smaller renditions selected) and
 
 The existing `responseCache[K, V]` + `cacheMetrics` in `internal/pkg/tvmeta/cache.go` already does everything the new `/img` cache needs. Promote them to a shared package so the refactor is one-time and `imgCache` (Task 2) reuses the entire harness — including singleflight (collapses concurrent misses for the same poster to one TMDB fetch), pass-through-on-zero-config, and the idempotent `AlreadyRegisteredError` branch in metric registration.
 
-- [ ] confirm `go.mod` already lists `github.com/hashicorp/golang-lru/v2 v2.0.7` (it does, line 12) — no `go get` needed.
-- [ ] create `internal/pkg/lrucache/cache.go`:
+- [x] confirm `go.mod` already lists `github.com/hashicorp/golang-lru/v2 v2.0.7` (it does, line 12) — no `go get` needed.
+- [x] create `internal/pkg/lrucache/cache.go`:
   - export `Cache[K comparable, V any]` (renamed from `responseCache[K, V]`) — same fields, same `GetOrFetch`/`Len`/recordHit/Miss/Error methods. Document that cached values are SHARED and read-only (carry over the existing comment).
   - export `Metrics` (renamed from `cacheMetrics`) and `NewMetrics(registerer prometheus.Registerer, namePrefix, helpSubject string) *Metrics`. The `namePrefix` controls the metric-family name (`{namePrefix}_hits_total`, etc.); `helpSubject` is the noun in help text (e.g., `"TMDB response cache"` or `"image bytes cache"`). nil registerer → nil Metrics, all record* calls remain nil-safe.
   - export `New[K, V](name string, size int, ttl time.Duration, m *Metrics) *Cache[K, V]` — same pass-through-on-zero-config semantics as today.
   - export `ErrTypeAssert` (renamed from `errCacheTypeAssert`).
   - keep the `method` Prometheus label name (constant `"method"`) so existing label cardinality stays identical.
-- [ ] move tests from `internal/pkg/tvmeta/cache_test.go` to `internal/pkg/lrucache/cache_test.go` for everything that exercises generic cache mechanics (hit/miss, pass-through, singleflight collapse, ctx cancellation, idempotent register). Keep tvmeta-specific tests (key shapes, per-method config plumbing) in tvmeta.
-- [ ] refactor `internal/pkg/tvmeta/cache.go` to thin-wrap `lrucache`:
+- [x] move tests from `internal/pkg/tvmeta/cache_test.go` to `internal/pkg/lrucache/cache_test.go` for everything that exercises generic cache mechanics (hit/miss, pass-through, singleflight collapse, ctx cancellation, idempotent register). Keep tvmeta-specific tests (key shapes, per-method config plumbing) in tvmeta.
+- [x] refactor `internal/pkg/tvmeta/cache.go` to thin-wrap `lrucache`:
   - `tvmeta.CacheConfig` stays unchanged (the `TVMETA_CACHE_*` env-tag contract is tvmeta's, not lrucache's).
   - `newCacheMetrics(reg)` becomes `lrucache.NewMetrics(reg, "tvmeta_cache", "TMDB response cache")`.
   - per-method cache constructors (details/all_seasons/search) become one-line calls to `lrucache.New[K, V](name, size, ttl, m)`.
-- [ ] verify the resulting Prometheus metric names are byte-identical to before — namely `tvmeta_cache_hits_total{method="details|all_seasons|search"}`, `_misses_total`, `_errors_total`. Add (or keep) a test that gathers from a registry and asserts the family names + label values, since dashboards depend on them and a silent rename would be invisible until a panel goes blank.
-- [ ] run `go test -race ./internal/pkg/lrucache/... ./internal/pkg/tvmeta/...` — must pass before Task 2.
+- [x] verify the resulting Prometheus metric names are byte-identical to before — namely `tvmeta_cache_hits_total{method="details|all_seasons|search"}`, `_misses_total`, `_errors_total`. Add (or keep) a test that gathers from a registry and asserts the family names + label values, since dashboards depend on them and a silent rename would be invisible until a panel goes blank.
+- [x] run `go test -race ./internal/pkg/lrucache/... ./internal/pkg/tvmeta/...` — must pass before Task 2.
 
 ### Task 2: `imgCache` type + entry shape (thin layer on `lrucache.Cache`)
 

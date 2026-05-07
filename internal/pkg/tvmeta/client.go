@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/Nikscorp/soap/internal/pkg/logger"
+	"github.com/Nikscorp/soap/internal/pkg/lrucache"
 	tmdb "github.com/cyruzin/golang-tmdb"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -16,9 +17,9 @@ type Client struct {
 	client          tmdbClient
 	ratings         RatingsProvider
 	imdbIDCache     sync.Map // int (tmdb id) -> string (imdb tconst, possibly "")
-	detailsCache    *responseCache[detailsKey, *TvShowDetails]
-	allSeasonsCache *responseCache[allSeasonsKey, *AllSeasonsWithDetails]
-	searchCache     *responseCache[searchKey, *TVShows]
+	detailsCache    *lrucache.Cache[detailsKey, *TvShowDetails]
+	allSeasonsCache *lrucache.Cache[allSeasonsKey, *AllSeasonsWithDetails]
+	searchCache     *lrucache.Cache[searchKey, *TVShows]
 }
 
 // detailsKey is the cache key for TVShowDetails. Two requests collide iff
@@ -74,9 +75,9 @@ func New(tmdbClient tmdbClient, ratings RatingsProvider, cacheCfg CacheConfig, r
 	return &Client{
 		client:          tmdbClient,
 		ratings:         ratings,
-		detailsCache:    newResponseCache[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
-		allSeasonsCache: newResponseCache[allSeasonsKey, *AllSeasonsWithDetails]("all_seasons", cacheCfg.AllSeasonsSize, cacheCfg.AllSeasonsTTL, metrics),
-		searchCache:     newResponseCache[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
+		detailsCache:    lrucache.New[detailsKey, *TvShowDetails]("details", cacheCfg.DetailsSize, cacheCfg.DetailsTTL, metrics),
+		allSeasonsCache: lrucache.New[allSeasonsKey, *AllSeasonsWithDetails]("all_seasons", cacheCfg.AllSeasonsSize, cacheCfg.AllSeasonsTTL, metrics),
+		searchCache:     lrucache.New[searchKey, *TVShows]("search", cacheCfg.SearchSize, cacheCfg.SearchTTL, metrics),
 	}
 }
 
