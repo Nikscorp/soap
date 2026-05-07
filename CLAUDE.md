@@ -69,7 +69,7 @@ When adding a new tunable, add it to both the struct (with `env`, `env-default`,
 Four endpoints, fully specified in `api/openapi.yaml` (treat that file as the contract — update it when handler shapes change):
 
 - `GET /search/{query}` — series search.
-- `GET /id/{id}?language=&limit=` — best episodes. `defaultBest` is server-computed (top quantile, floored at `DefaultBestMinEpisodes`); episodes are *selected* by rating but *returned* in chronological `(season, number)` order.
+- `GET /id/{id}?language=&limit=&seasons=` — best episodes. `defaultBest` is server-computed (top quantile, floored at `DefaultBestMinEpisodes`); episodes are *selected* by rating but *returned* in chronological `(season, number)` order. Optional `seasons=1,3,5` restricts the episode pool to those seasons (unknown numbers silently dropped; empty intersection → 400). `availableSeasons` in the response always lists every populated season regardless of filter.
 - `GET /featured?language=` — randomized pool drawn from TMDB popular ∪ curated extras; returns 503 (not a short list) if the pool can't satisfy `FeaturedCount`. Always `Cache-Control: no-store`.
 - `GET /img/{path}?size=` — TMDB poster proxy. `size` is allow-listed to `w92,w154,w185,w342,w500,w780`; anything else is silently coerced to `w92`. Posters in JSON responses are emitted as relative `/img/{path}` references that resolve through this handler — don't leak raw TMDB URLs to the client.
 

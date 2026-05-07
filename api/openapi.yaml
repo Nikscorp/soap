@@ -75,6 +75,15 @@ paths:
         minimum-episode floor (default `3`) when fewer episodes clear the
         threshold. The full episode count is reported as `totalEpisodes` so
         clients can render a slider over the entire episode space.
+
+        The optional `seasons` query parameter narrows the considered episode
+        pool to a subset of seasons. When provided, `defaultBest` and
+        `totalEpisodes` are computed over that subset; `availableSeasons` is
+        always the full series. Season numbers in the filter that don't exist
+        for the series are silently ignored (so saved links survive a series
+        losing a season in TMDB); the request is rejected with 400 only when
+        the intersection of the filter with `availableSeasons` is fully
+        empty.
       parameters:
         - name: id
           in: path
@@ -104,6 +113,25 @@ paths:
             format: int64
             minimum: 1
           example: 10
+        - name: seasons
+          in: query
+          required: false
+          description: |
+            Optional comma-separated list of positive season numbers
+            (`seasons=1,3,5`) restricting the considered episode pool. The
+            server tolerates any order and surrounding whitespace. Absent or
+            empty → all seasons (current behaviour). Season numbers that
+            aren't in `availableSeasons` are silently ignored; the server
+            responds 400 when the filter resolves to no episodes (the
+            intersection with `availableSeasons` is fully empty).
+            `defaultBest` and `totalEpisodes` are computed over the resulting
+            subset; `availableSeasons` lists every season with at least one
+            episode so clients can render a season selector even under a
+            filter.
+          schema:
+            type: string
+            pattern: '^\s*([1-9]\d*\s*(,\s*[1-9]\d*\s*)*)?\s*$'
+          example: 1,3,5
       responses:
         "200":
           description: Best episodes for the series.
@@ -120,6 +148,7 @@ paths:
                     firstAirDate: "2011-12-04"
                     defaultBest: 3
                     totalEpisodes: 27
+                    availableSeasons: [1, 2, 3, 4, 5, 6]
                     episodes:
                       - title: The National Anthem
                         description: The British prime minister faces a shocking dilemma when Princess Susannah is kidnapped.
@@ -137,8 +166,14 @@ paths:
                         rating: 7.858
                         number: 6
                         season: 4
+        "400":
+          description: |
+            The `{id}` path segment is not a valid positive integer; the
+            `seasons` filter is malformed (non-integer token, empty token,
+            non-positive number); or the intersection of the filter with
+            `availableSeasons` is fully empty.
         "500":
-          description: Failed to load episodes (invalid id, upstream error, or no episodes).
+          description: Failed to load episodes (upstream error or no episodes).
   /featured:
     get:
       tags: [series]
@@ -332,7 +367,7 @@ components:
           example: A British anthology television series that examines modern society, particularly with regard to the unanticipated consequences of new technologies.
     EpisodesResp:
       type: object
-      required: [episodes, title, poster, firstAirDate, defaultBest, totalEpisodes]
+      required: [episodes, title, poster, firstAirDate, defaultBest, totalEpisodes, availableSeasons]
       properties:
         episodes:
           type: array
@@ -341,7 +376,8 @@ components:
             descending (top-N) and the slice is then ordered chronologically
             by `(season, number)` ascending. The slice length equals
             `min(limit, totalEpisodes)` when `limit` is provided, otherwise
-            `defaultBest`.
+            `defaultBest`. When `seasons` is provided, only episodes from
+            seasons in the (intersected) filter are eligible.
           items:
             $ref: "#/components/schemas/Episode"
         title:
@@ -372,14 +408,31 @@ components:
             quantile of all ratings (default `0.9`), with a configured
             minimum floor (default `3`); the size of the response when
             `limit` is omitted, and the recommended initial value for a
-            "top N" slider on the client.
+            "top N" slider on the client. When `seasons` is provided, this
+            is recomputed over the filtered subset, not the full series.
           example: 3
         totalEpisodes:
           type: integer
           format: int64
           minimum: 0
-          description: Total number of episodes across all seasons.
+          description: |
+            Total number of episodes the response considers. When `seasons`
+            is provided, this is the count across the filtered subset;
+            otherwise it's the total across all seasons.
           example: 27
+        availableSeasons:
+          type: array
+          description: |
+            Ascending-sorted list of every season number that has at least
+            one episode in the series payload, regardless of whether
+            `seasons` is provided. Empty TMDB placeholder seasons (e.g.
+            announced-but-unaired upcoming seasons) are excluded so the
+            client never renders a chip that resolves to an empty filter.
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+          example: [1, 2, 3, 4, 5, 6]
     Episode:
       type: object
       required: [title, description, rating, number, season]
