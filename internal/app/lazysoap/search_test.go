@@ -24,7 +24,7 @@ func NewServerM(t *testing.T) *ServerM {
 	srv := New(Config{
 		DefaultBestQuantile:    0.9,
 		DefaultBestMinEpisodes: 3,
-	}, tvMetaClientMock, "")
+	}, tvMetaClientMock, nil, "")
 	ts := httptest.NewServer(srv.newRouter())
 
 	return &ServerM{

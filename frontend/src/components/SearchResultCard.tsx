@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImageOff, Star } from 'lucide-react';
-import { normalizePosterUrl } from '@/lib/api';
+import { normalizePosterUrl, posterSrcSet, type Size } from '@/lib/api';
 import { yearFromAirDate, formatRating } from '@/lib/format';
 import type { SearchResult } from '@/lib/types';
 
@@ -9,9 +9,14 @@ interface Props {
   onSelect: (result: SearchResult) => void;
 }
 
+const searchResultPosterSizes: readonly Size[] = ['w185', 'w342'];
+const searchResultPosterSizesAttr = '(min-width: 640px) 90px, 80px';
+
 export function SearchResultCard({ result, onSelect }: Props) {
   const [posterFailed, setPosterFailed] = useState(false);
-  const posterUrl = normalizePosterUrl(result.poster);
+  const posterUrl = normalizePosterUrl(result.poster, 'w185');
+  const posterSrcSetAttr =
+    posterSrcSet(result.poster, searchResultPosterSizes) || undefined;
   const year = yearFromAirDate(result.firstAirDate);
   const description = result.description?.trim();
 
@@ -26,6 +31,8 @@ export function SearchResultCard({ result, onSelect }: Props) {
           {posterUrl && !posterFailed ? (
             <img
               src={posterUrl}
+              srcSet={posterSrcSetAttr}
+              sizes={searchResultPosterSizesAttr}
               alt=""
               loading="lazy"
               decoding="async"

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getEpisodesById, normalizePosterUrl } from './api';
+import { getEpisodesById, normalizePosterUrl, posterSrcSet } from './api';
 import type { EpisodesResponse } from './types';
 
 describe('normalizePosterUrl', () => {
@@ -39,6 +39,41 @@ describe('normalizePosterUrl', () => {
     expect(normalizePosterUrl('https://image.tmdb.org/t/p/w92/abc.jpg', 'w500')).toBe(
       'https://image.tmdb.org/t/p/w92/abc.jpg',
     );
+  });
+});
+
+describe('posterSrcSet', () => {
+  it('builds a width-descriptor srcset for each requested size', () => {
+    expect(posterSrcSet('/img/abc.jpg', ['w185', 'w342', 'w500', 'w780'])).toBe(
+      [
+        '/img/abc.jpg?size=w185 185w',
+        '/img/abc.jpg?size=w342 342w',
+        '/img/abc.jpg?size=w500 500w',
+        '/img/abc.jpg?size=w780 780w',
+      ].join(', '),
+    );
+  });
+
+  it('routes bare poster paths through /img', () => {
+    expect(posterSrcSet('abc.jpg', ['w185', 'w342'])).toBe(
+      '/img/abc.jpg?size=w185 185w, /img/abc.jpg?size=w342 342w',
+    );
+  });
+
+  it('returns empty string for empty / nullish poster', () => {
+    expect(posterSrcSet(null, ['w185', 'w342'])).toBe('');
+    expect(posterSrcSet(undefined, ['w185', 'w342'])).toBe('');
+    expect(posterSrcSet('', ['w185', 'w342'])).toBe('');
+  });
+
+  it('returns empty string when no sizes are requested', () => {
+    expect(posterSrcSet('/img/abc.jpg', [])).toBe('');
+  });
+
+  it('returns empty string for absolute URLs (descriptors meaningless)', () => {
+    expect(
+      posterSrcSet('https://image.tmdb.org/t/p/w92/abc.jpg', ['w185', 'w342']),
+    ).toBe('');
   });
 });
 

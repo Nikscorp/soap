@@ -276,7 +276,7 @@ func TestIDHandlerDefaultBestConfig(t *testing.T) {
 			srv := New(Config{
 				DefaultBestQuantile:    tc.quantile,
 				DefaultBestMinEpisodes: tc.minEpisodes,
-			}, tvMetaClientMock, "")
+			}, tvMetaClientMock, nil, "")
 			ts := httptest.NewServer(srv.newRouter())
 			defer ts.Close()
 

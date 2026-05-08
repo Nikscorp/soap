@@ -2,397 +2,93 @@ package tvmeta
 
 import (
 	"context"
-	"errors"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 )
 
-// counterValue reads the current value of a label set on a CounterVec by
-// writing into a dto.Metric. Returns 0 for label combinations that have not
-// yet been incremented (Prometheus auto-creates the child on first Inc, so
-// pre-Inc values are 0 and there is no need to special-case "missing").
-func counterValue(t *testing.T, vec *prometheus.CounterVec, label string) float64 {
-	t.Helper()
-	c, err := vec.GetMetricWithLabelValues(label)
-	require.NoError(t, err)
-	var m dto.Metric
-	require.NoError(t, c.Write(&m))
-	return m.GetCounter().GetValue()
-}
-
-func TestResponseCacheHitDoesNotRefetch(t *testing.T) {
-	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
-
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (string, error) {
-		calls.Add(1)
-		return "value", nil
-	}
-
-	v, err := c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.Equal(t, "value", v)
-
-	v, err = c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.Equal(t, "value", v)
-
-	require.Equal(t, int32(1), calls.Load())
-	require.Equal(t, 1, c.len())
-}
-
-func TestResponseCacheTTLExpiryRefetches(t *testing.T) {
-	c := newResponseCache[int, int]("test", 16, 50*time.Millisecond, nil)
-
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (int, error) {
-		calls.Add(1)
-		return int(calls.Load()), nil
-	}
-
-	v, err := c.GetOrFetch(context.Background(), 7, fetch)
-	require.NoError(t, err)
-	require.Equal(t, 1, v)
-
-	// Sleep past the TTL so the entry expires before the next call.
-	time.Sleep(150 * time.Millisecond)
-
-	v, err = c.GetOrFetch(context.Background(), 7, fetch)
-	require.NoError(t, err)
-	require.Equal(t, 2, v)
-	require.Equal(t, int32(2), calls.Load())
-}
-
-func TestResponseCacheErrorNotCached(t *testing.T) {
-	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
-
-	boom := errors.New("boom")
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (string, error) {
-		calls.Add(1)
-		return "", boom
-	}
-
-	_, err := c.GetOrFetch(context.Background(), 1, fetch)
-	require.ErrorIs(t, err, boom)
-
-	_, err = c.GetOrFetch(context.Background(), 1, fetch)
-	require.ErrorIs(t, err, boom)
-
-	require.Equal(t, int32(2), calls.Load(), "errors must not be cached")
-	require.Equal(t, 0, c.len())
-}
-
-func TestResponseCacheDifferentKeysDoNotCollide(t *testing.T) {
-	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
-
-	var calls atomic.Int32
-	fetch := func(want int) func(context.Context) (string, error) {
-		return func(ctx context.Context) (string, error) {
-			calls.Add(1)
-			return "v", nil
-		}
-	}
-
-	_, err := c.GetOrFetch(context.Background(), 1, fetch(1))
-	require.NoError(t, err)
-	_, err = c.GetOrFetch(context.Background(), 2, fetch(2))
-	require.NoError(t, err)
-
-	require.Equal(t, int32(2), calls.Load())
-	require.Equal(t, 2, c.len())
-}
-
-// TestResponseCacheSingleflightKeyDisambiguatesStructFields guards against a
-// regression where the singleflight slot was keyed off fmt.Sprint(key):
-// for a struct with multiple string fields, fmt.Sprint formats both
-// {"a b", "c"} and {"a", "b c"} as "{a b c}", letting one fetch's value
-// land under the other's typed LRU key. With the %#v keying both keys are
-// rendered as Go-syntax strings (`{query:"a b", lang:"c"}` vs
-// `{query:"a", lang:"b c"}`) and stay independent.
-func TestResponseCacheSingleflightKeyDisambiguatesStructFields(t *testing.T) {
-	type k struct {
-		query string
-		lang  string
-	}
-	c := newResponseCache[k, string]("test", 16, time.Hour, nil)
-
-	release := make(chan struct{})
-	var calls atomic.Int32
-	fetch := func(want string) func(context.Context) (string, error) {
-		return func(_ context.Context) (string, error) {
-			calls.Add(1)
-			<-release
-			return want, nil
-		}
-	}
-
-	resA := make(chan string, 1)
-	resB := make(chan string, 1)
-	go func() {
-		v, _ := c.GetOrFetch(context.Background(), k{query: "a b", lang: "c"}, fetch("A"))
-		resA <- v
-	}()
-	go func() {
-		v, _ := c.GetOrFetch(context.Background(), k{query: "a", lang: "b c"}, fetch("B"))
-		resB <- v
-	}()
-
-	time.Sleep(50 * time.Millisecond)
-	close(release)
-
-	gotA := <-resA
-	gotB := <-resB
-	require.Equal(t, "A", gotA, "key {a b, c} must receive its own fetched value")
-	require.Equal(t, "B", gotB, "key {a, b c} must receive its own fetched value")
-	require.Equal(t, int32(2), calls.Load(), "structurally distinct keys must NOT share a singleflight slot")
-}
-
-func TestResponseCacheConcurrentSingleflight(t *testing.T) {
-	c := newResponseCache[int, string]("test", 16, time.Hour, nil)
-
-	release := make(chan struct{})
-	var calls atomic.Int32
-
-	fetch := func(ctx context.Context) (string, error) {
-		calls.Add(1)
-		<-release
-		return "value", nil
-	}
-
-	const N = 32
-	var wg sync.WaitGroup
-	results := make([]string, N)
-	errs := make([]error, N)
-	for i := 0; i < N; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			results[i], errs[i] = c.GetOrFetch(context.Background(), 42, fetch)
-		}(i)
-	}
-
-	// Give all callers time to enter the singleflight wait before releasing.
-	time.Sleep(50 * time.Millisecond)
-	close(release)
-	wg.Wait()
-
-	for i := 0; i < N; i++ {
-		require.NoError(t, errs[i])
-		require.Equal(t, "value", results[i])
-	}
-	require.Equal(t, int32(1), calls.Load(), "singleflight must collapse concurrent identical fetches")
-}
-
-func TestResponseCacheCancelledCallerStillDeliversToOthers(t *testing.T) {
-	c := newResponseCache[int, int]("test", 16, time.Hour, nil)
-
-	fetchStarted := make(chan struct{})
-	releaseFetch := make(chan struct{})
-	var calls atomic.Int32
-
-	fetch := func(ctx context.Context) (int, error) {
-		if calls.Add(1) == 1 {
-			close(fetchStarted)
-		}
-		<-releaseFetch
-		return 42, nil
-	}
-
-	// Caller 1 — its context will be cancelled while the fetch is in flight.
-	ctx1, cancel1 := context.WithCancel(context.Background())
-	defer cancel1()
-	var caller1Err error
-	done1 := make(chan struct{})
-	go func() {
-		defer close(done1)
-		_, caller1Err = c.GetOrFetch(ctx1, 1, fetch)
-	}()
-	<-fetchStarted
-
-	// Caller 2 joins the same singleflight slot and is NOT cancelled.
-	var caller2Val int
-	var caller2Err error
-	done2 := make(chan struct{})
-	go func() {
-		defer close(done2)
-		caller2Val, caller2Err = c.GetOrFetch(context.Background(), 1, fetch)
-	}()
-
-	// Give caller 2 time to enter the wait before we cancel caller 1.
-	time.Sleep(20 * time.Millisecond)
-
-	cancel1()
-	<-done1
-	require.ErrorIs(t, caller1Err, context.Canceled)
-
-	close(releaseFetch)
-	<-done2
-	require.NoError(t, caller2Err)
-	require.Equal(t, 42, caller2Val)
-
-	require.Equal(t, int32(1), calls.Load(), "fetch should run exactly once")
-
-	// And the value should now be in the LRU for subsequent callers.
-	v, err := c.GetOrFetch(context.Background(), 1, func(ctx context.Context) (int, error) {
-		t.Fatal("fetch should not run for a cached key")
-		return 0, nil
-	})
-	require.NoError(t, err)
-	require.Equal(t, 42, v)
-}
-
-func TestResponseCacheDisabledBySize(t *testing.T) {
-	c := newResponseCache[int, int]("test", 0, time.Hour, nil)
-
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (int, error) {
-		calls.Add(1)
-		return 1, nil
-	}
-
-	for i := 0; i < 3; i++ {
-		v, err := c.GetOrFetch(context.Background(), 1, fetch)
-		require.NoError(t, err)
-		require.Equal(t, 1, v)
-	}
-	require.Equal(t, int32(3), calls.Load())
-	require.Equal(t, 0, c.len())
-}
-
-func TestResponseCacheDisabledByTTL(t *testing.T) {
-	c := newResponseCache[int, int]("test", 16, 0, nil)
-
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (int, error) {
-		calls.Add(1)
-		return 1, nil
-	}
-
-	for i := 0; i < 3; i++ {
-		_, err := c.GetOrFetch(context.Background(), 1, fetch)
-		require.NoError(t, err)
-	}
-	require.Equal(t, int32(3), calls.Load())
-}
-
-func TestResponseCacheNilReceiverIsPassThrough(t *testing.T) {
-	var c *responseCache[int, int]
-
-	var calls atomic.Int32
-	fetch := func(ctx context.Context) (int, error) {
-		calls.Add(1)
-		return 99, nil
-	}
-
-	v, err := c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.Equal(t, 99, v)
-	require.Equal(t, int32(1), calls.Load())
-	require.Equal(t, 0, c.len())
-}
-
-// TestResponseCacheMetricsHitMiss exercises the per-method hit / miss
-// counters end-to-end against an isolated registry: a cold key increments
-// misses, the same key on a second call increments hits, and counters across
-// distinct cache names stay independent.
-func TestResponseCacheMetricsHitMiss(t *testing.T) {
+// TestNewCacheMetricsTVMetaFamilyNames pins the public Prometheus metric
+// shape exposed by tvmeta. Dashboards scrape against the literal family
+// names tvmeta_cache_{hits,misses,errors}_total with a `method` label whose
+// values are exactly {details, all_seasons, search}; a silent rename of the
+// names or label values would only show up as a blank dashboard panel
+// post-deploy. Generic cache mechanics live in internal/pkg/lrucache and are
+// covered there — this test exists *only* to guard the byte-identical names.
+func TestNewCacheMetricsTVMetaFamilyNames(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	metrics := newCacheMetrics(reg)
 	require.NotNil(t, metrics)
 
-	c := newResponseCache[int, string]("details", 16, time.Hour, metrics)
+	// Construct one cache per method so the registry sees children for
+	// every label value the caller will emit in production. Touch each so
+	// the children appear in the gather output.
+	c := New(nil, nil, CacheConfig{
+		DetailsSize:    16,
+		DetailsTTL:     time.Hour,
+		AllSeasonsSize: 16,
+		AllSeasonsTTL:  time.Hour,
+		SearchSize:     16,
+		SearchTTL:      time.Hour,
+	}, reg)
 
-	fetch := func(ctx context.Context) (string, error) { return "v", nil }
+	// CounterVecs with no observed children are omitted from Gather output;
+	// touch hits, misses, and errors so all three families surface in the
+	// gather, otherwise the "family must be registered" assertions below
+	// would catch a silent rename only by accident.
+	detailsFetch := func(_ context.Context) (*TvShowDetails, error) { return &TvShowDetails{}, nil }
+	allSeasonsFetch := func(_ context.Context) (*AllSeasonsWithDetails, error) { return &AllSeasonsWithDetails{}, nil }
+	searchFetch := func(_ context.Context) (*TVShows, error) { return &TVShows{}, nil }
 
-	_, err := c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "details"), 0.001)
-	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "details"), 0.001)
-
-	_, err = c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.InDelta(t, 1.0, counterValue(t, metrics.hits, "details"), 0.001)
-	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "details"), 0.001)
-
-	// A different key — still a miss; hits unchanged.
-	_, err = c.GetOrFetch(context.Background(), 2, fetch)
-	require.NoError(t, err)
-	require.InDelta(t, 1.0, counterValue(t, metrics.hits, "details"), 0.001)
-	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "details"), 0.001)
-
-	// A peer cache sharing the same metrics struct increments only its own
-	// label, leaving "details" counters untouched.
-	c2 := newResponseCache[int, string]("episodes", 16, time.Hour, metrics)
-	_, err = c2.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
-	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "episodes"), 0.001)
-	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "episodes"), 0.001)
-	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "details"), 0.001)
-	require.Equal(t, 0.0, counterValue(t, metrics.errors, "details"))
-	require.Equal(t, 0.0, counterValue(t, metrics.errors, "episodes"))
-}
-
-// TestResponseCacheMetricsErrorIncrements verifies the errors counter fires
-// once per waiter that observes a fetch failure, and a miss is still recorded
-// because the lookup did go to the fetch function.
-func TestResponseCacheMetricsErrorIncrements(t *testing.T) {
-	reg := prometheus.NewRegistry()
-	metrics := newCacheMetrics(reg)
-	c := newResponseCache[int, string]("search", 16, time.Hour, metrics)
-
-	boom := errors.New("boom")
-	fetch := func(ctx context.Context) (string, error) { return "", boom }
-
-	_, err := c.GetOrFetch(context.Background(), 1, fetch)
-	require.ErrorIs(t, err, boom)
-	require.InDelta(t, 1.0, counterValue(t, metrics.misses, "search"), 0.001)
-	require.InDelta(t, 1.0, counterValue(t, metrics.errors, "search"), 0.001)
-	require.InDelta(t, 0.0, counterValue(t, metrics.hits, "search"), 0.001)
-
-	// Errors are not cached: a second call must miss + error again.
-	_, err = c.GetOrFetch(context.Background(), 1, fetch)
-	require.ErrorIs(t, err, boom)
-	require.InDelta(t, 2.0, counterValue(t, metrics.misses, "search"), 0.001)
-	require.InDelta(t, 2.0, counterValue(t, metrics.errors, "search"), 0.001)
-}
-
-// TestResponseCacheMetricsDisabledCacheNoOp confirms that a pass-through
-// cache (size <= 0 or ttl <= 0) still constructs without metric churn: it
-// should not record hits or misses, since "disabled means invisible" — an
-// unconfigured deployment must not pollute dashboards with all-misses.
-func TestResponseCacheMetricsDisabledCacheNoOp(t *testing.T) {
-	reg := prometheus.NewRegistry()
-	metrics := newCacheMetrics(reg)
-	c := newResponseCache[int, string]("details", 0, time.Hour, metrics)
-
-	fetch := func(ctx context.Context) (string, error) { return "v", nil }
-	for range 3 {
-		_, err := c.GetOrFetch(context.Background(), 1, fetch)
-		require.NoError(t, err)
+	// Miss (cold) and hit (second call, same key).
+	for range 2 {
+		_, _ = c.detailsCache.GetOrFetch(context.Background(), detailsKey{id: 1, lang: "en"}, detailsFetch)
+		_, _ = c.allSeasonsCache.GetOrFetch(context.Background(), allSeasonsKey{id: 1, lang: "en"}, allSeasonsFetch)
+		_, _ = c.searchCache.GetOrFetch(context.Background(), searchKey{query: "q", lang: "en"}, searchFetch)
 	}
-	require.Equal(t, 0.0, counterValue(t, metrics.hits, "details"))
-	require.Equal(t, 0.0, counterValue(t, metrics.misses, "details"))
-	require.Equal(t, 0.0, counterValue(t, metrics.errors, "details"))
-}
+	// Error increments the errors family for each cache.
+	failDetails := func(_ context.Context) (*TvShowDetails, error) { return nil, context.DeadlineExceeded }
+	failAllSeasons := func(_ context.Context) (*AllSeasonsWithDetails, error) { return nil, context.DeadlineExceeded }
+	failSearch := func(_ context.Context) (*TVShows, error) { return nil, context.DeadlineExceeded }
+	_, _ = c.detailsCache.GetOrFetch(context.Background(), detailsKey{id: 999, lang: "en"}, failDetails)
+	_, _ = c.allSeasonsCache.GetOrFetch(context.Background(), allSeasonsKey{id: 999, lang: "en"}, failAllSeasons)
+	_, _ = c.searchCache.GetOrFetch(context.Background(), searchKey{query: "fail", lang: "en"}, failSearch)
 
-// TestNewCacheMetricsNilRegistererDisabled ensures that a nil registerer
-// yields a nil *cacheMetrics, and that recordHit/recordMiss/recordError on a
-// cache with nil metrics is a no-op (no panic, no allocation churn).
-func TestNewCacheMetricsNilRegistererDisabled(t *testing.T) {
-	require.Nil(t, newCacheMetrics(nil))
-
-	c := newResponseCache[int, string]("details", 16, time.Hour, nil)
-	fetch := func(ctx context.Context) (string, error) { return "v", nil }
-
-	_, err := c.GetOrFetch(context.Background(), 1, fetch)
+	families, err := reg.Gather()
 	require.NoError(t, err)
-	_, err = c.GetOrFetch(context.Background(), 1, fetch)
-	require.NoError(t, err)
+
+	wantFamilies := map[string]bool{
+		"tvmeta_cache_hits_total":   false,
+		"tvmeta_cache_misses_total": false,
+		"tvmeta_cache_errors_total": false,
+	}
+	wantMethods := map[string]bool{
+		"details":     false,
+		"all_seasons": false,
+		"search":      false,
+	}
+
+	for _, f := range families {
+		if _, ok := wantFamilies[f.GetName()]; !ok {
+			continue
+		}
+		wantFamilies[f.GetName()] = true
+		for _, m := range f.GetMetric() {
+			labels := m.GetLabel()
+			require.Len(t, labels, 1, "metric %s should have exactly one label", f.GetName())
+			require.Equal(t, "method", labels[0].GetName(),
+				"metric %s must use the `method` label", f.GetName())
+			if v := labels[0].GetValue(); wantMethods[v] != true {
+				wantMethods[v] = true
+			}
+		}
+	}
+
+	for name, found := range wantFamilies {
+		require.True(t, found, "Prometheus family %q must be registered", name)
+	}
+	require.True(t, wantMethods["details"], "method=details must be observed")
+	require.True(t, wantMethods["all_seasons"], "method=all_seasons must be observed")
+	require.True(t, wantMethods["search"], "method=search must be observed")
 }

@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ImageOff } from 'lucide-react';
-import { getFeaturedSeries, normalizePosterUrl } from '@/lib/api';
+import { getFeaturedSeries, normalizePosterUrl, posterSrcSet, type Size } from '@/lib/api';
 import { yearFromAirDate } from '@/lib/format';
 import type { FeaturedResponse, FeaturedSeries as FeaturedSeriesT, SearchResult } from '@/lib/types';
+
+const featuredPosterSizes: readonly Size[] = ['w342', 'w500', 'w780'];
+const featuredPosterSizesAttr =
+  '(min-width: 1024px) 210px, (min-width: 640px) 190px, 160px';
+// First two carousel cards sit above the fold on a phone — preload them.
+const featuredPriorityCount = 2;
 
 interface Props {
   language: string;
@@ -52,10 +58,11 @@ export function FeaturedSeries({ language, onSelect }: Props) {
                 <div className="mt-1 h-3 w-1/3 animate-pulse rounded bg-white/10" />
               </li>
             ))
-          : series.map((s) => (
+          : series.map((s, i) => (
               <FeaturedCard
                 key={s.id}
                 series={s}
+                priority={i < featuredPriorityCount}
                 onSelect={() =>
                   onSelect(
                     {
@@ -78,18 +85,19 @@ export function FeaturedSeries({ language, onSelect }: Props) {
 
 function FeaturedCard({
   series,
+  priority,
   onSelect,
 }: {
   series: FeaturedSeriesT;
+  priority: boolean;
   onSelect: () => void;
 }) {
   const [posterFailed, setPosterFailed] = useState(false);
-  // Card is ~160px wide on mobile and ~190-210px on desktop. w342 covers the
-  // 1x case crisply; w500 is the 2x source for HiDPI / Retina screens.
+  // Card spans ~160px on mobile and ~190-210px on desktop; the width-
+  // descriptor srcset + matching sizes attribute lets the browser pick the
+  // smallest rendition that satisfies layout × DPR.
   const posterUrl = normalizePosterUrl(series.poster, 'w342');
-  const posterUrl2x = normalizePosterUrl(series.poster, 'w500');
-  const srcSet =
-    posterUrl && posterUrl2x ? `${posterUrl} 1x, ${posterUrl2x} 2x` : undefined;
+  const srcSet = posterSrcSet(series.poster, featuredPosterSizes) || undefined;
   const year = yearFromAirDate(series.firstAirDate);
 
   return (
@@ -104,8 +112,10 @@ function FeaturedCard({
             <img
               src={posterUrl}
               srcSet={srcSet}
+              sizes={featuredPosterSizesAttr}
               alt=""
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchPriority={priority ? 'high' : 'auto'}
               decoding="async"
               className="h-full w-full object-cover"
               onError={() => setPosterFailed(true)}

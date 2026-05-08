@@ -190,17 +190,23 @@ paths:
           (`LAZYSOAP_FEATURED_EXTRA_IDS`). Curated ids bypass the vote-count
           filter.
 
-        Each request reshuffles. Operator extras are warmed into an
-        in-memory cache at startup and refreshed every
+        Each request reshuffles. Both halves of the pool — popular and
+        curated extras — are warmed into a single unified in-memory cache at
+        startup and refreshed every
         `LAZYSOAP_FEATURED_EXTRAS_REFRESH_INTERVAL` (default 24h), so the
-        request path itself never round-trips TMDB for those static ids. If
-        the unioned pool is smaller than the configured count, the handler
+        request path itself never round-trips TMDB. After every successful
+        refresh the `/img` cache is prewarmed for every poster in the pool
+        at the four renditions the SPA's responsive `srcset` declares
+        (`w185`, `w342`, `w500`, `w780`); failures are logged and dropped.
+        On partial refresh failure (popular fetch fails or every extra ID
+        fails) the prior pool is preserved rather than blanked. If the
+        unioned pool is smaller than the configured count, the handler
         returns 503 instead of a short list.
       parameters:
         - name: language
           in: query
           required: false
-          description: Optional ISO 639-1 language code forwarded to TMDB for the popular pool.
+          description: Optional ISO 639-1 language code. Echoed back in the response body; the featured pool is pre-built in the server's default language at refresh time and is not re-fetched per request.
           schema:
             type: string
           example: en
@@ -275,6 +281,21 @@ paths:
         server. The optional `size` query parameter selects a TMDB image
         variant; values outside the allow-list are coerced to the default
         (`w92`).
+
+        Successful responses are cached server-side: an in-process LRU keyed
+        by `(path, normalized size)` holds up to `LAZYSOAP_IMG_CACHE_SIZE`
+        (default `512`) bodies for `LAZYSOAP_IMG_CACHE_TTL` (default
+        `168h`). Concurrent misses for the same key collapse into one
+        upstream call via `singleflight`. Only `200 OK` responses with
+        `Content-Type: image/*` and a body up to 2 MiB are cached; transport
+        errors, non-image content-types, oversized bodies, and non-200 /
+        non-404 statuses surface as `502` and are not cached. Hits and
+        misses emit the same headers, so a hit is byte-identical to a fresh
+        response. Hit / miss / error counts are exported on `/metrics` as
+        `lazysoap_img_cache_hits_total` / `_misses_total` / `_errors_total`
+        (label `method=img`). Featured-pool posters are proactively
+        prewarmed at the four renditions the SPA's responsive `srcset`
+        declares — see `/featured`.
       parameters:
         - name: path
           in: path
@@ -289,7 +310,9 @@ paths:
           description: |
             TMDB image-size token. Values outside the allow-list are silently
             coerced to `w92` so a stray query can't be used to fan requests
-            out to arbitrary TMDB endpoints.
+            out to arbitrary TMDB endpoints. The normalized value (not the
+            raw query string) is what the server-side cache keys on, so
+            `?size=garbage` shares a slot with the default.
           schema:
             type: string
             enum: [w92, w154, w185, w342, w500, w780]
@@ -297,7 +320,20 @@ paths:
           example: w342
       responses:
         "200":
-          description: Raw image bytes proxied from TMDB.
+          description: Raw image bytes proxied from TMDB (or replayed from cache).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: |
+                `public, max-age={LAZYSOAP_IMG_BROWSER_MAX_AGE}, immutable`
+                (default `max-age=86400`) when `LAZYSOAP_IMG_BROWSER_MAX_AGE
+                > 0`; falls back to `no-store` when the operator sets it to
+                `0`. Identical on cache hits and misses.
+            Content-Type:
+              schema:
+                type: string
+              description: Mirrored from the upstream response (always `image/*`).
           content:
             image/jpeg:
               schema:
@@ -308,9 +344,12 @@ paths:
                 type: string
                 format: binary
         "404":
-          description: Upstream returned a non-200 status; the same status is propagated.
-        "500":
-          description: Failed to build, perform, or stream the upstream request.
+          description: Upstream TMDB returned 404 for the poster path. Body is empty; not cached.
+        "502":
+          description: |
+            Upstream call failed: transport error, non-200 / non-404 status,
+            non-image `Content-Type`, oversized body (> 2 MiB), or empty
+            body. Body is empty; not cached so the next request retries.
 components:
   schemas:
     SearchResultsResp:
@@ -488,7 +527,7 @@ components:
             $ref: "#/components/schemas/FeaturedSeries"
         language:
           type: string
-          description: Language echoed back from the request (defaults to `en`).
+          description: Language query-parameter echoed back from the request; empty string when the caller omits it.
           example: en
     MetaResp:
       type: object

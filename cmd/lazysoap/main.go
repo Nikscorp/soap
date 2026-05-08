@@ -15,6 +15,7 @@ import (
 	"github.com/Nikscorp/soap/internal/pkg/config"
 	"github.com/Nikscorp/soap/internal/pkg/imdbratings"
 	"github.com/Nikscorp/soap/internal/pkg/logger"
+	"github.com/Nikscorp/soap/internal/pkg/lrucache"
 	"github.com/Nikscorp/soap/internal/pkg/tvmeta"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -66,7 +67,10 @@ func main() {
 		logger.Info(ctx, "IMDb ratings source enabled", "cache_dir", cfg.IMDbConfig.CacheDir)
 	}
 
-	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache, prometheus.DefaultRegisterer), version)
+	imgCacheMetrics := lrucache.NewMetrics(prometheus.DefaultRegisterer, "lazysoap_img_cache", "image bytes cache")
+	imgCache := lrucache.New[string, lazysoap.ImgCacheEntry]("img", cfg.LazySoapConfig.ImgCache.Size, cfg.LazySoapConfig.ImgCache.TTL, imgCacheMetrics)
+
+	server := lazysoap.New(cfg.LazySoapConfig, tvmeta.New(tmdbClient, ratingsProvider, cfg.TVMeta.Cache, prometheus.DefaultRegisterer), imgCache, version)
 
 	go func() {
 		stop := make(chan os.Signal, 1)
