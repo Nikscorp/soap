@@ -6,7 +6,7 @@ toolchain go1.26.2
 
 require (
 	github.com/cyruzin/golang-tmdb v1.9.2
-	github.com/go-chi/chi/v5 v5.2.5
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-chi/cors v1.2.2
 	github.com/gojuno/minimock/v3 v3.4.7
 	github.com/hashicorp/golang-lru/v2 v2.0.7
