@@ -8,7 +8,7 @@ github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cyruzin/golang-tmdb v1.9.2
+# github.com/cyruzin/golang-tmdb v1.9.4
 ## explicit; go 1.24
 github.com/cyruzin/golang-tmdb
 # github.com/davecgh/go-spew v1.1.1
