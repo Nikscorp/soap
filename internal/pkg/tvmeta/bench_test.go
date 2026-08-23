@@ -38,7 +38,7 @@ func benchSeasonResponse(season int) *tmdb.TVSeasonDetails {
 			SeasonNumber:  season,
 			Name:          fmt.Sprintf("S%dE%d", season, i+1),
 			Overview:      "synthetic episode overview",
-			VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 7.5},
+			VoteAverage:   7.5,
 			StillPath:     "/still.jpg",
 		}
 	}
@@ -49,9 +49,9 @@ func benchSearchResponse() *tmdb.SearchTVShows {
 	results := make([]tmdb.TVShowResult, benchSearchResults)
 	for i := range results {
 		results[i] = tmdb.TVShowResult{
-			ID:           int64(1000 + i),
-			Name:         fmt.Sprintf("Show %d", i),
-			VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 7.5, VoteCount: 1000},
+			ID:          int64(1000 + i),
+			Name:        fmt.Sprintf("Show %d", i),
+			VoteAverage: 7.5, VoteCount: 1000,
 			PosterPath:   "/poster.jpg",
 			FirstAirDate: "2020",
 			Overview:     "synthetic search result",

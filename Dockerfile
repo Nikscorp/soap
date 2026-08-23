@@ -1,4 +1,4 @@
-FROM ghcr.io/nikscorp/go-builder:0.2.0 AS build-backend
+FROM ghcr.io/nikscorp/go-builder:0.2.1 AS build-backend
 
 ENV \
     CGO_ENABLED=0 \

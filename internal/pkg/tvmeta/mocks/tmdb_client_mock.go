@@ -19,32 +19,32 @@ type TmdbClientMock struct {
 
 	funcGetSearchTVShow          func(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error)
 	inspectFuncGetSearchTVShow   func(query string, urlOptions map[string]string)
-	afterGetSearchTVShowCounter  uint64
-	beforeGetSearchTVShowCounter uint64
+	afterGetSearchTVShowCounter  mm_atomic.Uint64
+	beforeGetSearchTVShowCounter mm_atomic.Uint64
 	GetSearchTVShowMock          mTmdbClientMockGetSearchTVShow
 
 	funcGetTVDetails          func(id int, urlOptions map[string]string) (tp1 *tmdb.TVDetails, err error)
 	inspectFuncGetTVDetails   func(id int, urlOptions map[string]string)
-	afterGetTVDetailsCounter  uint64
-	beforeGetTVDetailsCounter uint64
+	afterGetTVDetailsCounter  mm_atomic.Uint64
+	beforeGetTVDetailsCounter mm_atomic.Uint64
 	GetTVDetailsMock          mTmdbClientMockGetTVDetails
 
 	funcGetTVExternalIDs          func(id int, urlOptions map[string]string) (tp1 *tmdb.TVExternalIDs, err error)
 	inspectFuncGetTVExternalIDs   func(id int, urlOptions map[string]string)
-	afterGetTVExternalIDsCounter  uint64
-	beforeGetTVExternalIDsCounter uint64
+	afterGetTVExternalIDsCounter  mm_atomic.Uint64
+	beforeGetTVExternalIDsCounter mm_atomic.Uint64
 	GetTVExternalIDsMock          mTmdbClientMockGetTVExternalIDs
 
 	funcGetTVPopular          func(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error)
 	inspectFuncGetTVPopular   func(urlOptions map[string]string)
-	afterGetTVPopularCounter  uint64
-	beforeGetTVPopularCounter uint64
+	afterGetTVPopularCounter  mm_atomic.Uint64
+	beforeGetTVPopularCounter mm_atomic.Uint64
 	GetTVPopularMock          mTmdbClientMockGetTVPopular
 
 	funcGetTVSeasonDetails          func(id int, seasonNumber int, urlOptions map[string]string) (tp1 *tmdb.TVSeasonDetails, err error)
 	inspectFuncGetTVSeasonDetails   func(id int, seasonNumber int, urlOptions map[string]string)
-	afterGetTVSeasonDetailsCounter  uint64
-	beforeGetTVSeasonDetailsCounter uint64
+	afterGetTVSeasonDetailsCounter  mm_atomic.Uint64
+	beforeGetTVSeasonDetailsCounter mm_atomic.Uint64
 	GetTVSeasonDetailsMock          mTmdbClientMockGetTVSeasonDetails
 }
 
@@ -183,8 +183,8 @@ func (e *TmdbClientMockGetSearchTVShowExpectation) Then(sp1 *tmdb.SearchTVShows,
 
 // GetSearchTVShow implements tvmeta.tmdbClient
 func (mmGetSearchTVShow *TmdbClientMock) GetSearchTVShow(query string, urlOptions map[string]string) (sp1 *tmdb.SearchTVShows, err error) {
-	mm_atomic.AddUint64(&mmGetSearchTVShow.beforeGetSearchTVShowCounter, 1)
-	defer mm_atomic.AddUint64(&mmGetSearchTVShow.afterGetSearchTVShowCounter, 1)
+	mmGetSearchTVShow.beforeGetSearchTVShowCounter.Add(1)
+	defer mmGetSearchTVShow.afterGetSearchTVShowCounter.Add(1)
 
 	if mmGetSearchTVShow.inspectFuncGetSearchTVShow != nil {
 		mmGetSearchTVShow.inspectFuncGetSearchTVShow(query, urlOptions)
@@ -227,12 +227,12 @@ func (mmGetSearchTVShow *TmdbClientMock) GetSearchTVShow(query string, urlOption
 
 // GetSearchTVShowAfterCounter returns a count of finished TmdbClientMock.GetSearchTVShow invocations
 func (mmGetSearchTVShow *TmdbClientMock) GetSearchTVShowAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetSearchTVShow.afterGetSearchTVShowCounter)
+	return mmGetSearchTVShow.afterGetSearchTVShowCounter.Load()
 }
 
 // GetSearchTVShowBeforeCounter returns a count of TmdbClientMock.GetSearchTVShow invocations
 func (mmGetSearchTVShow *TmdbClientMock) GetSearchTVShowBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetSearchTVShow.beforeGetSearchTVShowCounter)
+	return mmGetSearchTVShow.beforeGetSearchTVShowCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TmdbClientMock.GetSearchTVShow.
@@ -258,11 +258,11 @@ func (m *TmdbClientMock) MinimockGetSearchTVShowDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetSearchTVShowMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetSearchTVShowCounter) < 1 {
+	if m.GetSearchTVShowMock.defaultExpectation != nil && m.afterGetSearchTVShowCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetSearchTVShow != nil && mm_atomic.LoadUint64(&m.afterGetSearchTVShowCounter) < 1 {
+	if m.funcGetSearchTVShow != nil && m.afterGetSearchTVShowCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -277,7 +277,7 @@ func (m *TmdbClientMock) MinimockGetSearchTVShowInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetSearchTVShowMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetSearchTVShowCounter) < 1 {
+	if m.GetSearchTVShowMock.defaultExpectation != nil && m.afterGetSearchTVShowCounter.Load() < 1 {
 		if m.GetSearchTVShowMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TmdbClientMock.GetSearchTVShow")
 		} else {
@@ -285,7 +285,7 @@ func (m *TmdbClientMock) MinimockGetSearchTVShowInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetSearchTVShow != nil && mm_atomic.LoadUint64(&m.afterGetSearchTVShowCounter) < 1 {
+	if m.funcGetSearchTVShow != nil && m.afterGetSearchTVShowCounter.Load() < 1 {
 		m.t.Error("Expected call to TmdbClientMock.GetSearchTVShow")
 	}
 }
@@ -400,8 +400,8 @@ func (e *TmdbClientMockGetTVDetailsExpectation) Then(tp1 *tmdb.TVDetails, err er
 
 // GetTVDetails implements tvmeta.tmdbClient
 func (mmGetTVDetails *TmdbClientMock) GetTVDetails(id int, urlOptions map[string]string) (tp1 *tmdb.TVDetails, err error) {
-	mm_atomic.AddUint64(&mmGetTVDetails.beforeGetTVDetailsCounter, 1)
-	defer mm_atomic.AddUint64(&mmGetTVDetails.afterGetTVDetailsCounter, 1)
+	mmGetTVDetails.beforeGetTVDetailsCounter.Add(1)
+	defer mmGetTVDetails.afterGetTVDetailsCounter.Add(1)
 
 	if mmGetTVDetails.inspectFuncGetTVDetails != nil {
 		mmGetTVDetails.inspectFuncGetTVDetails(id, urlOptions)
@@ -444,12 +444,12 @@ func (mmGetTVDetails *TmdbClientMock) GetTVDetails(id int, urlOptions map[string
 
 // GetTVDetailsAfterCounter returns a count of finished TmdbClientMock.GetTVDetails invocations
 func (mmGetTVDetails *TmdbClientMock) GetTVDetailsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVDetails.afterGetTVDetailsCounter)
+	return mmGetTVDetails.afterGetTVDetailsCounter.Load()
 }
 
 // GetTVDetailsBeforeCounter returns a count of TmdbClientMock.GetTVDetails invocations
 func (mmGetTVDetails *TmdbClientMock) GetTVDetailsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVDetails.beforeGetTVDetailsCounter)
+	return mmGetTVDetails.beforeGetTVDetailsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TmdbClientMock.GetTVDetails.
@@ -475,11 +475,11 @@ func (m *TmdbClientMock) MinimockGetTVDetailsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVDetailsCounter) < 1 {
+	if m.GetTVDetailsMock.defaultExpectation != nil && m.afterGetTVDetailsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVDetails != nil && mm_atomic.LoadUint64(&m.afterGetTVDetailsCounter) < 1 {
+	if m.funcGetTVDetails != nil && m.afterGetTVDetailsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -494,7 +494,7 @@ func (m *TmdbClientMock) MinimockGetTVDetailsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVDetailsCounter) < 1 {
+	if m.GetTVDetailsMock.defaultExpectation != nil && m.afterGetTVDetailsCounter.Load() < 1 {
 		if m.GetTVDetailsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TmdbClientMock.GetTVDetails")
 		} else {
@@ -502,7 +502,7 @@ func (m *TmdbClientMock) MinimockGetTVDetailsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVDetails != nil && mm_atomic.LoadUint64(&m.afterGetTVDetailsCounter) < 1 {
+	if m.funcGetTVDetails != nil && m.afterGetTVDetailsCounter.Load() < 1 {
 		m.t.Error("Expected call to TmdbClientMock.GetTVDetails")
 	}
 }
@@ -617,8 +617,8 @@ func (e *TmdbClientMockGetTVExternalIDsExpectation) Then(tp1 *tmdb.TVExternalIDs
 
 // GetTVExternalIDs implements tvmeta.tmdbClient
 func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDs(id int, urlOptions map[string]string) (tp1 *tmdb.TVExternalIDs, err error) {
-	mm_atomic.AddUint64(&mmGetTVExternalIDs.beforeGetTVExternalIDsCounter, 1)
-	defer mm_atomic.AddUint64(&mmGetTVExternalIDs.afterGetTVExternalIDsCounter, 1)
+	mmGetTVExternalIDs.beforeGetTVExternalIDsCounter.Add(1)
+	defer mmGetTVExternalIDs.afterGetTVExternalIDsCounter.Add(1)
 
 	if mmGetTVExternalIDs.inspectFuncGetTVExternalIDs != nil {
 		mmGetTVExternalIDs.inspectFuncGetTVExternalIDs(id, urlOptions)
@@ -661,12 +661,12 @@ func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDs(id int, urlOptions ma
 
 // GetTVExternalIDsAfterCounter returns a count of finished TmdbClientMock.GetTVExternalIDs invocations
 func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVExternalIDs.afterGetTVExternalIDsCounter)
+	return mmGetTVExternalIDs.afterGetTVExternalIDsCounter.Load()
 }
 
 // GetTVExternalIDsBeforeCounter returns a count of TmdbClientMock.GetTVExternalIDs invocations
 func (mmGetTVExternalIDs *TmdbClientMock) GetTVExternalIDsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVExternalIDs.beforeGetTVExternalIDsCounter)
+	return mmGetTVExternalIDs.beforeGetTVExternalIDsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TmdbClientMock.GetTVExternalIDs.
@@ -692,11 +692,11 @@ func (m *TmdbClientMock) MinimockGetTVExternalIDsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVExternalIDsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+	if m.GetTVExternalIDsMock.defaultExpectation != nil && m.afterGetTVExternalIDsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVExternalIDs != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+	if m.funcGetTVExternalIDs != nil && m.afterGetTVExternalIDsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -711,7 +711,7 @@ func (m *TmdbClientMock) MinimockGetTVExternalIDsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVExternalIDsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+	if m.GetTVExternalIDsMock.defaultExpectation != nil && m.afterGetTVExternalIDsCounter.Load() < 1 {
 		if m.GetTVExternalIDsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TmdbClientMock.GetTVExternalIDs")
 		} else {
@@ -719,7 +719,7 @@ func (m *TmdbClientMock) MinimockGetTVExternalIDsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVExternalIDs != nil && mm_atomic.LoadUint64(&m.afterGetTVExternalIDsCounter) < 1 {
+	if m.funcGetTVExternalIDs != nil && m.afterGetTVExternalIDsCounter.Load() < 1 {
 		m.t.Error("Expected call to TmdbClientMock.GetTVExternalIDs")
 	}
 }
@@ -833,8 +833,8 @@ func (e *TmdbClientMockGetTVPopularExpectation) Then(tp1 *tmdb.TVPopular, err er
 
 // GetTVPopular implements tvmeta.tmdbClient
 func (mmGetTVPopular *TmdbClientMock) GetTVPopular(urlOptions map[string]string) (tp1 *tmdb.TVPopular, err error) {
-	mm_atomic.AddUint64(&mmGetTVPopular.beforeGetTVPopularCounter, 1)
-	defer mm_atomic.AddUint64(&mmGetTVPopular.afterGetTVPopularCounter, 1)
+	mmGetTVPopular.beforeGetTVPopularCounter.Add(1)
+	defer mmGetTVPopular.afterGetTVPopularCounter.Add(1)
 
 	if mmGetTVPopular.inspectFuncGetTVPopular != nil {
 		mmGetTVPopular.inspectFuncGetTVPopular(urlOptions)
@@ -877,12 +877,12 @@ func (mmGetTVPopular *TmdbClientMock) GetTVPopular(urlOptions map[string]string)
 
 // GetTVPopularAfterCounter returns a count of finished TmdbClientMock.GetTVPopular invocations
 func (mmGetTVPopular *TmdbClientMock) GetTVPopularAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVPopular.afterGetTVPopularCounter)
+	return mmGetTVPopular.afterGetTVPopularCounter.Load()
 }
 
 // GetTVPopularBeforeCounter returns a count of TmdbClientMock.GetTVPopular invocations
 func (mmGetTVPopular *TmdbClientMock) GetTVPopularBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVPopular.beforeGetTVPopularCounter)
+	return mmGetTVPopular.beforeGetTVPopularCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TmdbClientMock.GetTVPopular.
@@ -908,11 +908,11 @@ func (m *TmdbClientMock) MinimockGetTVPopularDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVPopularMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+	if m.GetTVPopularMock.defaultExpectation != nil && m.afterGetTVPopularCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVPopular != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+	if m.funcGetTVPopular != nil && m.afterGetTVPopularCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -927,7 +927,7 @@ func (m *TmdbClientMock) MinimockGetTVPopularInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVPopularMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+	if m.GetTVPopularMock.defaultExpectation != nil && m.afterGetTVPopularCounter.Load() < 1 {
 		if m.GetTVPopularMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TmdbClientMock.GetTVPopular")
 		} else {
@@ -935,7 +935,7 @@ func (m *TmdbClientMock) MinimockGetTVPopularInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVPopular != nil && mm_atomic.LoadUint64(&m.afterGetTVPopularCounter) < 1 {
+	if m.funcGetTVPopular != nil && m.afterGetTVPopularCounter.Load() < 1 {
 		m.t.Error("Expected call to TmdbClientMock.GetTVPopular")
 	}
 }
@@ -1051,8 +1051,8 @@ func (e *TmdbClientMockGetTVSeasonDetailsExpectation) Then(tp1 *tmdb.TVSeasonDet
 
 // GetTVSeasonDetails implements tvmeta.tmdbClient
 func (mmGetTVSeasonDetails *TmdbClientMock) GetTVSeasonDetails(id int, seasonNumber int, urlOptions map[string]string) (tp1 *tmdb.TVSeasonDetails, err error) {
-	mm_atomic.AddUint64(&mmGetTVSeasonDetails.beforeGetTVSeasonDetailsCounter, 1)
-	defer mm_atomic.AddUint64(&mmGetTVSeasonDetails.afterGetTVSeasonDetailsCounter, 1)
+	mmGetTVSeasonDetails.beforeGetTVSeasonDetailsCounter.Add(1)
+	defer mmGetTVSeasonDetails.afterGetTVSeasonDetailsCounter.Add(1)
 
 	if mmGetTVSeasonDetails.inspectFuncGetTVSeasonDetails != nil {
 		mmGetTVSeasonDetails.inspectFuncGetTVSeasonDetails(id, seasonNumber, urlOptions)
@@ -1095,12 +1095,12 @@ func (mmGetTVSeasonDetails *TmdbClientMock) GetTVSeasonDetails(id int, seasonNum
 
 // GetTVSeasonDetailsAfterCounter returns a count of finished TmdbClientMock.GetTVSeasonDetails invocations
 func (mmGetTVSeasonDetails *TmdbClientMock) GetTVSeasonDetailsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVSeasonDetails.afterGetTVSeasonDetailsCounter)
+	return mmGetTVSeasonDetails.afterGetTVSeasonDetailsCounter.Load()
 }
 
 // GetTVSeasonDetailsBeforeCounter returns a count of TmdbClientMock.GetTVSeasonDetails invocations
 func (mmGetTVSeasonDetails *TmdbClientMock) GetTVSeasonDetailsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmGetTVSeasonDetails.beforeGetTVSeasonDetailsCounter)
+	return mmGetTVSeasonDetails.beforeGetTVSeasonDetailsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TmdbClientMock.GetTVSeasonDetails.
@@ -1126,11 +1126,11 @@ func (m *TmdbClientMock) MinimockGetTVSeasonDetailsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVSeasonDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVSeasonDetailsCounter) < 1 {
+	if m.GetTVSeasonDetailsMock.defaultExpectation != nil && m.afterGetTVSeasonDetailsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVSeasonDetails != nil && mm_atomic.LoadUint64(&m.afterGetTVSeasonDetailsCounter) < 1 {
+	if m.funcGetTVSeasonDetails != nil && m.afterGetTVSeasonDetailsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -1145,7 +1145,7 @@ func (m *TmdbClientMock) MinimockGetTVSeasonDetailsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.GetTVSeasonDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterGetTVSeasonDetailsCounter) < 1 {
+	if m.GetTVSeasonDetailsMock.defaultExpectation != nil && m.afterGetTVSeasonDetailsCounter.Load() < 1 {
 		if m.GetTVSeasonDetailsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TmdbClientMock.GetTVSeasonDetails")
 		} else {
@@ -1153,7 +1153,7 @@ func (m *TmdbClientMock) MinimockGetTVSeasonDetailsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcGetTVSeasonDetails != nil && mm_atomic.LoadUint64(&m.afterGetTVSeasonDetailsCounter) < 1 {
+	if m.funcGetTVSeasonDetails != nil && m.afterGetTVSeasonDetailsCounter.Load() < 1 {
 		m.t.Error("Expected call to TmdbClientMock.GetTVSeasonDetails")
 	}
 }
