@@ -79,7 +79,7 @@ func TestSearchTVShows(t *testing.T) {
 					{
 						ID:           4815162343,
 						Name:         "Lost2",
-						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
+						VoteAverage:  9.9,
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
@@ -88,7 +88,7 @@ func TestSearchTVShows(t *testing.T) {
 					{
 						ID:           4815162342,
 						Name:         "Lost",
-						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
+						VoteAverage:  9.9,
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
@@ -143,7 +143,7 @@ func TestSearchTVShowsUnicode(t *testing.T) {
 					{
 						ID:           4815162342,
 						Name:         "Лост",
-						VoteMetrics:  tmdb.VoteMetrics{VoteAverage: 9.9},
+						VoteAverage:  9.9,
 						PosterPath:   "/lost.jpg",
 						FirstAirDate: "2022",
 						Overview:     "Greatest tv show ever",
@@ -262,7 +262,7 @@ func TestSearchTVShowsCacheHitsOnce(t *testing.T) {
 	client.mockedTMDB.GetSearchTVShowMock.Return(&tmdb.SearchTVShows{
 		SearchTVShowsResults: &tmdb.SearchTVShowsResults{
 			Results: []tmdb.TVShowResult{
-				{ID: 1, Name: "Lost", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 7.5}, Popularity: 100},
+				{ID: 1, Name: "Lost", VoteAverage: 7.5, Popularity: 100},
 			},
 		},
 	}, nil)

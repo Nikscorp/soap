@@ -20,26 +20,26 @@ type TvMetaClientMock struct {
 
 	funcPopularTVShows          func(ctx context.Context, language string) (tpa1 []*tvmeta.TVShow, err error)
 	inspectFuncPopularTVShows   func(ctx context.Context, language string)
-	afterPopularTVShowsCounter  uint64
-	beforePopularTVShowsCounter uint64
+	afterPopularTVShowsCounter  mm_atomic.Uint64
+	beforePopularTVShowsCounter mm_atomic.Uint64
 	PopularTVShowsMock          mTvMetaClientMockPopularTVShows
 
 	funcSearchTVShows          func(ctx context.Context, query string) (tp1 *tvmeta.TVShows, err error)
 	inspectFuncSearchTVShows   func(ctx context.Context, query string)
-	afterSearchTVShowsCounter  uint64
-	beforeSearchTVShowsCounter uint64
+	afterSearchTVShowsCounter  mm_atomic.Uint64
+	beforeSearchTVShowsCounter mm_atomic.Uint64
 	SearchTVShowsMock          mTvMetaClientMockSearchTVShows
 
 	funcTVShowAllSeasonsWithDetails          func(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error)
 	inspectFuncTVShowAllSeasonsWithDetails   func(ctx context.Context, id int, language string)
-	afterTVShowAllSeasonsWithDetailsCounter  uint64
-	beforeTVShowAllSeasonsWithDetailsCounter uint64
+	afterTVShowAllSeasonsWithDetailsCounter  mm_atomic.Uint64
+	beforeTVShowAllSeasonsWithDetailsCounter mm_atomic.Uint64
 	TVShowAllSeasonsWithDetailsMock          mTvMetaClientMockTVShowAllSeasonsWithDetails
 
 	funcTVShowDetails          func(ctx context.Context, id int, language string) (tp1 *tvmeta.TvShowDetails, err error)
 	inspectFuncTVShowDetails   func(ctx context.Context, id int, language string)
-	afterTVShowDetailsCounter  uint64
-	beforeTVShowDetailsCounter uint64
+	afterTVShowDetailsCounter  mm_atomic.Uint64
+	beforeTVShowDetailsCounter mm_atomic.Uint64
 	TVShowDetailsMock          mTvMetaClientMockTVShowDetails
 }
 
@@ -175,8 +175,8 @@ func (e *TvMetaClientMockPopularTVShowsExpectation) Then(tpa1 []*tvmeta.TVShow, 
 
 // PopularTVShows implements lazysoap.tvMetaClient
 func (mmPopularTVShows *TvMetaClientMock) PopularTVShows(ctx context.Context, language string) (tpa1 []*tvmeta.TVShow, err error) {
-	mm_atomic.AddUint64(&mmPopularTVShows.beforePopularTVShowsCounter, 1)
-	defer mm_atomic.AddUint64(&mmPopularTVShows.afterPopularTVShowsCounter, 1)
+	mmPopularTVShows.beforePopularTVShowsCounter.Add(1)
+	defer mmPopularTVShows.afterPopularTVShowsCounter.Add(1)
 
 	if mmPopularTVShows.inspectFuncPopularTVShows != nil {
 		mmPopularTVShows.inspectFuncPopularTVShows(ctx, language)
@@ -219,12 +219,12 @@ func (mmPopularTVShows *TvMetaClientMock) PopularTVShows(ctx context.Context, la
 
 // PopularTVShowsAfterCounter returns a count of finished TvMetaClientMock.PopularTVShows invocations
 func (mmPopularTVShows *TvMetaClientMock) PopularTVShowsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmPopularTVShows.afterPopularTVShowsCounter)
+	return mmPopularTVShows.afterPopularTVShowsCounter.Load()
 }
 
 // PopularTVShowsBeforeCounter returns a count of TvMetaClientMock.PopularTVShows invocations
 func (mmPopularTVShows *TvMetaClientMock) PopularTVShowsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmPopularTVShows.beforePopularTVShowsCounter)
+	return mmPopularTVShows.beforePopularTVShowsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TvMetaClientMock.PopularTVShows.
@@ -250,11 +250,11 @@ func (m *TvMetaClientMock) MinimockPopularTVShowsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.PopularTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+	if m.PopularTVShowsMock.defaultExpectation != nil && m.afterPopularTVShowsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcPopularTVShows != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+	if m.funcPopularTVShows != nil && m.afterPopularTVShowsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -269,7 +269,7 @@ func (m *TvMetaClientMock) MinimockPopularTVShowsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.PopularTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+	if m.PopularTVShowsMock.defaultExpectation != nil && m.afterPopularTVShowsCounter.Load() < 1 {
 		if m.PopularTVShowsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TvMetaClientMock.PopularTVShows")
 		} else {
@@ -277,7 +277,7 @@ func (m *TvMetaClientMock) MinimockPopularTVShowsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcPopularTVShows != nil && mm_atomic.LoadUint64(&m.afterPopularTVShowsCounter) < 1 {
+	if m.funcPopularTVShows != nil && m.afterPopularTVShowsCounter.Load() < 1 {
 		m.t.Error("Expected call to TvMetaClientMock.PopularTVShows")
 	}
 }
@@ -392,8 +392,8 @@ func (e *TvMetaClientMockSearchTVShowsExpectation) Then(tp1 *tvmeta.TVShows, err
 
 // SearchTVShows implements lazysoap.tvMetaClient
 func (mmSearchTVShows *TvMetaClientMock) SearchTVShows(ctx context.Context, query string) (tp1 *tvmeta.TVShows, err error) {
-	mm_atomic.AddUint64(&mmSearchTVShows.beforeSearchTVShowsCounter, 1)
-	defer mm_atomic.AddUint64(&mmSearchTVShows.afterSearchTVShowsCounter, 1)
+	mmSearchTVShows.beforeSearchTVShowsCounter.Add(1)
+	defer mmSearchTVShows.afterSearchTVShowsCounter.Add(1)
 
 	if mmSearchTVShows.inspectFuncSearchTVShows != nil {
 		mmSearchTVShows.inspectFuncSearchTVShows(ctx, query)
@@ -436,12 +436,12 @@ func (mmSearchTVShows *TvMetaClientMock) SearchTVShows(ctx context.Context, quer
 
 // SearchTVShowsAfterCounter returns a count of finished TvMetaClientMock.SearchTVShows invocations
 func (mmSearchTVShows *TvMetaClientMock) SearchTVShowsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmSearchTVShows.afterSearchTVShowsCounter)
+	return mmSearchTVShows.afterSearchTVShowsCounter.Load()
 }
 
 // SearchTVShowsBeforeCounter returns a count of TvMetaClientMock.SearchTVShows invocations
 func (mmSearchTVShows *TvMetaClientMock) SearchTVShowsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmSearchTVShows.beforeSearchTVShowsCounter)
+	return mmSearchTVShows.beforeSearchTVShowsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TvMetaClientMock.SearchTVShows.
@@ -467,11 +467,11 @@ func (m *TvMetaClientMock) MinimockSearchTVShowsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.SearchTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterSearchTVShowsCounter) < 1 {
+	if m.SearchTVShowsMock.defaultExpectation != nil && m.afterSearchTVShowsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcSearchTVShows != nil && mm_atomic.LoadUint64(&m.afterSearchTVShowsCounter) < 1 {
+	if m.funcSearchTVShows != nil && m.afterSearchTVShowsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -486,7 +486,7 @@ func (m *TvMetaClientMock) MinimockSearchTVShowsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.SearchTVShowsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterSearchTVShowsCounter) < 1 {
+	if m.SearchTVShowsMock.defaultExpectation != nil && m.afterSearchTVShowsCounter.Load() < 1 {
 		if m.SearchTVShowsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TvMetaClientMock.SearchTVShows")
 		} else {
@@ -494,7 +494,7 @@ func (m *TvMetaClientMock) MinimockSearchTVShowsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcSearchTVShows != nil && mm_atomic.LoadUint64(&m.afterSearchTVShowsCounter) < 1 {
+	if m.funcSearchTVShows != nil && m.afterSearchTVShowsCounter.Load() < 1 {
 		m.t.Error("Expected call to TvMetaClientMock.SearchTVShows")
 	}
 }
@@ -610,8 +610,8 @@ func (e *TvMetaClientMockTVShowAllSeasonsWithDetailsExpectation) Then(ap1 *tvmet
 
 // TVShowAllSeasonsWithDetails implements lazysoap.tvMetaClient
 func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetails(ctx context.Context, id int, language string) (ap1 *tvmeta.AllSeasonsWithDetails, err error) {
-	mm_atomic.AddUint64(&mmTVShowAllSeasonsWithDetails.beforeTVShowAllSeasonsWithDetailsCounter, 1)
-	defer mm_atomic.AddUint64(&mmTVShowAllSeasonsWithDetails.afterTVShowAllSeasonsWithDetailsCounter, 1)
+	mmTVShowAllSeasonsWithDetails.beforeTVShowAllSeasonsWithDetailsCounter.Add(1)
+	defer mmTVShowAllSeasonsWithDetails.afterTVShowAllSeasonsWithDetailsCounter.Add(1)
 
 	if mmTVShowAllSeasonsWithDetails.inspectFuncTVShowAllSeasonsWithDetails != nil {
 		mmTVShowAllSeasonsWithDetails.inspectFuncTVShowAllSeasonsWithDetails(ctx, id, language)
@@ -654,12 +654,12 @@ func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetai
 
 // TVShowAllSeasonsWithDetailsAfterCounter returns a count of finished TvMetaClientMock.TVShowAllSeasonsWithDetails invocations
 func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetailsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmTVShowAllSeasonsWithDetails.afterTVShowAllSeasonsWithDetailsCounter)
+	return mmTVShowAllSeasonsWithDetails.afterTVShowAllSeasonsWithDetailsCounter.Load()
 }
 
 // TVShowAllSeasonsWithDetailsBeforeCounter returns a count of TvMetaClientMock.TVShowAllSeasonsWithDetails invocations
 func (mmTVShowAllSeasonsWithDetails *TvMetaClientMock) TVShowAllSeasonsWithDetailsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmTVShowAllSeasonsWithDetails.beforeTVShowAllSeasonsWithDetailsCounter)
+	return mmTVShowAllSeasonsWithDetails.beforeTVShowAllSeasonsWithDetailsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TvMetaClientMock.TVShowAllSeasonsWithDetails.
@@ -685,11 +685,11 @@ func (m *TvMetaClientMock) MinimockTVShowAllSeasonsWithDetailsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.TVShowAllSeasonsWithDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowAllSeasonsWithDetailsCounter) < 1 {
+	if m.TVShowAllSeasonsWithDetailsMock.defaultExpectation != nil && m.afterTVShowAllSeasonsWithDetailsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcTVShowAllSeasonsWithDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowAllSeasonsWithDetailsCounter) < 1 {
+	if m.funcTVShowAllSeasonsWithDetails != nil && m.afterTVShowAllSeasonsWithDetailsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -704,7 +704,7 @@ func (m *TvMetaClientMock) MinimockTVShowAllSeasonsWithDetailsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.TVShowAllSeasonsWithDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowAllSeasonsWithDetailsCounter) < 1 {
+	if m.TVShowAllSeasonsWithDetailsMock.defaultExpectation != nil && m.afterTVShowAllSeasonsWithDetailsCounter.Load() < 1 {
 		if m.TVShowAllSeasonsWithDetailsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TvMetaClientMock.TVShowAllSeasonsWithDetails")
 		} else {
@@ -712,7 +712,7 @@ func (m *TvMetaClientMock) MinimockTVShowAllSeasonsWithDetailsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcTVShowAllSeasonsWithDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowAllSeasonsWithDetailsCounter) < 1 {
+	if m.funcTVShowAllSeasonsWithDetails != nil && m.afterTVShowAllSeasonsWithDetailsCounter.Load() < 1 {
 		m.t.Error("Expected call to TvMetaClientMock.TVShowAllSeasonsWithDetails")
 	}
 }
@@ -828,8 +828,8 @@ func (e *TvMetaClientMockTVShowDetailsExpectation) Then(tp1 *tvmeta.TvShowDetail
 
 // TVShowDetails implements lazysoap.tvMetaClient
 func (mmTVShowDetails *TvMetaClientMock) TVShowDetails(ctx context.Context, id int, language string) (tp1 *tvmeta.TvShowDetails, err error) {
-	mm_atomic.AddUint64(&mmTVShowDetails.beforeTVShowDetailsCounter, 1)
-	defer mm_atomic.AddUint64(&mmTVShowDetails.afterTVShowDetailsCounter, 1)
+	mmTVShowDetails.beforeTVShowDetailsCounter.Add(1)
+	defer mmTVShowDetails.afterTVShowDetailsCounter.Add(1)
 
 	if mmTVShowDetails.inspectFuncTVShowDetails != nil {
 		mmTVShowDetails.inspectFuncTVShowDetails(ctx, id, language)
@@ -872,12 +872,12 @@ func (mmTVShowDetails *TvMetaClientMock) TVShowDetails(ctx context.Context, id i
 
 // TVShowDetailsAfterCounter returns a count of finished TvMetaClientMock.TVShowDetails invocations
 func (mmTVShowDetails *TvMetaClientMock) TVShowDetailsAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmTVShowDetails.afterTVShowDetailsCounter)
+	return mmTVShowDetails.afterTVShowDetailsCounter.Load()
 }
 
 // TVShowDetailsBeforeCounter returns a count of TvMetaClientMock.TVShowDetails invocations
 func (mmTVShowDetails *TvMetaClientMock) TVShowDetailsBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmTVShowDetails.beforeTVShowDetailsCounter)
+	return mmTVShowDetails.beforeTVShowDetailsCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to TvMetaClientMock.TVShowDetails.
@@ -903,11 +903,11 @@ func (m *TvMetaClientMock) MinimockTVShowDetailsDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.TVShowDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+	if m.TVShowDetailsMock.defaultExpectation != nil && m.afterTVShowDetailsCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcTVShowDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+	if m.funcTVShowDetails != nil && m.afterTVShowDetailsCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -922,7 +922,7 @@ func (m *TvMetaClientMock) MinimockTVShowDetailsInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.TVShowDetailsMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+	if m.TVShowDetailsMock.defaultExpectation != nil && m.afterTVShowDetailsCounter.Load() < 1 {
 		if m.TVShowDetailsMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to TvMetaClientMock.TVShowDetails")
 		} else {
@@ -930,7 +930,7 @@ func (m *TvMetaClientMock) MinimockTVShowDetailsInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcTVShowDetails != nil && mm_atomic.LoadUint64(&m.afterTVShowDetailsCounter) < 1 {
+	if m.funcTVShowDetails != nil && m.afterTVShowDetailsCounter.Load() < 1 {
 		m.t.Error("Expected call to TvMetaClientMock.TVShowDetails")
 	}
 }

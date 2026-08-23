@@ -7,6 +7,11 @@ run:
 linters:
   default: all
   disable:
+    # Replaced by gomodguard_v2 in golangci-lint v2.12.
+    - gomodguard
+    # golangci-lint v2.12.2 bundles honnef.co/go/tools v0.7.0, whose buildir
+    # panics while loading Go 1.27's internal/poll package on Linux.
+    - staticcheck
     # need to try on
     - promlinter
     - wrapcheck

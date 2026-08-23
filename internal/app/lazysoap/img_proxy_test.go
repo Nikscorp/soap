@@ -218,7 +218,7 @@ func TestImgProxyCachesAcrossRequests(t *testing.T) {
 	srv := NewServerWithImgClient(t, transport)
 	defer srv.server.Close()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		resp, err := http.Get(srv.server.URL + "/img/poster.jpg?size=w185")
 		require.NoError(t, err)
 		body, _ := io.ReadAll(resp.Body)
@@ -309,7 +309,7 @@ func TestImgProxySingleflightCollapse(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(N)
 	started := make(chan struct{}, N)
-	for i := 0; i < N; i++ {
+	for range N {
 		go func() {
 			defer wg.Done()
 			started <- struct{}{}
@@ -320,7 +320,7 @@ func TestImgProxySingleflightCollapse(t *testing.T) {
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 		}()
 	}
-	for i := 0; i < N; i++ {
+	for range N {
 		<-started
 	}
 	// Best-effort: give all goroutines a moment to enter singleflight before
@@ -351,7 +351,7 @@ func TestImgProxyOversizedBodyNotCached(t *testing.T) {
 	srv := NewServerWithImgClient(t, transport)
 	defer srv.server.Close()
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		resp, err := http.Get(srv.server.URL + "/img/big.jpg?size=w500")
 		require.NoError(t, err)
 		_, _ = io.ReadAll(resp.Body)
@@ -380,7 +380,7 @@ func TestImgProxyNonImageContentTypeNotCached(t *testing.T) {
 	srv := NewServerWithImgClient(t, transport)
 	defer srv.server.Close()
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		resp, err := http.Get(srv.server.URL + "/img/html.jpg?size=w185")
 		require.NoError(t, err)
 		_, _ = io.ReadAll(resp.Body)
@@ -471,7 +471,7 @@ func TestImgProxyEmptyBodyReturns502(t *testing.T) {
 	srv := NewServerWithImgClient(t, transport)
 	defer srv.server.Close()
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		resp, err := http.Get(srv.server.URL + "/img/empty.jpg?size=w185")
 		require.NoError(t, err)
 		_, _ = io.ReadAll(resp.Body)

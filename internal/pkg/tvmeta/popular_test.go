@@ -45,7 +45,7 @@ func popularResults(items ...popularItem) *tmdb.TVPopular {
 			ID:           it.id,
 			Overview:     it.overview,
 			PosterPath:   it.posterPath,
-			VoteMetrics:  tmdb.VoteMetrics{VoteAverage: it.voteAverage},
+			VoteAverage:  it.voteAverage,
 		})
 	}
 	return &tmdb.TVPopular{

@@ -168,7 +168,7 @@ Same as above but replace `docker compose pull` with `docker compose build` to b
 The multi-stage `Dockerfile` is the source of truth. In short:
 
 ```sh
-# Backend (Go 1.26+)
+# Backend (Go 1.27+)
 make build           # writes ./bin/lazysoap
 
 # Frontend (Node 22+)

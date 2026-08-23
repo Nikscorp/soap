@@ -47,7 +47,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S1 First One",
 						Overview:      "S1 Greatest episode ever",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.19},
+						VoteAverage:   9.19,
 					},
 				},
 			}, nil
@@ -58,13 +58,13 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S2 First One",
 						Overview:      "S2 Greatest episode ever",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.29},
+						VoteAverage:   9.29,
 					},
 					{
 						EpisodeNumber: 2,
 						Name:          "S2 Second One",
 						Overview:      "S2 Greatest episode ever 2",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.229},
+						VoteAverage:   9.229,
 					},
 				},
 			}, nil
@@ -75,7 +75,7 @@ func TestTVShowAllSeasonsWithDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S3 First One",
 						Overview:      "S3 Greatest episode ever",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.39},
+						VoteAverage:   9.39,
 					},
 				},
 			}, nil
@@ -179,7 +179,7 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S1 First One",
 						Overview:      "S1 Greatest episode ever",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.19},
+						VoteAverage:   9.19,
 					},
 				},
 			}, nil
@@ -192,7 +192,7 @@ func TestTVShowAllSeasonsWithDetailsErrorSeasonDetails(t *testing.T) {
 						EpisodeNumber: 1,
 						Name:          "S3 First One",
 						Overview:      "S3 Greatest episode ever",
-						VoteMetrics:   tmdb.VoteMetrics{VoteAverage: 9.39},
+						VoteAverage:   9.39,
 					},
 				},
 			}, nil
@@ -222,8 +222,8 @@ func TestTVShowAllSeasonsWithDetailsCacheHitsOnce(t *testing.T) {
 	client.mockedTMDB.GetTVSeasonDetailsMock.Set(func(_, seasonNumber int, _ map[string]string) (*tmdb.TVSeasonDetails, error) {
 		return &tmdb.TVSeasonDetails{
 			Episodes: []tmdbEpisode{
-				{EpisodeNumber: 1, Name: "ep1", VoteMetrics: tmdb.VoteMetrics{VoteAverage: float32(seasonNumber) + 0.1}},
-				{EpisodeNumber: 2, Name: "ep2", VoteMetrics: tmdb.VoteMetrics{VoteAverage: float32(seasonNumber) + 0.2}},
+				{EpisodeNumber: 1, Name: "ep1", VoteAverage: float32(seasonNumber) + 0.1},
+				{EpisodeNumber: 2, Name: "ep2", VoteAverage: float32(seasonNumber) + 0.2},
 			},
 		}, nil
 	})
@@ -276,7 +276,7 @@ func TestTVShowAllSeasonsWithDetailsCacheKeyIsolation(t *testing.T) {
 	})
 	client.mockedTMDB.GetTVSeasonDetailsMock.Return(&tmdb.TVSeasonDetails{
 		Episodes: []tmdbEpisode{
-			{EpisodeNumber: 1, Name: "ep1", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 8.0}},
+			{EpisodeNumber: 1, Name: "ep1", VoteAverage: 8.0},
 		},
 	}, nil)
 

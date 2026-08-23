@@ -8,7 +8,7 @@ LazySoap is a Go HTTP server that wraps TMDB, paired with a React/Vite SPA. In p
 
 ## Common commands
 
-Backend (Go ≥ 1.26, run from repo root):
+Backend (Go ≥ 1.27, run from repo root):
 
 | Command | Purpose |
 | --- | --- |

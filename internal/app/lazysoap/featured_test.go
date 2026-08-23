@@ -302,7 +302,7 @@ func TestFeaturedHandlerNeverHitsTMDBOnRequestPath(t *testing.T) {
 	beforePopular := len(f.mock.PopularTVShowsMock.Calls())
 	beforeDetails := len(f.mock.TVShowDetailsMock.Calls())
 
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		resp, err := http.Get(f.server.URL + "/featured?language=en")
 		require.NoError(t, err)
 		_ = resp.Body.Close()
@@ -488,8 +488,7 @@ func TestRunFeaturedPoolRefreshNoExtrasStillFetchesPopular(t *testing.T) {
 		}, nil
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	done := make(chan struct{})
 	go func() {
 		f.srv.runFeaturedPoolRefresh(ctx)

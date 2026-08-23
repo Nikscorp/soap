@@ -18,14 +18,14 @@ type RatingsProviderMock struct {
 
 	funcEpisodeRating          func(seriesIMDbID string, season int, episode int) (rating float32, votes uint32, ok bool)
 	inspectFuncEpisodeRating   func(seriesIMDbID string, season int, episode int)
-	afterEpisodeRatingCounter  uint64
-	beforeEpisodeRatingCounter uint64
+	afterEpisodeRatingCounter  mm_atomic.Uint64
+	beforeEpisodeRatingCounter mm_atomic.Uint64
 	EpisodeRatingMock          mRatingsProviderMockEpisodeRating
 
 	funcReady          func() (b1 bool)
 	inspectFuncReady   func()
-	afterReadyCounter  uint64
-	beforeReadyCounter uint64
+	afterReadyCounter  mm_atomic.Uint64
+	beforeReadyCounter mm_atomic.Uint64
 	ReadyMock          mRatingsProviderMockReady
 }
 
@@ -156,8 +156,8 @@ func (e *RatingsProviderMockEpisodeRatingExpectation) Then(rating float32, votes
 
 // EpisodeRating implements tvmeta.RatingsProvider
 func (mmEpisodeRating *RatingsProviderMock) EpisodeRating(seriesIMDbID string, season int, episode int) (rating float32, votes uint32, ok bool) {
-	mm_atomic.AddUint64(&mmEpisodeRating.beforeEpisodeRatingCounter, 1)
-	defer mm_atomic.AddUint64(&mmEpisodeRating.afterEpisodeRatingCounter, 1)
+	mmEpisodeRating.beforeEpisodeRatingCounter.Add(1)
+	defer mmEpisodeRating.afterEpisodeRatingCounter.Add(1)
 
 	if mmEpisodeRating.inspectFuncEpisodeRating != nil {
 		mmEpisodeRating.inspectFuncEpisodeRating(seriesIMDbID, season, episode)
@@ -200,12 +200,12 @@ func (mmEpisodeRating *RatingsProviderMock) EpisodeRating(seriesIMDbID string, s
 
 // EpisodeRatingAfterCounter returns a count of finished RatingsProviderMock.EpisodeRating invocations
 func (mmEpisodeRating *RatingsProviderMock) EpisodeRatingAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmEpisodeRating.afterEpisodeRatingCounter)
+	return mmEpisodeRating.afterEpisodeRatingCounter.Load()
 }
 
 // EpisodeRatingBeforeCounter returns a count of RatingsProviderMock.EpisodeRating invocations
 func (mmEpisodeRating *RatingsProviderMock) EpisodeRatingBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmEpisodeRating.beforeEpisodeRatingCounter)
+	return mmEpisodeRating.beforeEpisodeRatingCounter.Load()
 }
 
 // Calls returns a list of arguments used in each call to RatingsProviderMock.EpisodeRating.
@@ -231,11 +231,11 @@ func (m *RatingsProviderMock) MinimockEpisodeRatingDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.EpisodeRatingMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterEpisodeRatingCounter) < 1 {
+	if m.EpisodeRatingMock.defaultExpectation != nil && m.afterEpisodeRatingCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcEpisodeRating != nil && mm_atomic.LoadUint64(&m.afterEpisodeRatingCounter) < 1 {
+	if m.funcEpisodeRating != nil && m.afterEpisodeRatingCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -250,7 +250,7 @@ func (m *RatingsProviderMock) MinimockEpisodeRatingInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.EpisodeRatingMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterEpisodeRatingCounter) < 1 {
+	if m.EpisodeRatingMock.defaultExpectation != nil && m.afterEpisodeRatingCounter.Load() < 1 {
 		if m.EpisodeRatingMock.defaultExpectation.params == nil {
 			m.t.Error("Expected call to RatingsProviderMock.EpisodeRating")
 		} else {
@@ -258,7 +258,7 @@ func (m *RatingsProviderMock) MinimockEpisodeRatingInspect() {
 		}
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcEpisodeRating != nil && mm_atomic.LoadUint64(&m.afterEpisodeRatingCounter) < 1 {
+	if m.funcEpisodeRating != nil && m.afterEpisodeRatingCounter.Load() < 1 {
 		m.t.Error("Expected call to RatingsProviderMock.EpisodeRating")
 	}
 }
@@ -335,8 +335,8 @@ func (mmReady *mRatingsProviderMockReady) Set(f func() (b1 bool)) *RatingsProvid
 
 // Ready implements tvmeta.RatingsProvider
 func (mmReady *RatingsProviderMock) Ready() (b1 bool) {
-	mm_atomic.AddUint64(&mmReady.beforeReadyCounter, 1)
-	defer mm_atomic.AddUint64(&mmReady.afterReadyCounter, 1)
+	mmReady.beforeReadyCounter.Add(1)
+	defer mmReady.afterReadyCounter.Add(1)
 
 	if mmReady.inspectFuncReady != nil {
 		mmReady.inspectFuncReady()
@@ -360,12 +360,12 @@ func (mmReady *RatingsProviderMock) Ready() (b1 bool) {
 
 // ReadyAfterCounter returns a count of finished RatingsProviderMock.Ready invocations
 func (mmReady *RatingsProviderMock) ReadyAfterCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmReady.afterReadyCounter)
+	return mmReady.afterReadyCounter.Load()
 }
 
 // ReadyBeforeCounter returns a count of RatingsProviderMock.Ready invocations
 func (mmReady *RatingsProviderMock) ReadyBeforeCounter() uint64 {
-	return mm_atomic.LoadUint64(&mmReady.beforeReadyCounter)
+	return mmReady.beforeReadyCounter.Load()
 }
 
 // MinimockReadyDone returns true if the count of the Ready invocations corresponds
@@ -378,11 +378,11 @@ func (m *RatingsProviderMock) MinimockReadyDone() bool {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.ReadyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterReadyCounter) < 1 {
+	if m.ReadyMock.defaultExpectation != nil && m.afterReadyCounter.Load() < 1 {
 		return false
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcReady != nil && mm_atomic.LoadUint64(&m.afterReadyCounter) < 1 {
+	if m.funcReady != nil && m.afterReadyCounter.Load() < 1 {
 		return false
 	}
 	return true
@@ -397,11 +397,11 @@ func (m *RatingsProviderMock) MinimockReadyInspect() {
 	}
 
 	// if default expectation was set then invocations count should be greater than zero
-	if m.ReadyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterReadyCounter) < 1 {
+	if m.ReadyMock.defaultExpectation != nil && m.afterReadyCounter.Load() < 1 {
 		m.t.Error("Expected call to RatingsProviderMock.Ready")
 	}
 	// if func was set then invocations count should be greater than zero
-	if m.funcReady != nil && mm_atomic.LoadUint64(&m.afterReadyCounter) < 1 {
+	if m.funcReady != nil && m.afterReadyCounter.Load() < 1 {
 		m.t.Error("Expected call to RatingsProviderMock.Ready")
 	}
 }

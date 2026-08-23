@@ -30,9 +30,9 @@ func TestAllSeasonsRatingOverridePerEpisodeFallback(t *testing.T) {
 		require.Equal(t, 1, seasonNumber)
 		return &tmdb.TVSeasonDetails{
 			Episodes: []tmdbEpisode{
-				{EpisodeNumber: 1, Name: "Winter Is Coming", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 7.5}},
-				{EpisodeNumber: 2, Name: "The Kingsroad", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 7.4}},
-				{EpisodeNumber: 3, Name: "Lord Snow", VoteMetrics: tmdb.VoteMetrics{VoteAverage: 7.3}},
+				{EpisodeNumber: 1, Name: "Winter Is Coming", VoteAverage: 7.5},
+				{EpisodeNumber: 2, Name: "The Kingsroad", VoteAverage: 7.4},
+				{EpisodeNumber: 3, Name: "Lord Snow", VoteAverage: 7.3},
 			},
 		}, nil
 	})
@@ -81,7 +81,7 @@ func TestAllSeasonsRatingOverrideSkippedWhenNotReady(t *testing.T) {
 	}, nil)
 	c.mockedTMDB.GetTVSeasonDetailsMock.Return(&tmdb.TVSeasonDetails{
 		Episodes: []tmdbEpisode{
-			{EpisodeNumber: 1, VoteMetrics: tmdb.VoteMetrics{VoteAverage: 7.5}},
+			{EpisodeNumber: 1, VoteAverage: 7.5},
 		},
 	}, nil)
 
@@ -104,7 +104,7 @@ func TestAllSeasonsRatingOverrideSkippedOnExternalIDsFailure(t *testing.T) {
 	}, nil)
 	c.mockedTMDB.GetTVSeasonDetailsMock.Return(&tmdb.TVSeasonDetails{
 		Episodes: []tmdbEpisode{
-			{EpisodeNumber: 1, VoteMetrics: tmdb.VoteMetrics{VoteAverage: 6.6}},
+			{EpisodeNumber: 1, VoteAverage: 6.6},
 		},
 	}, nil)
 	c.mockedTMDB.GetTVExternalIDsMock.Return(nil, errors.New("boom"))
