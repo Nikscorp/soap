@@ -59,8 +59,8 @@ export default function App() {
     <div className="flex min-h-dvh flex-col items-center">
       <main className="flex w-full max-w-5xl flex-col items-center px-4 sm:px-6">
         <Header onHomeClick={handleHome} />
-        <section className="w-[95%] max-w-3xl rounded-md bg-white px-4 py-5 shadow-card sm:w-[80%] sm:px-7 sm:py-7">
-          <p className="mb-3 text-sm font-medium text-slate-500">
+        <section className="w-[95%] max-w-3xl rounded-md bg-card px-4 py-5 shadow-card sm:w-[80%] sm:px-7 sm:py-7">
+          <p className="mb-3 text-sm font-medium text-muted">
             What series are you looking for?
           </p>
           <SeriesCombobox
@@ -80,7 +80,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
                 >
                   <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                   Back to results

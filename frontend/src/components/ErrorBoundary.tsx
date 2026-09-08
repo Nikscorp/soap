@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   override render(): ReactNode {
     if (this.state.error) {
       return (
-        <div className="mx-auto mt-10 w-[90%] max-w-3xl rounded-md bg-white shadow-card">
+        <div className="mx-auto mt-10 w-[90%] max-w-3xl rounded-md bg-card shadow-card">
           <ErrorState>
             Something went wrong: {this.state.error.message}. Try reloading the page.
           </ErrorState>

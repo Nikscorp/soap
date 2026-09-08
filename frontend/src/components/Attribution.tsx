@@ -21,7 +21,7 @@ export function Attribution() {
   if (data?.ratingsSource !== 'imdb') return null;
 
   return (
-    <footer className="mt-6 mb-3 px-4 text-center text-xs text-white/60">
+    <footer className="mt-6 mb-3 px-4 text-center text-xs text-muted">
       <p>{IMDB_ATTRIBUTION}</p>
     </footer>
   );

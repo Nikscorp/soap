@@ -64,12 +64,12 @@ export function CopyLinkButton() {
       onClick={handleClick}
       aria-label="Copy link to this page"
       className={clsx(
-        'inline-flex flex-none items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        'inline-flex flex-none items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         status === 'copied'
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+          ? 'border-success/30 bg-success-soft text-success'
           : status === 'error'
-            ? 'border-red-200 bg-red-50 text-red-700'
-            : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+            ? 'border-danger/30 bg-danger-soft text-danger'
+            : 'bg-card text-secondary hover:bg-surface-hover hover:text-foreground',
       )}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />

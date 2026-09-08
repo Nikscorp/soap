@@ -1,8 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Header } from './Header';
 
 describe('Header', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+  });
+
   it('calls onHomeClick on plain left-click and prevents navigation', () => {
     const onHomeClick = vi.fn();
     render(<Header onHomeClick={onHomeClick} />);

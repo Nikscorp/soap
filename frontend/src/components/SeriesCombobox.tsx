@@ -123,7 +123,7 @@ export function SeriesCombobox({ onSelect, onSubmit }: Props) {
           spellCheck={false}
           enterKeyHint="search"
           placeholder="What series are you looking for?"
-          className="w-full bg-transparent py-3 text-lg text-slate-900 placeholder:text-slate-400 focus:outline-none"
+          className="w-full bg-transparent py-3 text-lg text-foreground placeholder:text-muted focus:outline-none"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onFocus={() => setOpen(true)}
@@ -142,7 +142,7 @@ export function SeriesCombobox({ onSelect, onSubmit }: Props) {
           <button
             type="button"
             aria-label="Clear search"
-            className="rounded p-1 text-slate-400 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded p-1 text-muted hover:text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             onClick={() => {
               setInput('');
               clear();
@@ -157,7 +157,7 @@ export function SeriesCombobox({ onSelect, onSubmit }: Props) {
 
       <div
         className={clsx(
-          'absolute left-0 right-0 z-10 mt-2 origin-top overflow-hidden rounded-md bg-white shadow-card transition duration-200 ease-out',
+          'absolute left-0 right-0 z-10 mt-2 origin-top overflow-hidden rounded-md bg-card shadow-card transition duration-200 ease-out',
           showDropdown
             ? 'visible translate-y-0 opacity-100'
             : 'invisible -translate-y-2 opacity-0',
@@ -193,7 +193,7 @@ export function SeriesCombobox({ onSelect, onSubmit }: Props) {
       </div>
 
       {query.isError && (
-        <p className="mt-2 text-xs text-red-700" role="alert">
+        <p className="mt-2 text-xs text-danger" role="alert">
           Service unavailable
         </p>
       )}

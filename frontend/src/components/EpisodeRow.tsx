@@ -27,14 +27,14 @@ export function EpisodeRow({ episode }: Props) {
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="flex-none text-xs font-medium tracking-wide text-slate-400 tabular-nums">
+          <span className="flex-none text-xs font-medium tracking-wide text-muted tabular-nums">
             {formatEpisodeCode(episode.season, episode.number)}
           </span>
-          <p className="min-w-0 flex-1 text-sm font-semibold break-words text-slate-800">
+          <p className="min-w-0 flex-1 text-sm font-semibold break-words text-foreground">
             {episode.title}
           </p>
           <span
-            className="flex flex-none items-center gap-1 text-xs font-semibold text-slate-500 tabular-nums"
+            className="flex flex-none items-center gap-1 text-xs font-semibold text-muted tabular-nums"
             aria-label={`Rating ${formatRating(episode.rating)}`}
           >
             <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" aria-hidden="true" />
@@ -42,7 +42,7 @@ export function EpisodeRow({ episode }: Props) {
           </span>
         </div>
         {description && (
-          <p className="mt-1 text-xs leading-snug break-words text-slate-500">{description}</p>
+          <p className="mt-1 text-xs leading-snug break-words text-muted">{description}</p>
         )}
       </div>
     </li>

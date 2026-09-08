@@ -1,23 +1,38 @@
 @import 'tailwindcss';
 
-/* Design tokens — keep close to the original LazySoap look. */
+/* light-dark() follows the root color-scheme, including live system changes. */
 @theme {
-  --color-bg: #414141;
-  --color-bg-soft: #4d4d4d;
-  --color-card: #ffffff;
+  --color-bg: light-dark(#f1f5f9, #111318);
+  --color-card: light-dark(#ffffff, #1c2027);
+  --color-surface-muted: light-dark(#e2e8f0, #292f39);
+  --color-surface-hover: light-dark(#f1f5f9, #292f39);
+  --color-foreground: light-dark(#0f172a, #f1f5f9);
+  --color-secondary: light-dark(#475569, #cbd5e1);
+  --color-muted: light-dark(#64748b, #a3afbf);
+  --color-border: light-dark(#e2e8f0, #343c49);
+  --color-danger: light-dark(#b91c1c, #fca5a5);
+  --color-danger-soft: light-dark(#fef2f2, #3b2027);
+  --color-success: light-dark(#047857, #6ee7b7);
+  --color-success-soft: light-dark(#ecfdf5, #16352e);
   --color-accent: hsl(355 80% 49%);
   --color-accent-soft: hsl(355 80% 49% / 0.7);
-  --shadow-card: 0 8px 16px 0 rgb(0 0 0 / 0.2);
+  --shadow-card: 0 8px 24px 0 light-dark(rgb(15 23 42 / 0.08), rgb(0 0 0 / 0.25));
   --font-title: 'Arial Black', Gadget, sans-serif;
 }
 
 @layer base {
   html {
     background-color: var(--color-bg);
+    color-scheme: light dark;
+  }
+  html[data-theme='light'] {
+    color-scheme: light;
+  }
+  html[data-theme='dark'] {
     color-scheme: dark;
   }
   body {
-    @apply min-h-dvh bg-bg font-sans text-slate-100 antialiased;
+    @apply min-h-dvh bg-bg font-sans text-foreground antialiased;
     font-family:
       ui-sans-serif,
       system-ui,

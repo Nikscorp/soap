@@ -189,7 +189,7 @@ export function EpisodesList({
 
   return (
     <section
-      className="mx-auto mt-5 mb-10 w-[95%] max-w-3xl overflow-hidden rounded-md bg-white shadow-card sm:w-[80%]"
+      className="mx-auto mt-5 mb-10 w-[95%] max-w-3xl overflow-hidden rounded-md bg-card shadow-card sm:w-[80%]"
       aria-busy={query.isPending}
     >
       <SelectedSeriesCard
@@ -198,7 +198,7 @@ export function EpisodesList({
         firstAirDate={cardYear}
         description={cardDescription}
       />
-      <div className="border-t border-slate-100">
+      <div className="border-t border-border">
         {query.isPending && <Spinner label="Loading best episodes…" />}
         {query.isError &&
           (query.error instanceof ApiError &&
@@ -270,7 +270,7 @@ function EpisodesBody({
 
   return (
     <>
-      <h3 className="px-5 pt-5 pb-1 text-xs font-semibold tracking-wider text-slate-500 uppercase sm:px-10">
+      <h3 className="px-5 pt-5 pb-1 text-xs font-semibold tracking-wider text-muted uppercase sm:px-10">
         Best of &ldquo;{data.title}&rdquo;
       </h3>
       <SeasonSelector
@@ -293,7 +293,7 @@ function EpisodesBody({
               onChange={onSliderChange}
             />
           )}
-          <ul className="divide-y divide-slate-100 pb-3">
+          <ul className="divide-y divide-border pb-3">
             {visible.map((ep, idx) => (
               <EpisodeRow key={`${ep.season}-${ep.number}-${idx}`} episode={ep} />
             ))}
