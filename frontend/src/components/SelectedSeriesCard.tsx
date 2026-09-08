@@ -23,7 +23,7 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
   return (
     <div className="px-5 py-4 sm:px-6">
       <div className="flex items-start gap-4">
-        <div className="flex aspect-[2/3] w-20 flex-none items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 sm:w-24">
+        <div className="flex aspect-[2/3] w-20 flex-none items-center justify-center overflow-hidden rounded bg-surface-muted text-muted sm:w-24">
           {posterUrl && !posterFailed ? (
             <img
               src={posterUrl}
@@ -42,17 +42,17 @@ export function SelectedSeriesCard({ title, poster, firstAirDate, description }:
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold break-words text-slate-900 sm:text-lg">
+              <h2 className="text-base font-semibold break-words text-foreground sm:text-lg">
                 {title || ' '}
               </h2>
-              {year && <p className="text-sm text-slate-500">{year}</p>}
+              {year && <p className="text-sm text-muted">{year}</p>}
             </div>
             <span className="flex-none">
               <CopyLinkButton />
             </span>
           </div>
           {description && (
-            <p className="mt-2 text-sm leading-snug break-words text-slate-600 sm:mt-3">
+            <p className="mt-2 text-sm leading-snug break-words text-secondary sm:mt-3">
               {description}
             </p>
           )}

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 export function ErrorState({ children }: { children: ReactNode }) {
   return (
     <div
-      className="flex items-start gap-3 px-6 py-8 text-sm text-red-700"
+      className="flex items-start gap-3 px-6 py-8 text-sm text-danger"
       role="alert"
       aria-live="assertive"
     >

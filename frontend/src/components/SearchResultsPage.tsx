@@ -27,14 +27,14 @@ export function SearchResultsPage({ q, onSelect }: Props) {
 
   return (
     <section
-      className="mx-auto mt-5 mb-10 w-[95%] max-w-3xl overflow-hidden rounded-md bg-white shadow-card sm:w-[80%]"
+      className="mx-auto mt-5 mb-10 w-[95%] max-w-3xl overflow-hidden rounded-md bg-card shadow-card sm:w-[80%]"
       aria-busy={query.isPending}
       aria-labelledby="search-results-heading"
     >
-      <header className="border-b border-slate-100 px-5 py-4 sm:px-6">
-        <h2 id="search-results-heading" className="text-sm font-medium text-slate-500">
+      <header className="border-b border-border px-5 py-4 sm:px-6">
+        <h2 id="search-results-heading" className="text-sm font-medium text-muted">
           Results for{' '}
-          <span className="font-semibold text-slate-900">&ldquo;{q}&rdquo;</span>
+          <span className="font-semibold text-foreground">&ldquo;{q}&rdquo;</span>
         </h2>
       </header>
       {query.isPending && <Spinner label="Searching…" />}
@@ -43,7 +43,7 @@ export function SearchResultsPage({ q, onSelect }: Props) {
         <EmptyState>No series match this query.</EmptyState>
       )}
       {query.isSuccess && results.length > 0 && (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {results.map((result) => (
             <SearchResultCard
               key={result.id}

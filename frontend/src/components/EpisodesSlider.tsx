@@ -23,10 +23,10 @@ export function EpisodesSlider({ value, min, max, total, onChange }: Props) {
     <div className="flex flex-col gap-2 px-5 pt-4 pb-2 sm:px-10">
       <label
         htmlFor={id}
-        className="flex items-baseline justify-between text-xs font-semibold tracking-wider text-slate-500 uppercase"
+        className="flex items-baseline justify-between text-xs font-semibold tracking-wider text-muted uppercase"
       >
         <span>Show top episodes</span>
-        <span className="tabular-nums text-slate-700">
+        <span className="tabular-nums text-secondary">
           {safeValue} of {total}
         </span>
       </label>
@@ -43,7 +43,7 @@ export function EpisodesSlider({ value, min, max, total, onChange }: Props) {
         aria-valuemin={min}
         aria-valuemax={safeMax}
         aria-valuenow={safeValue}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-border accent-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-accent"
       />
     </div>
   );

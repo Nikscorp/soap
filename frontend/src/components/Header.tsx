@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { ThemeSelector } from './ThemeSelector';
 
 interface HeaderProps {
   onHomeClick: () => void;
@@ -16,15 +17,16 @@ export function Header({ onHomeClick }: HeaderProps) {
       <a
         href="/"
         onClick={handleClick}
-        className="rounded cursor-pointer transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        className="rounded cursor-pointer transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <h1 className="text-title text-center text-5xl font-extrabold tracking-[0.2em] text-white sm:text-6xl">
+        <h1 className="text-title text-center text-5xl font-extrabold tracking-[0.2em] text-foreground sm:text-6xl">
           LAZY SOAP
         </h1>
       </a>
-      <p className="text-center text-sm font-light tracking-[0.24em] text-white/70 sm:text-base">
+      <p className="text-center text-sm font-light tracking-[0.24em] text-muted sm:text-base">
         watch&nbsp;only&nbsp;best episodes&nbsp;of&nbsp;series
       </p>
+      <ThemeSelector />
     </header>
   );
 }

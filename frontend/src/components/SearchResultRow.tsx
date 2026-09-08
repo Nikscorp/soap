@@ -27,11 +27,11 @@ export function SearchResultRow({ result, index, active, optionId, onSelect, onH
       }}
       className={clsx(
         'flex cursor-pointer items-baseline justify-between gap-3 px-5 py-2.5 text-sm',
-        active ? 'bg-accent text-white' : 'text-slate-800 hover:bg-accent/70 hover:text-white',
+        active ? 'bg-accent text-white' : 'text-foreground hover:bg-accent/70 hover:text-white',
       )}
     >
       <span className="truncate font-medium">{result.title}</span>
-      <span className={clsx('shrink-0 text-xs', active ? 'text-white/80' : 'text-slate-500')}>
+      <span className={clsx('shrink-0 text-xs', active ? 'text-white/80' : 'text-muted')}>
         ({yearFromAirDate(result.firstAirDate)})
       </span>
     </li>

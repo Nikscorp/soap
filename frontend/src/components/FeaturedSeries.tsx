@@ -43,7 +43,7 @@ export function FeaturedSeries({ language, onSelect }: Props) {
     >
       <h2
         id="featured-heading"
-        className="mb-2 text-sm font-medium text-white/80"
+        className="mb-2 text-sm font-medium text-secondary"
       >
         Or try one of these
       </h2>
@@ -53,9 +53,9 @@ export function FeaturedSeries({ language, onSelect }: Props) {
         {query.isPending
           ? [0, 1, 2].map((i) => (
               <li key={i} className="w-40 flex-none sm:w-auto">
-                <div className="aspect-[2/3] animate-pulse rounded bg-white/10" />
-                <div className="mt-2 h-4 w-3/4 animate-pulse rounded bg-white/10" />
-                <div className="mt-1 h-3 w-1/3 animate-pulse rounded bg-white/10" />
+                <div className="aspect-[2/3] animate-pulse rounded bg-surface-muted" />
+                <div className="mt-2 h-4 w-3/4 animate-pulse rounded bg-surface-muted" />
+                <div className="mt-1 h-3 w-1/3 animate-pulse rounded bg-surface-muted" />
               </li>
             ))
           : series.map((s, i) => (
@@ -105,9 +105,9 @@ function FeaturedCard({
       <button
         type="button"
         onClick={onSelect}
-        className="block w-full text-left transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 rounded"
+        className="block w-full text-left transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
       >
-        <div className="flex aspect-[2/3] w-full items-center justify-center overflow-hidden rounded bg-slate-100 text-slate-400 shadow-card">
+        <div className="flex aspect-[2/3] w-full items-center justify-center overflow-hidden rounded bg-surface-muted text-muted shadow-card">
           {posterUrl && !posterFailed ? (
             <img
               src={posterUrl}
@@ -124,10 +124,10 @@ function FeaturedCard({
             <ImageOff className="h-6 w-6" aria-hidden="true" />
           )}
         </div>
-        <h3 className="mt-2 truncate text-sm font-semibold text-white">
+        <h3 className="mt-2 truncate text-sm font-semibold text-foreground">
           {series.title}
         </h3>
-        {year && <p className="text-xs text-white/70">{year}</p>}
+        {year && <p className="text-xs text-muted">{year}</p>}
       </button>
     </li>
   );

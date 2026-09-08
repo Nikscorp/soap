@@ -63,7 +63,7 @@ export function SeasonSelector({ available, selected, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-2 px-5 pt-4 pb-1 sm:px-10">
-      <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">
+      <span className="text-xs font-semibold tracking-wider text-muted uppercase">
         Filter seasons
       </span>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter seasons">
@@ -96,8 +96,8 @@ function Chip({ pressed, onClick, label }: ChipProps) {
       className={clsx(
         'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         pressed
-          ? 'border-slate-900 bg-slate-900 text-white'
-          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900',
+          ? 'border-foreground bg-foreground text-card'
+          : 'border-border bg-card text-secondary hover:bg-surface-hover hover:text-foreground',
       )}
     >
       {pressed && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
